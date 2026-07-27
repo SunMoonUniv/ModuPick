@@ -1,0 +1,28 @@
+name: Frontend CI (TBD)
+
+on:
+  push:
+    branches: [ "main" ]
+    paths:
+      - 'frontend/**'  # frontend 폴더에 변경이 있을 때만 실행
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'frontend/**'
+
+jobs:
+  build-placeholder:
+    runs-on: ubuntu-latest
+    
+    defaults:
+      run:
+        working-directory: ./frontend
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: TODO - Setup Frontend Tech Stack
+        run: |
+          echo "🚀 프론트엔드 기술 스택이 결정되면 여기에 CI(빌드/테스트) 과정을 추가하세요."
+          echo "예: Node.js 셋업 -> npm install -> npm run build"
