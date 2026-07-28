@@ -1,0 +1,29 @@
+.bubble {
+  display: inline-flex;
+  align-items: flex-start;
+  border: var(--b-stat) solid var(--ink);
+  border-radius: 16px;
+  padding: var(--space-3) var(--space-4);
+  font-family: var(--font-body);
+  font-size: var(--text-meta);
+  max-width: 100%;
+  width: fit-content;
+}
+
+/* align-self는 .bubble이 flex 자식일 때만 의미 있음 (예: 세로 채팅 목록 안) */
+.other {
+  background: var(--white);
+  align-self: flex-start;
+}
+
+.self {
+  background: var(--pink);
+  align-self: flex-end;
+  margin-left: auto;
+}
+
+.system {
+  background: var(--lavender);
+  align-self: center;
+  margin-inline: auto;
+}

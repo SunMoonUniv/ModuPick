@@ -1,0 +1,40 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+node_modules
+dist
+dist-ssr
+*.local
+
+# Vite 캐시 및 tsc -b(project references) 증분 빌드 캐시
+.vite
+*.tsbuildinfo
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# env files (secrets/local overrides — never commit these)
+.env
+.env.local
+.env.*.local
+
+# local-only Claude Code settings (machine-specific permissions, not for sharing)
+.claude/settings.local.json
+
+# Figma 화면설계서 원본 문서 (저장소 외부 참고 자료, CLAUDE.md 참고)
+*Screen Design Spec*.md

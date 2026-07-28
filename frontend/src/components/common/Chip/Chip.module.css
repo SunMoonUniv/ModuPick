@@ -1,0 +1,31 @@
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: var(--b-chip) solid var(--ink);
+  border-radius: var(--r-pill);
+  padding: var(--space-2) var(--space-5);
+  font-family: var(--font-body);
+  font-size: var(--text-meta);
+  white-space: nowrap;
+}
+
+.yellow {
+  background: var(--yellow);
+  color: var(--ink);
+}
+
+.pink {
+  background: var(--pink);
+  color: var(--ink);
+}
+
+.cyan {
+  background: var(--cyan);
+  color: var(--ink);
+}
+
+.white {
+  background: var(--white);
+  color: var(--ink);
+}

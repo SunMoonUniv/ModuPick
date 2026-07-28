@@ -1,0 +1,38 @@
+.wrapper {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+}
+
+.input {
+  width: 100%;
+  height: 60px;
+  background: var(--input);
+  border: var(--b-stat) solid var(--ink);
+  border-radius: var(--r-btn);
+  padding: 0 var(--space-4);
+  padding-right: 70px; /* .counter 오버레이 자리 확보 — 긴 입력 텍스트가 그 밑에 깔리지 않도록 */
+  font-family: var(--font-body);
+  font-size: var(--text-meta);
+  color: var(--ink);
+}
+
+.input::placeholder {
+  color: var(--muted-text);
+}
+
+.input:focus {
+  outline: none;
+  border-color: var(--bg-purple);
+}
+
+.counter {
+  position: absolute;
+  right: var(--space-4);
+  top: 50%;
+  transform: translateY(-50%);
+  font-family: var(--font-body);
+  font-size: var(--text-meta);
+  color: var(--muted-text);
+  pointer-events: none;
+}

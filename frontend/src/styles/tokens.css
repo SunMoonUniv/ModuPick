@@ -1,0 +1,100 @@
+/* ModuPick 디자인 토큰 — Figma "몰입 디자인" 543:13 (00 · 파운데이션 & 토큰) 기준
+   NEO-BRUTALIST v1 · FHD 1920x1080 고정, 반응형 미적용 */
+@import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=IBM+Plex+Sans+KR:wght@400;500;600&family=Nanum+Gothic+Coding:wght@400;700&display=swap');
+
+:root {
+  /* ---- 색 ---- */
+  --bg-purple: #5b2de7; /* 화면 배경 */
+  --ink: #0e0d14; /* 테두리·본문·CTA */
+  --pink: #ff4fd4; /* 강조·본인 말풍선 */
+  --yellow: #ffe23e; /* 강조 뱃지·주요 액션 */
+  --cyan: #57ebfa; /* 보조 강조·버튼 */
+  --green: #46e08a; /* READY·긍정 */
+  --lavender: #c9b8ff; /* 보조 배경 */
+  --input: #f7f7fa; /* 입력 배경 */
+  --track: #e5e5eb; /* 프로그레스 트랙 */
+  --white: #ffffff;
+  --muted-text: #8c8a99; /* 준비 중 등 비활성 텍스트 */
+  --safe-bg: #c6f0d6; /* Safe Band 칩 배경 */
+
+  /* Stat 3색 타일 */
+  --stat-cyan: #c9f5f7;
+  --stat-pink: #ffcaf2;
+  --stat-yellow: #fff6cc;
+
+  /* 게임별 컬러 pill */
+  --game-roulette: #ff4fd4;
+  --game-ladder: #57ebfa;
+  --game-kingmaker: #ffe23e;
+  --game-timer: #ff9e40;
+  --game-sniper: #ff6b6b;
+  --game-nunchi: #8c66f2;
+
+  /* ---- 타이포그래피 ---- */
+  --font-display: 'Black Han Sans', sans-serif; /* 히어로·제목·헤드용 */
+  --font-accent: 'Do Hyeon', sans-serif; /* 헤드라인·이름·버튼용 */
+  --font-body: 'IBM Plex Sans KR', sans-serif; /* body·sub·meta — 기본 굵기는 Medium(500), global.css body에서 지정 */
+  --font-tag: 'Nanum Gothic Coding', monospace; /* 캐릭터 타일 등 초소형 라벨(선정 표시 등) 전용, Bold(700) */
+
+  --text-hero: 88px; /* 히어로 당첨자 */
+  --text-title: 44px; /* 화면 제목 */
+  --text-head: 40px; /* 헤드 */
+  --text-headline: 34px; /* 게임 헤드라인 */
+  --text-name: 28px; /* 이름·카드 제목 */
+  --text-btn: 24px; /* 버튼·칩·강조 */
+  --text-body: 22px; /* 기본 본문·채팅 말풍선 */
+  --text-sub: 20px; /* 서브라인·설명 */
+  --text-meta: 18px; /* 메타·뱃지·타임스탬프 — 전체 텍스트 하한, 이보다 작게 쓰지 않음 */
+
+  /* ---- 스페이싱 ---- */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 59px;
+
+  /* ---- 라운드 ---- */
+  --r-btn: 14px;
+  --r-card: 20px;
+  --r-pill: 999px;
+
+  /* ---- 섀도 (흐림 없는 하드 드롭섀도) ---- */
+  --shadow-hard: 6px 6px 0 var(--ink); /* 카드 */
+  --shadow-btn: 4px 4px 0 var(--ink); /* 버튼 (5px 5px 0 변형도 사용) */
+
+  /* ---- 테두리 두께 ---- */
+  --b-card: 5px; /* 카드·밴드 */
+  --b-chip: 4px; /* 칩·버튼 */
+  --b-stat: 3px; /* Stat 타일 (약 2.64px 실측) */
+
+  /* ---- 그리드 (FHD 1920x1080 고정) ---- */
+  --grid-margin-x: 59px;
+  --grid-content-width: 1803px;
+  --grid-header-title-y: 44px;
+  --grid-header-sub-y: 100px;
+  --grid-content-y: 144px;
+  --grid-content-height: 770px;
+  --grid-band-y: 938px;
+  --grid-band-height: 108px;
+  --grid-2col-left: 1221px;
+  --grid-2col-gap: 32px;
+  --grid-2col-right: 550px;
+  --grid-3col-a: 549px;
+  --grid-3col-b: 528px;
+  --grid-3col-c: 670px;
+
+  /* ---- 아바타 ---- */
+  --avatar-min: 42px;
+  --avatar-max: 72px;
+  --avatar-standard: 60px;
+
+  /* ---- 캐릭터 타일 (게임 내 캐릭터 선택 카드, 618:5799 "캐릭터 선택여부별 디자인" 기준) ---- */
+  --tile-w: 140px;
+  --tile-h: 146px;
+  --tile-radius: 16px; /* 실측 17.086px 반올림 */
+  --tile-image-size: 108px;
+  --tile-taken-bg: #ccc9d6; /* 다른 사람이 선택한 캐릭터(비활성) 배경 */
+}

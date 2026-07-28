@@ -1,0 +1,31 @@
+.chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 64px;
+  background: var(--safe-bg);
+  border: var(--b-stat) solid var(--ink);
+  border-radius: var(--r-btn);
+  padding: 0 var(--space-3);
+}
+
+.name {
+  font-family: var(--font-accent);
+  font-size: var(--text-body);
+  color: var(--ink);
+  flex: 1;
+}
+
+.safeLabel {
+  display: inline-flex;
+  align-items: center;
+  height: 34px;
+  background: var(--white);
+  border: 2px solid var(--ink);
+  border-radius: var(--r-pill);
+  padding: 0 var(--space-3);
+  font-family: var(--font-body);
+  font-size: var(--text-meta);
+  color: var(--ink);
+  white-space: nowrap;
+}

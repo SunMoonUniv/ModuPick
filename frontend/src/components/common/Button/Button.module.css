@@ -1,0 +1,43 @@
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  border: var(--b-chip) solid var(--ink);
+  border-radius: var(--r-btn);
+  box-shadow: var(--shadow-btn);
+  padding: var(--space-4) var(--space-6);
+  font-family: var(--font-accent);
+  font-size: var(--text-btn);
+  line-height: normal;
+  white-space: nowrap;
+  transition: transform 0.05s ease;
+}
+
+/* 눌림 효과: 버튼이 그림자 쪽으로 파고드는 것처럼 그림자가 줄어듦 */
+.button:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.button:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+  box-shadow: none;
+  transform: none;
+}
+
+.primary {
+  background: var(--ink);
+  color: var(--cyan);
+}
+
+.accent {
+  background: var(--yellow);
+  color: var(--ink);
+}
+
+.secondary {
+  background: var(--white);
+  color: var(--ink);
+}

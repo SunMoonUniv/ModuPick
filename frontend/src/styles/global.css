@@ -1,0 +1,50 @@
+@import './tokens.css';
+
+/* 모든 화면이 공유하는 기본 리셋·기본값 — 화면별 스타일은 여기 두지 않음 */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-width: 1920px;
+  min-height: 1080px;
+  background: var(--bg-purple);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: 500; /* IBM Plex Sans KR Medium — 스펙상 본문 기본 굵기, 모든 body/sub/meta 텍스트가 Medium */
+  font-size: var(--text-meta);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* FHD 고정 레이아웃, 반응형 브레이크포인트 없음 — 화면은 정확히 1920x1080 기준으로 설계됨 */
+#root {
+  min-width: 1920px;
+  min-height: 1080px;
+}
+
+h1,
+h2,
+h3,
+h4,
+p {
+  margin: 0;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input,
+button {
+  color: inherit;
+}
