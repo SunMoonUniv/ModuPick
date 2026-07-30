@@ -29,8 +29,9 @@
 | 무슨 기술을 쓰나 | [`docs/techstack.md`](docs/techstack.md) — 기술 스택과 결정 근거 |
 | 화면이 어떻게 생겼나 | [`docs/draft_design/`](docs/draft_design/) — 웹디자인 시안 |
 
-> ⚠️ **문서 정합성: 2026-07-29 기준 미확정 2건** — [Q-19 성능 목표치](docs/requirements.md#8-미확정-항목--팀-확정-필요) · **[Q-20 DB가 MySQL인가 PostgreSQL인가](docs/requirements.md#8-미확정-항목--팀-확정-필요)**. 둘 다 팀 회의 안건이며 **Q-20은 백엔드 착수를 막습니다.**
-> 확정된 설계 결정 46건(D-01 ~ D-48 · 폐기 2건 제외)은 [`requirements.md §7`](docs/requirements.md#7-확정된-설계-결정)에 있고 `api.md`에 전부 반영되어 있습니다.
+> ✅ **문서 정합성: 2026-07-29 기준 문서 간 충돌 0건 · 착수를 막는 미확정 0건.**
+> 남은 것은 [Q-19 성능 목표치](docs/requirements.md#q-19--성능-목표치) 하나이고, **지금 정하지 않기로 한 항목**입니다 — 잠정 기준(200ms · 100방)으로 구현하고 백엔드 1차 통합 후 실측해서 닫습니다.
+> 확정된 설계 결정 47건(D-01 ~ D-49 · 폐기 2건 제외)은 [`requirements.md §7`](docs/requirements.md#7-확정된-설계-결정)에 있고 `api.md`에 전부 반영되어 있습니다.
 > 스펙이 어긋나면 **`requirements.md`가 정본**입니다. 고치기 전에 [`§9.4 정합성 점검 방법`](docs/requirements.md#94-정합성-점검-방법)을 보세요 — **"반영 완료"라고 적기 전에 그 명령을 실제로 돌립니다.**
 
 ### 문서 간 역할
@@ -60,7 +61,7 @@ games.md / api.md / techstack.md    어떻게 만드는가   판정 규칙 · �
 | 백엔드 | Python · FastAPI |
 | 프론트엔드 | React + Vite · TypeScript |
 | 실시간 | Native WebSocket |
-| DB | PostgreSQL |
+| DB | MySQL |
 | 인프라 | Docker · Kubernetes · Nginx · GitHub Actions |
 
 자세한 결정 근거와 보류한 대안은 [`docs/techstack.md`](docs/techstack.md).
@@ -78,7 +79,7 @@ ModuPick/
 │   ├── screens.md         화면 목록 · 기능 매핑 (화면 35종)
 │   ├── games.md           미니게임 6종 상세 규칙
 │   ├── api.md             REST · 소켓 이벤트 · 에러 코드
-│   ├── db.md              DB 모델링 (⚠️ MySQL 기준 — techstack.md와 충돌)
+│   ├── db.md              DB 모델링 (MySQL · 스키마 · 잠금 순서)
 │   ├── techstack.md       기술 스택
 │   ├── draft_plan.md      기획안 (원본 자료)
 │   └── draft_design/      웹디자인 시안 (PNG · SVG)

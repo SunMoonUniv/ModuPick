@@ -20,7 +20,9 @@ HTML, CSS, React, js, ts
 
 ## DB/인프라
 
-DB : POSTGRESQL
+DB : MYSQL
+
+> 2026-07-29 확정. 초안에는 PostgreSQL로 적혀 있었으나 `db.md`의 모델링이 MySQL 기준으로 완료된 상태였고, 팀이 **MySQL**로 통일하기로 정했다([D-49](requirements.md#7-확정된-설계-결정)).
 
 환경 격리 / 컨테이너화 : Docker, Docker Compose
 
@@ -36,6 +38,6 @@ DB : POSTGRESQL
 | --- | --- | --- | --- |
 | Frontend | React + Vite | Next.js | MVP는 SEO·SSR보다 실시간 SPA와 빠른 개발이 중요 |
 | Backend | FastAPI | NestJS / Spring Boot | Python 경험을 활용하고 비동기 API·WebSocket을 한 흐름으로 학습 |
-| DB | PostgreSQL | MySQL | 둘 다 운영하지 않고 한 DB로 통일. 관계·제약조건 중심 설계에 적합 |
+| DB | **MySQL** | PostgreSQL | 둘 다 운영하지 않고 한 DB로 통일한다. `db.md`의 모델링(스키마·인덱스·잠금 순서)이 이미 MySQL 기준으로 끝나 있어, 이쪽으로 맞추는 것이 다시 쓰는 비용이 없다 |
 | 실시간 프로토콜 | Native WebSocket | `Socket.IO` | 의존성과 프로토콜을 단순화. 대신 재접속·방 상태 복구는 직접 구현 |
 | 로컬 환경 | Docker Compose | Kubernetes만 사용 | 일상 개발은 단순하게 유지하고 배포 단계에서 Kubernetes 적용 |
