@@ -1,19 +1,32 @@
-name: Frontend CI (TBD)
+name: Frontend CI
 
 on:
   push:
     branches: [ "main" ]
     paths:
       - 'frontend/**'  # frontend 폴더에 변경이 있을 때만 실행
+      - '.github/workflows/ci-frontend.yml'  # 워크플로우 자체를 수정했을 때도 검증
   pull_request:
     branches: [ "main" ]
     paths:
       - 'frontend/**'
+      - '.github/workflows/ci-frontend.yml'
+  workflow_dispatch:  # Actions 탭에서 수동 실행 가능
+
+# 같은 브랜치/PR에 새 커밋이 올라오면 이전 실행은 취소해 러너 낭비를 막습니다.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
 
 jobs:
-  build-placeholder:
+  build-and-lint:
     runs-on: ubuntu-latest
-    
+    timeout-minutes: 15
+
+    # 이 워크플로우 내의 모든 run 명령어의 기본 실행 위치를 frontend 폴더로 고정합니다.
     defaults:
       run:
         working-directory: ./frontend
@@ -22,7 +35,31 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: TODO - Setup Frontend Tech Stack
-        run: |
-          echo "🚀 프론트엔드 기술 스택이 결정되면 여기에 CI(빌드/테스트) 과정을 추가하세요."
-          echo "예: Node.js 셋업 -> npm install -> npm run build"
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          # vite / oxlint / @vitejs/plugin-react 가 요구하는 engines: ^20.19.0 || >=22.12.0
+          node-version: '22'
+          cache: 'npm'
+          # setup-node 입력값은 defaults.working-directory 영향을 받지 않아 레포 루트 기준 경로로 지정합니다.
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        # package-lock.json 기준으로 정확히 동일한 버전을 설치 (lock 불일치 시 실패)
+        run: npm ci
+
+      - name: Lint with Oxlint
+        # .oxlintrc.json 설정(react/typescript/oxc 플러그인)으로 검사
+        run: npm run lint
+
+      - name: Type check & Build
+        # package.json 의 build 스크립트 = tsc -b (타입 검사) && vite build (프로덕션 빌드)
+        run: npm run build
+
+      - name: Upload build output
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-dist
+          path: frontend/dist
+          retention-days: 7
+          if-no-files-found: error
