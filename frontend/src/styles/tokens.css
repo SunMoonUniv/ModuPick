@@ -16,6 +16,8 @@
   --white: #ffffff;
   --muted-text: #8c8a99; /* 준비 중 등 비활성 텍스트 */
   --safe-bg: #c6f0d6; /* Safe Band 칩 배경 */
+  --danger: #fa5c57; /* 나가기 등 이탈성 액션 배경 */
+  --success: #18ce4e; /* 게임 시작 등 완료성 CTA 배경 — READY 상태를 나타내는 --green과는 별도 */
 
   /* Stat 3색 타일 */
   --stat-cyan: #c9f5f7;
@@ -36,7 +38,9 @@
   --font-body: 'IBM Plex Sans KR', sans-serif; /* body·sub·meta — 기본 굵기는 Medium(500), global.css body에서 지정 */
   --font-tag: 'Nanum Gothic Coding', monospace; /* 캐릭터 타일 등 초소형 라벨(선정 표시 등) 전용, Bold(700) */
 
+  --text-landing-hero: 134.4px; /* 메인 랜딩 화면 카피 3줄(모두가/납득하는/유쾌한 픽) 전용, --text-hero(당첨자 발표)와는 별도 */
   --text-hero: 88px; /* 히어로 당첨자 */
+  --text-display-lg: 56px; /* 화면 헤드라인 · 플레이어 카드 큰 이름 등 title(44)와 hero(88) 사이 크기가 필요할 때 */
   --text-title: 44px; /* 화면 제목 */
   --text-head: 40px; /* 헤드 */
   --text-headline: 34px; /* 게임 헤드라인 */
@@ -60,6 +64,7 @@
   --r-btn: 14px;
   --r-card: 20px;
   --r-pill: 999px;
+  --r-sm: 6px; /* 상단 안내 티커 같은 얇은 소형 표면용 */
 
   /* ---- 섀도 (흐림 없는 하드 드롭섀도) ---- */
   --shadow-hard: 6px 6px 0 var(--ink); /* 카드 */

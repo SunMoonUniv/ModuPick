@@ -1,0 +1,296 @@
+/* 룰렛 결과(당첨자 발표) 화면 (Figma 542:1119, "S-05b · 룰렛 결과") — FHD 1920x1080 고정
+   화면 액자(뷰포트 스케일·테두리·귀퉁이 장식)는 공통 ScreenFrame 컴포넌트가 담당함 */
+
+/* ---- 헤더: 제목·부제 ---- */
+.header {
+  padding: 44px var(--grid-margin-x) 0;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-title);
+  color: var(--white);
+}
+
+.caption {
+  font-family: var(--font-display);
+  font-size: var(--text-sub);
+  color: var(--yellow);
+  letter-spacing: 0.5px;
+}
+
+.subtitle {
+  font-family: var(--font-tag);
+  font-size: var(--text-sub);
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 0.7px;
+}
+
+/* ---- 상단 컨페티 장식 레이어 — ScreenFrame 콘텐츠 영역(1920x1080) 기준 절대 좌표, 클릭 불가 ---- */
+.confettiTop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* 결과 카드 내부 전용 컨페티 레이어 — .resultCard가 position:relative라 그 안 기준 좌표로 찍힘 */
+.confettiCard {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* 작은 둥근 사각 색종이 조각 하나 — left/top/rot/color는 상위 컴포넌트에서 인라인으로 지정 */
+.confettiPiece {
+  position: absolute;
+  width: 14px;
+  height: 22px;
+  border-radius: 3px;
+  border: 2px solid var(--ink);
+}
+
+/* ---- 본문: 좌측(결과 카드 + 세이프 밴드) + 우측(공유 액션) 2단 레이아웃 ---- */
+.body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--grid-2col-gap);
+  padding: var(--space-6) var(--grid-margin-x) 0;
+}
+
+.colMain {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: var(--grid-2col-left);
+}
+
+/* ---- 결과 카드: 당첨자 정보를 담는 메인 카드 ---- */
+.resultCard {
+  position: relative;
+  width: var(--grid-2col-left);
+  height: 698px; /* Figma 실측 */
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: var(--space-6);
+}
+
+.resultHeaderStrip {
+  flex-shrink: 0;
+  width: 100%;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pink);
+  border-bottom: var(--b-card) solid var(--ink);
+  font-family: var(--font-display);
+  font-size: var(--text-headline);
+  color: var(--white);
+}
+
+.winnerZone {
+  position: relative;
+  flex-shrink: 0;
+  width: 280px;
+  height: 280px;
+  margin-top: var(--space-6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* 아바타 뒤에서 도는 은은한 후광 — RouletteScreen의 .wheelGlow 펄스 트릭을 결과 화면 톤(핑크·옐로)으로 재사용 */
+.haloRing {
+  position: absolute;
+  inset: -40px;
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(rgba(255, 79, 212, 0.15) 0deg 4deg, rgba(255, 79, 212, 0) 4deg 20deg),
+    radial-gradient(circle, rgba(255, 226, 62, 0.45) 0%, rgba(255, 226, 62, 0) 70%);
+  animation: halo-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes halo-pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+.winnerAvatarCircle {
+  position: relative;
+  width: 236px;
+  height: 236px;
+  border-radius: 50%;
+  border: var(--b-card) solid var(--ink);
+  box-shadow: var(--shadow-hard);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.winnerAvatarImg {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 왕관이 아바타 원 위쪽에 살짝 겹치도록 절대 배치(Figma 실측 위치) */
+.crownIcon {
+  position: absolute;
+  top: -34px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90px;
+  height: 90px;
+  object-fit: contain;
+  z-index: 1;
+}
+
+.winnerName {
+  margin-top: var(--space-5);
+  font-family: var(--font-display);
+  font-size: var(--text-hero); /* "히어로 당첨자" 전용 토큰 — 이 화면이 바로 그 용도 */
+  color: var(--ink);
+}
+
+.winnerBadge {
+  margin-top: var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  background: var(--ink);
+  color: var(--yellow);
+  font-family: var(--font-display);
+  font-size: var(--text-btn);
+  padding: var(--space-3) var(--space-6);
+  border-radius: var(--r-pill);
+}
+
+.statsRow {
+  margin-top: var(--space-6);
+  display: flex;
+  gap: var(--space-5);
+}
+
+.statTile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 357px; /* Figma 실측 */
+  height: 68px;
+  border: var(--b-stat) solid var(--ink);
+  border-radius: var(--r-btn);
+  box-shadow: var(--shadow-btn);
+}
+
+/* Stat 3색 타일 토큰 그대로 재사용(공통 StatTile 컴포넌트는 라벨 슬롯이 없어 로컬 마크업으로 대체) */
+.statCyan {
+  background: var(--stat-cyan);
+}
+
+.statPink {
+  background: var(--stat-pink);
+}
+
+.statValue {
+  font-family: var(--font-display);
+  font-size: var(--text-name);
+  color: var(--ink);
+}
+
+/* Figma 실측 16px — --text-meta(18px) 하한보다 작은 예외 표기(RouletteScreen playerStatus와 동일 관례) */
+.statLabel {
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: rgba(14, 13, 20, 0.6);
+}
+
+.cardFooterCaption {
+  margin-top: auto;
+  padding-top: var(--space-4);
+  font-family: var(--font-tag);
+  font-size: 16px;
+  color: rgba(14, 13, 20, 0.35);
+}
+
+/* ---- 세이프 밴드: 당첨되지 않은 5명을 가로로 나열 ---- */
+.safeBand {
+  width: var(--grid-2col-left);
+  padding: var(--space-5) var(--space-6);
+}
+
+.safeBandTitle {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: var(--text-sub);
+  color: var(--ink);
+}
+
+.safeBandRow {
+  margin-top: var(--space-4);
+  display: flex;
+  gap: var(--space-4);
+}
+
+.safeBandItem {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---- 우측: 방장 전용 공유/진행 액션 패널 ---- */
+.shareActions {
+  width: var(--grid-2col-right);
+  /* Figma 실측 — 좌측 컬럼(결과 카드)과 세로 시작선이 달라 오프셋을 그대로 반영 */
+  margin-top: 183px;
+  padding: var(--space-6);
+}
+
+.shareLabel {
+  font-family: var(--font-tag);
+  font-size: var(--text-meta);
+  color: rgba(14, 13, 20, 0.6);
+}
+
+/* 공용 Button은 라벨에 Do Hyeon(--font-accent)을 쓰지만, 이 화면의 Figma 노드는 두 버튼 모두 Black Han Sans로 지정돼 있어 오버라이드(RoomCreateScreen createButton과 동일 관례) */
+.shareBtnPrimary {
+  margin-top: var(--space-5);
+  width: 100%;
+  height: 112px;
+  font-family: var(--font-display);
+  font-size: var(--text-name);
+}
+
+.shareDivider {
+  margin: var(--space-5) 0;
+  height: 2px;
+  background: rgba(14, 13, 20, 0.15);
+}
+
+.shareBtnSecondary {
+  width: 100%;
+  height: 112px;
+  font-family: var(--font-display);
+  font-size: var(--text-name);
+}

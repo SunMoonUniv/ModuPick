@@ -1,0 +1,348 @@
+/* 캐릭터 고르기 & 프로필 설정 화면 (Figma 542:642, "S-03 · 프로필 설정") — FHD 1920x1080 고정
+   화면 액자(뷰포트 스케일·테두리·귀퉁이 장식)는 공통 ScreenFrame 컴포넌트가 담당함 */
+
+/* ---- 헤더: 배지 + 제목 + 부제 / 뒤로가기 ---- */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 44px var(--grid-margin-x) 0;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+/* 헤더 상단의 작은 안내 배지 — 클릭 동작 없는 순수 표시용이라 Chip 대신 화면 전용 span으로 구성(그림자 포함) */
+.headerBadge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  background: var(--cyan);
+  color: var(--ink);
+  border: var(--b-chip) solid var(--ink);
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-btn);
+  padding: var(--space-2) var(--space-4);
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: var(--text-meta);
+  white-space: nowrap;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-display-lg);
+  color: var(--white);
+  text-shadow: 4px 4px 0 var(--ink); /* Figma 스펙의 하드 드롭섀도 헤드라인 */
+}
+
+.subtitle {
+  font-family: var(--font-body);
+  font-size: var(--text-sub);
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  background: var(--white);
+  color: var(--ink);
+  border: var(--b-chip) solid var(--ink);
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-btn);
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: var(--text-sub);
+  white-space: nowrap;
+  transition: transform 0.05s ease;
+}
+
+.backButton:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+/* ---- 본문: 좌측 플레이어 카드+입장 CTA / 우측 닉네임·소개 입력 + 아바타 그리드 ---- */
+.body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--grid-2col-gap);
+  padding: var(--space-6) var(--grid-margin-x) 0;
+}
+
+.colLeft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: 700px; /* Figma 플레이어 카드 실측 폭 — 이 화면만의 좌측 컬럼 폭이라 공용 grid-2col 토큰과 별개 */
+  flex-shrink: 0;
+}
+
+/* ---- 플레이어 카드(내 캐릭터 미리보기) ---- */
+.playerCard {
+  overflow: hidden; /* 상단 옐로 밴드의 각진 모서리를 카드 라운드에 맞춰 잘라냄 */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: var(--space-7);
+}
+
+.playerCardTop {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  height: 55px; /* Figma 실측 옐로 밴드 높이 */
+  padding: 0 var(--space-6);
+  background: var(--yellow);
+  border-bottom: 4px solid var(--ink);
+}
+
+.playerCardLabel {
+  font-family: var(--font-display);
+  font-size: var(--text-btn);
+  color: var(--ink);
+}
+
+.playerCardTag {
+  display: inline-flex;
+  align-items: center;
+  background: var(--ink);
+  color: var(--yellow);
+  border-radius: var(--r-pill);
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: var(--text-meta);
+}
+
+.avatarStage {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: var(--space-7) 0 var(--space-4);
+}
+
+/* 아바타 뒤로 은은하게 퍼지는 옐로 글로우 — 별도 에셋 없이 방사형 그라디언트로 구현 */
+.avatarGlow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 240px;
+  height: 240px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 226, 62, 0.55), rgba(255, 226, 62, 0) 72%);
+}
+
+.avatarRing {
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  border: 4px solid var(--ink);
+  box-shadow: var(--shadow-btn);
+  overflow: hidden;
+}
+
+.avatarImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* 글로우 네 모서리에 흩뿌린 반짝임 — 실제 캐릭터 타일과 동일하게 이모지 글리프로 표현(에셋 다운로드 없이) */
+.sparkle {
+  position: absolute;
+  font-size: 22px;
+  color: var(--yellow);
+  pointer-events: none;
+}
+
+.sparkleTl {
+  top: 30px;
+  left: 90px;
+}
+
+.sparkleTr {
+  top: 60px;
+  right: 90px;
+}
+
+.sparkleBl {
+  bottom: 55px;
+  left: 110px;
+}
+
+.sparkleBr {
+  bottom: 55px;
+  right: 110px;
+}
+
+.playerName {
+  margin-top: var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--text-display-lg);
+  color: var(--ink);
+  text-align: center;
+}
+
+.playerHandle {
+  margin-top: var(--space-2);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: var(--text-meta);
+  color: var(--ink);
+  opacity: 0.55;
+  text-align: center;
+}
+
+.playerDivider {
+  width: 400px;
+  height: 3px;
+  margin: var(--space-5) 0;
+  background: rgba(14, 13, 20, 0.12);
+}
+
+.playerJoinBadge {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: var(--text-sub);
+  color: var(--ink);
+  text-align: center;
+}
+
+/* ---- 입장 CTA + 대기 인원 안내 ---- */
+/* 공용 Button은 라벨에 Do Hyeon(--font-accent)을 쓰지만, 이 화면의 Figma 노드는 이 버튼만 Black Han Sans로 지정돼 있어 오버라이드 */
+.enterButton {
+  width: 100%;
+  height: 96px;
+  justify-content: center;
+  gap: var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--text-headline);
+}
+
+.footerPill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  align-self: flex-start;
+  background: var(--yellow);
+  color: var(--ink);
+  border: var(--b-chip) solid var(--ink);
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-btn);
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-display);
+  font-size: var(--text-sub);
+}
+
+/* ---- 우측 컬럼: 닉네임·소개 입력 + 아바타 고르기 ---- */
+.colRight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-7);
+  flex: 1;
+  min-width: 0;
+}
+
+.fieldsRow {
+  display: flex;
+  gap: var(--space-6);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  flex: 1;
+  min-width: 0;
+}
+
+.fieldLabelRequired,
+.fieldLabelOptional {
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: var(--text-meta);
+}
+
+.fieldLabelRequired {
+  color: var(--yellow);
+}
+
+.fieldLabelOptional {
+  color: var(--cyan);
+}
+
+.fieldInput input {
+  height: 72px; /* Figma 실측 입력칸 높이 */
+}
+
+/* 닉네임 입력값은 플레이어 카드 이름과 같은 큰 디스플레이 서체로 강조 */
+.fieldInputName input {
+  font-family: var(--font-display);
+  font-size: var(--text-name);
+}
+
+/* 공용 Input의 글자수 카운터(예: 5/8)는 기본값이 IBM Plex Sans KR(--font-body)이지만,
+   Figma 스펙은 이 필드의 카운터만 Nanum Gothic Coding Bold로 지정돼 있어 이 화면에서만 덮어씀 */
+.fieldInputName span {
+  font-family: var(--font-tag);
+  font-weight: 700;
+}
+
+/* 한 줄 소개는 본문 서체로, 닉네임보다 한 단계 낮은 강조 */
+.fieldInputIntro input {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: var(--text-sub);
+}
+
+.avatarSection {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.avatarSectionHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.avatarSectionTitle {
+  font-family: var(--font-display);
+  font-weight: normal;
+  font-size: var(--text-headline);
+  color: var(--white);
+}
+
+.avatarSectionDesc {
+  margin-top: var(--space-2);
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: var(--text-meta);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+/* 랜덤 뽑기 버튼 — Button pink variant는 잉크색 글자가 기본값이라 Figma 스펙(흰 글자)에 맞춰 색만 덮어씀,
+   서체도 공용 Button 기본값(Do Hyeon)이 아니라 이 노드가 지정한 Black Han Sans로 덮어씀 */
+.randomButton {
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: var(--text-sub);
+  flex-shrink: 0;
+}
+
+/* 캐릭터 선택 타일 15칸 — 5열 × 3행, 타일 폭(140px) 기준으로 나온 간격을 그대로 사용 */
+.tileGrid {
+  display: grid;
+  grid-template-columns: repeat(5, var(--tile-w));
+  column-gap: 39px;
+  row-gap: 33px;
+}

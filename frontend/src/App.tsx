@@ -1,131 +1,98 @@
-import {
-  Avatar,
-  Badge,
-  Button,
-  Card,
-  ChatBubble,
-  CharacterTile,
-  Chip,
-  EmptyRow,
-  Input,
-  SafeBandChip,
-  StatTile,
-} from './components/common';
-import { CHARACTERS } from './assets/avatars/characters';
-import styles from './App.module.css';
+import { useState } from 'react';
+// import { ComponentGallery } from './screens/ComponentGallery/ComponentGallery';
+import { MainScreen } from './screens/MainScreen/MainScreen';
+import { RoomCreateScreen } from './screens/RoomCreateScreen/RoomCreateScreen';
+import { ProfileSetupScreen } from './screens/ProfileSetupScreen/ProfileSetupScreen';
+import { WaitingRoomScreen } from './screens/WaitingRoomScreen/WaitingRoomScreen';
+import { RouletteScreen } from './screens/RouletteScreen/RouletteScreen';
+import { RouletteResultScreen } from './screens/RouletteResultScreen/RouletteResultScreen';
+import type { Character } from './assets/avatars/characters';
 
-// 컴포넌트 갤러리 / 스타일 가이드 — 실제 화면이 아니라 토큰·디자인 변경을
-// 눈으로 확인하기 위해 src/components/common의 모든 컴포넌트를 렌더링함
+type Screen = 'main' | 'roomCreate' | 'profileSetup' | 'waitingRoom' | 'roulette' | 'rouletteResult';
+
+// 방을 새로 만든 사람인지(host) 초대 코드로 들어온 사람인지(participant) — 대기방 화면의 조작 권한을 가름
+type Role = 'host' | 'participant';
+
+// 방 코드 발급 — 실제로는 서버가 중복 없는 코드를 생성해야 하는데, 지금은 서버가 없어 클라이언트에서 임의로 6자리를 만듦(임시)
+const generateRoomCode = () => `MODU-${Math.floor(100000 + Math.random() * 900000)}`;
+
+type Winner = { name: string; character: Character };
+
+// 앱 진입점 — 라우팅 라이브러리가 아직 없어 화면 전환을 로컬 상태로만 처리함
 function App() {
-  return (
-    <div className={styles.gallery}>
-      <h1 className={styles.title}>ModuPick · 공통 컴포넌트</h1>
+  const [screen, setScreen] = useState<Screen>('main');
+  const [role, setRole] = useState<Role>('host');
+  const [roomName, setRoomName] = useState('4조 · 알고리즘 스터디');
+  const [roomCode, setRoomCode] = useState('MODU-427132');
+  const [maxPlayers, setMaxPlayers] = useState(8);
+  const [myNickname, setMyNickname] = useState<string | undefined>();
+  const [myCharacter, setMyCharacter] = useState<Character | undefined>();
+  const [winner, setWinner] = useState<Winner | undefined>();
 
-      <section className={styles.section}>
-        <span className={styles.sectionLabel}>Card</span>
-        <div className={styles.row}>
-          <Card style={{ padding: 20, width: 220 }}>카드 본문</Card>
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <span className={styles.sectionLabel}>Button</span>
-        <div className={styles.row}>
-          <Button variant="primary">▶ 버튼</Button>
-          <Button variant="accent">시작하기</Button>
-          <Button variant="secondary">취소</Button>
-          <Button variant="primary" disabled>
-            비활성
-          </Button>
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <span className={styles.sectionLabel}>Chip</span>
-        <div className={styles.row}>
-          <Chip color="yellow">◆ 옐로 칩</Chip>
-          <Chip color="pink">◆ 핑크 칩</Chip>
-          <Chip color="cyan">◆ 시안 칩</Chip>
-          <Chip color="white">◆ 화이트 칩</Chip>
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <span className={styles.sectionLabel}>Avatar</span>
-        <div className={styles.row}>
-          <Avatar size={42} />
-          <Avatar size={60} />
-          <Avatar size={72} />
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <span className={styles.sectionLabel}>StatTile</span>
-        <div className={styles.row}>
-          <StatTile color="cyan" />
-          <StatTile color="pink" />
-          <StatTile color="yellow" />
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <span className={styles.sectionLabel}>Badge</span>
-        <div className={styles.row}>
-          <Badge variant="host" />
-          <Badge variant="ready" />
-          <Badge variant="pending" />
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <span className={styles.sectionLabel}>ChatBubble</span>
-        <div className={styles.column}>
-          <ChatBubble variant="other">상대 · 안녕하세요!</ChatBubble>
-          <ChatBubble variant="self">본인 · 저요!</ChatBubble>
-          <ChatBubble variant="system">시스템 · 유진님이 입장했어요</ChatBubble>
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <span className={styles.sectionLabel}>Input</span>
-        <div className={styles.column}>
-          <Input placeholder="메시지 입력…" maxLength={16} defaultValue="" />
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <span className={styles.sectionLabel}>EmptyRow</span>
-        <div className={styles.column}>
-          <EmptyRow />
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <span className={styles.sectionLabel}>SafeBandChip</span>
-        <div className={styles.row}>
-          <SafeBandChip name="하늘" />
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <span className={styles.sectionLabel}>CharacterTile · 상태 3종</span>
-        <div className={styles.row}>
-          <CharacterTile character={CHARACTERS[0]} state="mine" />
-          <CharacterTile character={CHARACTERS[1]} state="available" />
-          <CharacterTile character={CHARACTERS[2]} state="taken" pickedBy="유진" />
-        </div>
-      </section>
-
-      <section className={styles.section}>
-        <span className={styles.sectionLabel}>CharacterTile · 캐릭터 30종 (1~30)</span>
-        <div className={styles.row} style={{ flexWrap: 'wrap', maxWidth: 1600 }}>
-          {CHARACTERS.map((character) => (
-            <CharacterTile key={character.id} character={character} state="available" />
-          ))}
-        </div>
-      </section>
-    </div>
-  );
+  switch (screen) {
+    case 'roomCreate':
+      return (
+        <RoomCreateScreen
+          onBack={() => setScreen('main')}
+          onCreateRoom={(data) => {
+            setRole('host');
+            setRoomName(data.name);
+            setMaxPlayers(data.maxPlayers);
+            setRoomCode(generateRoomCode());
+            setScreen('profileSetup');
+          }}
+        />
+      );
+    case 'profileSetup':
+      return (
+        <ProfileSetupScreen
+          onBack={() => setScreen(role === 'host' ? 'roomCreate' : 'main')}
+          onEnterRoom={(profile) => {
+            setMyNickname(profile.nickname);
+            setMyCharacter(profile.character);
+            setScreen('waitingRoom');
+          }}
+        />
+      );
+    case 'waitingRoom':
+      return (
+        <WaitingRoomScreen
+          role={role}
+          roomName={roomName}
+          roomCode={roomCode}
+          maxPlayers={maxPlayers}
+          myNickname={myNickname}
+          myCharacter={myCharacter}
+          onExit={() => setScreen('main')}
+          onStartGame={() => setScreen('roulette')}
+        />
+      );
+    case 'roulette':
+      return <RouletteScreen onSpinComplete={(w) => { setWinner(w); setScreen('rouletteResult'); }} />;
+    case 'rouletteResult':
+      return (
+        <RouletteResultScreen
+          winnerName={winner?.name}
+          winnerCharacter={winner?.character}
+          onReplay={() => setScreen('roulette')}
+          onBackToWaitingRoom={() => setScreen('waitingRoom')}
+        />
+      );
+    default:
+      return (
+        <MainScreen
+          onCreateRoom={() => setScreen('roomCreate')}
+          onJoinRoom={(code) => {
+            // 코드가 실제 존재하는 방인지는 서버만 확인할 수 있어, 지금은 형식만 맞춰 그대로 참여자로 진입시킴(임시)
+            setRole('participant');
+            setRoomCode(`MODU-${code}`);
+            setRoomName('참여한 방');
+            setScreen('profileSetup');
+          }}
+        />
+      );
+  }
+  // return <ComponentGallery />;
 }
 
 export default App;

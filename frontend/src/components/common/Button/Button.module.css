@@ -41,3 +41,13 @@
   background: var(--white);
   color: var(--ink);
 }
+
+.hero {
+  background: var(--ink);
+  color: var(--yellow);
+}
+
+.pink {
+  background: var(--pink);
+  color: var(--ink);
+}

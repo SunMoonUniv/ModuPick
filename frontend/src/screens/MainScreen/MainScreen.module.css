@@ -1,0 +1,524 @@
+/* 메인 랜딩 화면 (Figma 542:195, "01 · 표지") — FHD 1920x1080 고정, 절대좌표 사용 안 함(그리드/플렉스 기반)
+   화면 액자(뷰포트 스케일·테두리·귀퉁이 장식)는 공통 ScreenFrame 컴포넌트가 담당함 */
+
+/* 상단 로고 + 안내 티커 */
+.topBar {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 22px 50px 0 45px;
+}
+
+.logo {
+  font-family: var(--font-tag);
+  font-size: var(--text-btn);
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.ticker {
+  width: 955px;
+  height: 58px;
+  overflow: hidden;
+  background: var(--white);
+  border: var(--b-chip) solid var(--ink);
+  border-radius: var(--r-sm);
+  box-shadow: var(--shadow-btn);
+  display: flex;
+  align-items: center;
+}
+
+/* 안내 문구를 두 번 이어 붙여 끊김 없이 좌측으로 흐르게 하는 마퀴 */
+.tickerTrack {
+  display: flex;
+  gap: 40px;
+  white-space: nowrap;
+  animation: scroll-ticker 18s linear infinite;
+  font-family: var(--font-display);
+  font-size: var(--text-meta);
+  color: var(--ink);
+  padding-left: 40px;
+}
+
+@keyframes scroll-ticker {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* 본문: 좌측 히어로 카피 + 우측 데모 패널 */
+.body {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 24px 50px 0 105px;
+}
+
+.hero {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  padding-top: 12px;
+  flex-shrink: 0;
+}
+
+.heroChip {
+  font-size: var(--text-sub);
+}
+
+.headline {
+  font-family: var(--font-display);
+  font-size: var(--text-landing-hero);
+  line-height: 1;
+  letter-spacing: -1px;
+  margin: 8px 0 0;
+}
+
+/* 뒤에 두꺼운 stroke 사본을 깔고 앞 텍스트가 안쪽을 덮게 해서 바깥쪽 외곽선만 보이게 함 —
+   그림자도 앞 텍스트가 아니라 이 외곽선 레이어에 줘서 외곽선+그림자가 한 덩어리로 보이게 함 */
+.headlineLine {
+  position: relative;
+  display: block;
+}
+
+.headlineLine::before {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  color: transparent;
+  -webkit-text-stroke: 6px var(--ink);
+  text-shadow: 6px 6px 0 var(--ink);
+}
+
+.headlineYellow {
+  color: var(--yellow);
+}
+
+.headlineName01 {
+  color: var(--pink);
+}
+
+.headlineWhite {
+  color: var(--white);
+}
+
+.ctaRow {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  margin-top: 28px;
+}
+
+/* 방코드 입력 필드 — 공통 Input은 카운터 오버레이용이라 여기선 참여 버튼 내장형 전용 컨테이너로 새로 구성 */
+.joinField {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 388px;
+  height: 80px;
+  background: var(--white);
+  border: 3px solid var(--ink);
+  border-radius: var(--r-btn);
+  box-shadow: var(--shadow-btn);
+  padding: 0 8px 0 15px;
+}
+
+.joinInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-tag);
+  font-size: var(--text-name);
+  letter-spacing: 1px;
+  color: rgba(14, 13, 20, 0.85);
+  min-width: 0;
+}
+
+.joinInput::placeholder {
+  color: rgba(14, 13, 20, 0.4);
+}
+
+.miniGameLabel {
+  margin-top: 20px;
+  font-family: var(--font-tag);
+  font-size: var(--text-meta);
+  font-weight: 700;
+  color: var(--yellow);
+  letter-spacing: 1px;
+}
+
+/* 데모 패널 — "운명의 룰렛" 미리보기 카드 */
+.demoPanel {
+  padding: 18px 32px 20px;
+  width: 953px;
+}
+
+.demoHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.demoTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-headline);
+  margin: 0;
+}
+
+.demoDivider {
+  height: 4px;
+  background: var(--ink);
+  margin: 10px 0 14px;
+}
+
+.demoContent {
+  display: flex;
+  gap: 24px;
+}
+
+/* 룰렛이 돌아가는 미니 화면 — 실제 게임 화면을 축소 재현한 액자이므로 배경은 화면 전체와 동일한 보라색 */
+.wheelScreen {
+  position: relative;
+  overflow: hidden;
+  width: 596px;
+  height: 409px;
+  background: var(--bg-purple);
+  border: 4px solid var(--ink);
+  border-radius: var(--r-card);
+  flex-shrink: 0;
+}
+
+.timerChip {
+  position: absolute;
+  top: 18px;
+  left: 18px;
+}
+
+.previewBubble {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: var(--ink);
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: var(--text-meta);
+  padding: 6px 12px;
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-btn);
+  white-space: nowrap;
+}
+
+.wheelStage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 380px;
+  height: 380px;
+  transform: translate(-50%, -50%);
+}
+
+.wheelGlow {
+  position: absolute;
+  inset: -60px;
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(rgba(255, 255, 255, 0.12) 0deg 4deg, rgba(255, 255, 255, 0) 4deg 20deg),
+    radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 70%);
+}
+
+.wheelDisc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 7px solid var(--ink);
+  box-shadow: 0 0 0 4px var(--white);
+  background: conic-gradient(var(--cyan) 0deg 60deg,
+      var(--pink) 60deg 120deg,
+      var(--yellow) 120deg 180deg,
+      var(--green) 180deg 240deg,
+      var(--lavender) 240deg 300deg,
+      var(--game-nunchi) 300deg 360deg);
+}
+
+/* 6등분 자리별 아바타 — CSS만으로 균등 배치(회전→이동→역회전) */
+.wheelAvatar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 76px;
+  margin: -48px 0 0 -38px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: rotate(calc(60deg * var(--i))) translateY(-128px) rotate(calc(60deg * var(--i) * -1));
+}
+
+.wheelAvatarName {
+  font-family: var(--font-display);
+  font-size: var(--text-meta);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.85);
+  padding: 0 6px;
+  border-radius: var(--r-sm);
+  line-height: 1.4;
+}
+
+.wheelHub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 110px;
+  height: 110px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--white);
+  border: 4px solid var(--ink);
+  box-shadow: var(--shadow-btn);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: var(--text-name);
+  color: var(--ink);
+}
+
+/* 룰렛 상단 포인터 — 삼각형을 border 트릭으로 그리고 잉크색 그림자로 외곽선 흉내 */
+.wheelPointer {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 0;
+  height: 0;
+  border-left: 22px solid transparent;
+  border-right: 22px solid transparent;
+  border-top: 32px solid var(--pink);
+  filter: drop-shadow(0 3px 0 var(--ink));
+}
+
+.participants {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.participantsHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-family: var(--font-tag);
+  font-size: var(--text-meta);
+  color: rgba(14, 13, 20, 0.7);
+}
+
+.participantList {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow: hidden;
+}
+
+.participantRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-width: 3px;
+  border-radius: 12px;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+/* 이름·상태를 아바타 옆에 세로로 쌓아 좁은 카드 폭에서도 줄바꿈 없이 들어가게 함 */
+.participantInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.participantName {
+  font-family: var(--font-display);
+  font-size: var(--text-sub);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.participantStatusHost {
+  font-family: var(--font-tag);
+  font-size: var(--text-meta);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.participantStatusOnline {
+  font-family: var(--font-tag);
+  font-size: var(--text-meta);
+  color: var(--green);
+  white-space: nowrap;
+}
+
+.demoFooter {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 14px;
+}
+
+.playButton {
+  width: 60px;
+  height: 60px;
+  padding: 0;
+  border-radius: var(--r-card);
+  font-size: var(--text-headline);
+}
+
+.progressTrack {
+  flex: 1;
+  height: 24px;
+  background: var(--track);
+  border: 3px solid var(--ink);
+  border-radius: var(--r-pill);
+  overflow: hidden;
+}
+
+.progressFill {
+  position: relative;
+  height: 100%;
+  width: 60%;
+  background: var(--pink);
+}
+
+/* 진행 위치를 보여주는 드래그 손잡이 — 채워진 영역의 끝에 얹힘 */
+.progressKnob {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 24px;
+  height: 24px;
+  transform: translate(50%, -50%);
+  background: var(--white);
+  border: 3px solid var(--ink);
+  border-radius: 50%;
+}
+
+.progressTime {
+  font-family: var(--font-tag);
+  font-size: var(--text-meta);
+  color: rgba(14, 13, 20, 0.6);
+  white-space: nowrap;
+}
+
+/* 슬라이더 위 안내선 — 더 넘겨볼 수 있음을 암시하는 점선 + 화살표 */
+.railLine {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  margin: 18px 40px 0;
+  border-top: 3px dashed rgba(255, 255, 255, 0.35);
+}
+
+.railChevrons {
+  transform: translateY(-50%);
+  font-family: var(--font-display);
+  font-size: var(--text-sub);
+  color: var(--yellow);
+  opacity: 0.7;
+  background: var(--bg-purple);
+  padding-left: 8px;
+}
+
+/* 하단 6종 미니게임 슬라이더 — 카드가 서로 살짝 겹치며 부채꼴로 펼쳐짐 */
+.gameSlider {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: center;
+  margin-top: 10px;
+  padding: 0 40px;
+}
+
+.gameCard {
+  position: relative;
+  overflow: hidden;
+  width: 296px;
+  height: 200px;
+  flex-shrink: 0;
+  margin-left: -18px;
+  border: 4px solid var(--ink);
+  border-radius: var(--r-card);
+  box-shadow: 7px 7px 0 var(--ink);
+  padding: 14px 16px;
+  color: var(--ink);
+}
+
+.gameCard:first-child {
+  margin-left: 0;
+}
+
+.gameNumber {
+  position: absolute;
+  top: 48px;
+  left: 16px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: var(--text-btn);
+}
+
+.gameCode {
+  display: block;
+  margin-left: 20px;
+  font-family: var(--font-tag);
+  font-size: var(--text-meta);
+  color: rgba(14, 13, 20, 0.6);
+  letter-spacing: 1px;
+}
+
+.gameTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-name);
+  margin: 62px 0 0 58px;
+  white-space: nowrap;
+}
+
+.gameSubtitle {
+  font-family: var(--font-tag);
+  font-size: var(--text-meta);
+  color: rgba(14, 13, 20, 0.72);
+  margin: 4px 12px 0 58px;
+  white-space: nowrap;
+}
+
+/* 카드 배경에 크게 깔리는 장식 아이콘 — 카드 모서리 밖으로 절반쯤 걸치고 overflow:hidden에 잘림 */
+.gameIcon {
+  position: absolute;
+  right: -22px;
+  bottom: -22px;
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
+  opacity: 0.5;
+}

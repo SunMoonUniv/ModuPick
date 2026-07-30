@@ -4,9 +4,10 @@
   gap: var(--space-2);
   border: var(--b-chip) solid var(--ink);
   border-radius: var(--r-pill);
-  padding: var(--space-2) var(--space-5);
-  font-family: var(--font-body);
+  padding: var(--space-1) var(--space-3);
+  font-family: var(--font-tag);
   font-size: var(--text-meta);
+  font-weight: bold;
   white-space: nowrap;
 }
 
@@ -27,5 +28,11 @@
 
 .white {
   background: var(--white);
+  color: var(--ink);
+}
+
+/* 실시간 접속 인원 등 "온라인/활성" 상태를 나타낼 때 쓰는 초록 칩 */
+.green {
+  background: var(--green);
   color: var(--ink);
 }

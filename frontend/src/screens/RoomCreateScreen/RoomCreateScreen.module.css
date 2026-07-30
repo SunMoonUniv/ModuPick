@@ -1,0 +1,455 @@
+/* 새 방 만들기 화면 (Figma 542:1922, "02 · 방 만들기") — FHD 1920x1080 고정
+   화면 액자(뷰포트 스케일·테두리·귀퉁이 장식)는 공통 ScreenFrame 컴포넌트가 담당함 */
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+}
+
+/* ---- 헤더: 제목 + 뒤로가기 ---- */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 44px var(--grid-margin-x) 0;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-title);
+  color: var(--white);
+}
+
+.subtitle {
+  font-family: var(--font-tag);
+  font-size: var(--text-sub);
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 0.7px;
+}
+
+.backButton {
+  display: inline-flex;
+  align-items: center;
+  background: var(--white);
+  color: var(--ink);
+  border: var(--b-chip) solid var(--ink);
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-btn);
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: var(--text-sub);
+  white-space: nowrap;
+  transition: transform 0.05s ease;
+}
+
+.backButton:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+/* ---- 본문: 좌측 입력 폼 2컬럼 + 우측 미리보기 ----
+   본문 콘텐츠 높이가 폰트 렌더링에 따라 들쭉날쭉해지면 아래 상태 밴드가 액자 밖으로 밀려나므로,
+   body와 상태 밴드를 각각 grid 토큰의 고정 좌표에 절대 배치해 서로 독립시킴(ScreenFrame의 content가 position:relative 기준) */
+.body {
+  position: absolute;
+  top: var(--grid-content-y);
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--grid-2col-gap);
+  padding: 0 var(--grid-margin-x);
+}
+
+.colLeft {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: var(--grid-2col-left);
+}
+
+.cardsGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.cardTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-name);
+  color: var(--ink);
+}
+
+.cardDesc {
+  margin-top: var(--space-2);
+  font-family: var(--font-tag);
+  font-size: var(--text-meta);
+  color: var(--ink);
+  opacity: 0.6;
+}
+
+/* ---- 방 이름 카드 ---- */
+.roomNameCard {
+  padding: var(--space-6) var(--space-7);
+}
+
+.nameInput {
+  margin-top: var(--space-5);
+}
+
+.nameInput input {
+  height: 80px;
+  font-family: var(--font-display);
+  font-size: var(--text-name);
+}
+
+/* ---- 최대 인원 카드 ---- */
+.playersCard {
+  padding: var(--space-6) var(--space-7) var(--space-7);
+}
+
+.stepperRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-top: var(--space-6);
+}
+
+.stepBtnMinus,
+.stepBtnPlus {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 59px;
+  height: 59px;
+  border: var(--b-stat) solid var(--ink);
+  border-radius: var(--r-btn);
+  font-family: var(--font-display);
+  font-size: var(--text-head);
+}
+
+.stepBtnMinus {
+  background: var(--white);
+  color: var(--ink);
+}
+
+.stepBtnPlus {
+  background: var(--pink);
+  color: var(--white);
+}
+
+.stepBtnMinus:disabled,
+.stepBtnPlus:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.numBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-1);
+  width: 126px;
+  height: 59px;
+  background: var(--yellow);
+  border: var(--b-stat) solid var(--ink);
+  border-radius: var(--r-btn);
+}
+
+.numBoxValue {
+  font-family: var(--font-display);
+  font-size: var(--text-head);
+  color: var(--ink);
+}
+
+.numBoxUnit {
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: var(--text-sub);
+  color: var(--ink);
+}
+
+.stepperDivider {
+  width: 2px;
+  height: 59px;
+  background: rgba(14, 13, 20, 0.15);
+}
+
+.presetGroup {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.presetLabel {
+  font-family: var(--font-tag);
+  font-size: var(--text-meta);
+  color: var(--ink);
+  opacity: 0.55;
+}
+
+.presetChips {
+  display: flex;
+  gap: var(--space-3);
+}
+
+/* 인원수 빠른 선택 필 — 값 클릭으로 스테퍼·슬라이더와 동기화되므로 Chip이 아닌 버튼으로 구성 */
+.presetChip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 35px;
+  padding: 0 var(--space-5);
+  background: var(--white);
+  border: 2.6px solid var(--ink);
+  border-radius: var(--r-pill);
+  box-shadow: 3px 3px 0 var(--ink);
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: var(--text-meta);
+  color: var(--ink);
+  transition: transform 0.05s ease;
+}
+
+.presetChip:active {
+  transform: translate(1px, 1px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+
+.presetChipActive {
+  background: var(--yellow);
+}
+
+.sliderRow {
+  margin-top: var(--space-6);
+}
+
+/* 커스텀 range 슬라이더 — 채워진 구간은 시안, 빈 구간은 트랙 회색, 손잡이는 핑크 원 */
+.slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 21px;
+  border: 2.6px solid var(--ink);
+  border-radius: var(--r-pill);
+  background: linear-gradient(
+    to right,
+    var(--cyan) 0%,
+    var(--cyan) var(--fill-percent, 50%),
+    var(--track) var(--fill-percent, 50%),
+    var(--track) 100%
+  );
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--pink);
+  border: 3px solid var(--ink);
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--pink);
+  border: 3px solid var(--ink);
+  cursor: pointer;
+}
+
+.slider::-moz-range-track {
+  height: 21px;
+  border-radius: var(--r-pill);
+  background: transparent;
+}
+
+.sliderScale {
+  display: flex;
+  justify-content: space-between;
+  margin-top: var(--space-2);
+  font-family: var(--font-tag);
+  font-size: var(--text-meta);
+  color: var(--ink);
+  opacity: 0.5;
+}
+
+/* ---- 코드 안내 힌트 바 ---- */
+.hintBar {
+  display: flex;
+  align-items: center;
+  height: 72px;
+  padding: 0 var(--space-6);
+  background: var(--white);
+  border: var(--b-chip) solid var(--ink);
+  border-radius: var(--r-btn);
+  box-shadow: var(--shadow-btn);
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: var(--text-sub);
+  color: var(--ink);
+}
+
+/* ---- 우측 미리보기 컬럼 ---- */
+.colRight {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  width: var(--grid-2col-right);
+  flex-shrink: 0;
+}
+
+.previewCard,
+.stepsCard {
+  padding: var(--space-6);
+}
+
+.previewField {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  margin-top: var(--space-4);
+}
+
+.previewLabel {
+  font-family: var(--font-tag);
+  font-size: var(--text-meta);
+  color: var(--ink);
+  opacity: 0.6;
+}
+
+.previewValue {
+  font-family: var(--font-display);
+  font-size: var(--text-name);
+  color: var(--ink);
+}
+
+/* 방 이름 미입력 상태 — 값이 아니라 안내문임을 흐린 톤으로 표시 */
+.previewPlaceholder {
+  opacity: 0.4;
+}
+
+.previewValueSmall {
+  font-family: var(--font-display);
+  font-size: var(--text-sub);
+  color: var(--ink);
+}
+
+.stepRow {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+  padding: var(--space-3) var(--space-4);
+  background: var(--input);
+  border: var(--b-stat) solid var(--ink);
+  border-radius: 14px;
+}
+
+.stepBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  background: var(--pink);
+  border: var(--b-stat) solid var(--ink);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: var(--text-sub);
+  color: var(--white);
+}
+
+.stepText {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.stepTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-sub);
+  color: var(--ink);
+}
+
+.stepDesc {
+  font-family: var(--font-tag);
+  font-size: var(--text-meta);
+  color: var(--ink);
+  opacity: 0.6;
+}
+
+/* ---- 하단 상태 밴드 ---- */
+/* body와 마찬가지로 grid 토큰의 고정 y좌표에 절대 배치 — 위 본문이 아무리 길어져도 이 자리를 벗어나지 않음 */
+.statusBand {
+  position: absolute;
+  top: var(--grid-band-y);
+  left: var(--grid-margin-x);
+  right: var(--grid-margin-x);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--grid-band-height);
+  padding: 0 var(--space-7);
+  background: var(--white);
+  border: var(--b-stat) solid var(--ink);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-hard);
+}
+
+.statusInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* 문 이모지를 감싸는 옐로 원 배지 — Figma STEP 뱃지 자리 */
+.statusIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 55px;
+  height: 55px;
+  background: var(--yellow);
+  border: var(--b-chip) solid var(--ink);
+  border-radius: 50%;
+  font-size: var(--text-headline);
+}
+
+.statusTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-headline);
+  color: var(--ink);
+}
+
+/* 잉크색 바탕이 아닌 흰 바탕이라 옅은 잉크 반투명으로 보조 텍스트 톤을 낮춤 */
+.statusSub {
+  margin-top: var(--space-1);
+  font-family: var(--font-tag);
+  font-size: var(--text-meta);
+  color: rgba(14, 13, 20, 0.6);
+}
+
+/* 공용 Button은 라벨에 Do Hyeon(--font-accent)을 쓰지만, 이 화면의 Figma 노드는 이 버튼만 Black Han Sans로 지정돼 있어 오버라이드 */
+.createButton {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+}

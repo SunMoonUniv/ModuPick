@@ -1,0 +1,232 @@
+/* 대기방에 삽입되는 "게임 설정" 패널 — Figma 542:1751/1773/1793/1830/1860/1880 (게임별 6종 변형) 공통 스타일 */
+
+/* Card 기본 표면(5px 테두리·20px 라운드)보다 얇고 촘촘한 설정 패널 전용 표면으로 오버라이드
+   게임마다 항목 수가 달라(예: 랜덤 사다리는 최대 8개짜리 리스트) 내용에 맞춰 늘어나면 대기방 하단 상태 밴드가 밀려 내려가므로,
+   패널 높이를 고정하고 내용은 .fields 안에서만 스크롤되게 함 — 짧은 게임은 아래쪽에 여백이 남고, 긴 게임은 스크롤됨 */
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  height: 265px;
+  padding: var(--space-4) var(--space-4) var(--space-5);
+  /* Figma 실측 4px 테두리·14px 라운드에 맞춰 --b-chip/--r-btn 토큰 재사용 */
+  border: var(--b-chip) solid var(--ink);
+  border-radius: var(--r-btn);
+  box-shadow: var(--shadow-hard);
+}
+
+.header {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  gap: var(--space-1);
+}
+
+/* Figma 스펙 20px과 --text-sub 토큰 값이 정확히 일치해 그대로 재사용 */
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-sub);
+  color: var(--ink);
+}
+
+.subtitle {
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: 11px; /* CharacterTile 라벨과 동일하게 text-meta 하한보다 작은 초소형 안내문 예외 */
+  color: var(--ink);
+  opacity: 0.5;
+}
+
+/* SettingsFields를 감싸는 래퍼 — .panel의 남은 높이를 전부 차지하고, 넘치는 내용만 이 안에서 스크롤됨(min-height:0은 flex 자식이 내용 크기로 안 늘어나고 실제로 줄어들 수 있게 하는 필수 트릭) */
+.fields {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: var(--space-4);
+  overflow-y: auto;
+  padding-right: var(--space-1);
+}
+
+/* 참가자 화면의 읽기 전용 모드 — 칩·입력을 흐리게 하고 클릭이 먹지 않게 막음 */
+.readOnlyFields {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sectionLabel {
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: 12px; /* 초소형 섹션 라벨 — subtitle과 동일한 예외 */
+  color: var(--ink);
+  opacity: 0.7;
+}
+
+/* 선택형 칩 한 줄 — 여러 게임 설정 항목(주제·속도·타이머 등)이 공유하는 레이아웃 */
+.chipRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+/* 클릭 가능한 옵션 필 — 표시 전용 Chip 컴포넌트 대신 버튼으로 구성해 선택 상태를 토글함 */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-2) var(--space-4);
+  background: var(--white);
+  color: var(--ink);
+  border: var(--b-stat) solid var(--ink); /* Figma 실측 2.5px와 가장 가까운 --b-stat(실측 2.64px 주석) 토큰 재사용 */
+  border-radius: var(--r-pill);
+  /* Figma 실측 폰트는 Gothic A1 Bold(토큰에 없는 서체) — 채팅 버블·Input 등 기존 공통 컴포넌트가 같은 서체를 --font-body로 대응한 선례를 그대로 따름(Nanum Gothic Coding 아님) */
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px; /* Figma 칩 라벨 스펙값 — 초소형 라벨 예외 */
+  white-space: nowrap;
+  transition: transform 0.05s ease;
+}
+
+.chip:active {
+  transform: translate(1px, 1px);
+}
+
+/* 현재 선택된 칩 — 잉크 배경에 옐로 텍스트로 반전 강조 */
+.chipActive {
+  background: var(--ink);
+  color: var(--yellow);
+  border-color: var(--ink);
+}
+
+/* ---- 랜덤 사다리: 결과 항목을 자유롭게 추가/삭제하는 리스트형 입력 ---- */
+.ladderList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ladderRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.ladderInput {
+  flex: 1;
+  height: 44px;
+  background: var(--input);
+  border: var(--b-stat) solid var(--ink);
+  border-radius: var(--r-btn);
+  padding: 0 var(--space-4);
+  font-family: var(--font-body);
+  font-size: var(--text-meta);
+  color: var(--ink);
+}
+
+.ladderInput::placeholder {
+  color: var(--muted-text);
+}
+
+.ladderRemove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  background: var(--white);
+  border: var(--b-stat) solid var(--ink);
+  border-radius: var(--r-btn);
+  font-family: var(--font-display);
+  color: var(--ink);
+}
+
+/* 점선 테두리의 "추가 입력" 버튼 — 항목이 최대치(8개)에 닿으면 비활성화 */
+.ladderAdd {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 44px;
+  background: var(--white);
+  border: 2px dashed #9a9aa7; /* Figma 스펙의 대시 테두리 색 — 토큰화된 회색과 다른 일회성 값이라 그대로 사용 */
+  border-radius: var(--r-btn);
+  /* "+ 추가 입력" 라벨도 Figma 실측은 Gothic A1 Bold라 .chip과 동일하게 --font-body로 대응 */
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.ladderAdd:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.ladderHint {
+  font-family: var(--font-tag);
+  font-size: 10px; /* 안내문 중에서도 가장 작은 보조 텍스트 — Figma 스펙값 */
+  color: var(--ink);
+  opacity: 0.45;
+}
+
+/* ---- 킹메이커: 1인당 투표 횟수 스테퍼 ---- */
+.stepperRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.stepBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border: var(--b-stat) solid var(--ink);
+  border-radius: var(--r-btn);
+  font-family: var(--font-display);
+  font-size: 20px;
+}
+
+.stepBtnMinus {
+  background: var(--white);
+  color: var(--ink);
+}
+
+.stepBtnPlus {
+  background: var(--yellow);
+  color: var(--ink);
+}
+
+.stepBtn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.stepNumBox {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 30px;
+  background: var(--input);
+  border: var(--b-stat) solid var(--ink);
+  border-radius: var(--r-btn);
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--ink);
+}
+
+/* "회" 단위 표기도 Figma 실측은 Gothic A1 Bold라 --font-body로 대응 */
+.stepUnit {
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+}

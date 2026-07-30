@@ -15,8 +15,6 @@ body {
 }
 
 body {
-  min-width: 1920px;
-  min-height: 1080px;
   background: var(--bg-purple);
   color: var(--ink);
   font-family: var(--font-body);
@@ -25,16 +23,15 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* FHD 고정 레이아웃, 반응형 브레이크포인트 없음 — 화면은 정확히 1920x1080 기준으로 설계됨 */
-#root {
-  min-width: 1920px;
-  min-height: 1080px;
-}
-
+/* h1~h4는 브라우저 기본값이 font-weight: bold라 커스텀 디스플레이 폰트에 합성 볼드가 걸려 한글 글리프가 깨짐 — normal로 리셋 */
 h1,
 h2,
 h3,
-h4,
+h4 {
+  margin: 0;
+  font-weight: normal;
+}
+
 p {
   margin: 0;
 }

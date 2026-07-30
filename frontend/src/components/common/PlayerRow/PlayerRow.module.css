@@ -1,0 +1,106 @@
+/* 대기방 참가자 무대 한 줄 (Figma 542:504 등 "P·이름" 노드 6종) — 방장/참가자 화면 공통 */
+
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 92px;
+  padding: 0 var(--space-5);
+  background: var(--white);
+  border: var(--b-stat) solid var(--ink);
+  border-radius: var(--r-btn);
+  box-shadow: var(--shadow-hard);
+}
+
+/* 방장 본인 행 — 테두리가 다른 참가자 행보다 두꺼워 시각적으로 구분됨(Figma 실측 5.273px) */
+.rowHost {
+  border-width: var(--b-card);
+}
+
+.avatarWrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.avatarRing {
+  width: 53px;
+  height: 53px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.avatarImg {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+}
+
+.crown {
+  position: absolute;
+  top: -14px;
+  left: 12px;
+  width: 30px;
+  height: 30px;
+  pointer-events: none;
+}
+
+.textCol {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.name {
+  font-family: var(--font-display);
+  font-size: var(--text-name);
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Figma 실측 16px — --text-meta(18px) 하한보다 작은 예외 표기 */
+.subtitle {
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--ink);
+  opacity: 0.5;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Badge 공통 컴포넌트의 기본 서체(Do Hyeon) 대신, Figma 실측(방장·READY·준비 중 뱃지 모두 Nanum Gothic Coding)에 맞춰 이 행에서만 덮어씀 */
+.badge {
+  flex-shrink: 0;
+  font-family: var(--font-tag);
+}
+
+/* "나" 칩 — 참가자 화면에서 본인 행에만 붙는 표시, 상태 뱃지 왼쪽에 나란히 놓임 */
+.meChip {
+  flex-shrink: 0;
+}
+
+/* 강퇴 버튼 — 방장 화면에서 onKick을 넘겼을 때만 렌더링되는 작은 정사각 아이콘 버튼 */
+.kickBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  background: var(--white);
+  border: 2px solid var(--ink);
+  border-radius: var(--r-sm);
+  font-family: var(--font-display);
+  font-size: var(--text-sub);
+  color: var(--ink);
+  line-height: 1;
+}

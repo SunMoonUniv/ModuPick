@@ -1,0 +1,344 @@
+/* 실시간 대기방 화면 (Figma 542:422 방장 / 542:2783 참여자) — FHD 1920x1080 고정
+   role prop으로 방장·참여자 두 시점을 한 마크업에서 렌더링함
+   화면 액자(뷰포트 스케일·테두리·귀퉁이 장식)는 공통 ScreenFrame 컴포넌트가 담당함 */
+
+/* ---- 헤더: 방 이름 + 상태 필 ---- */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 44px var(--grid-margin-x) 0;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-head);
+  color: var(--white);
+}
+
+.subtitle {
+  font-family: var(--font-tag);
+  font-size: var(--text-meta);
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 0.7px;
+}
+
+.headerPills {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+}
+
+.headerCrown {
+  width: 30px;
+  height: 30px;
+}
+
+.codePill,
+.countPill {
+  display: inline-flex;
+  align-items: center;
+  border: var(--b-chip) solid var(--ink);
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-btn);
+  padding: var(--space-3) var(--space-5);
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: var(--text-meta);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.codePill {
+  background: var(--yellow);
+}
+
+.countPill {
+  background: var(--pink);
+  font-family: var(--font-body);
+}
+
+/* ---- 본문: 참가자 / 채팅 / 게임 선택 3분할 ----
+   게임 설정 패널 높이가 게임마다 달라 본문이 정상 흐름에 있으면 아래 상태 밴드가 밀려 내려가므로,
+   body와 상태 밴드를 각각 grid 토큰의 고정 좌표에 절대 배치해 서로 독립시킴(ScreenFrame의 content가 position:relative 기준) */
+.body {
+  position: absolute;
+  top: var(--grid-content-y);
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 0 var(--grid-margin-x);
+}
+
+/* ---- 좌측: 참가자 무대 ---- */
+.colPlayers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  width: var(--grid-3col-a);
+}
+
+.sectionLabel {
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: var(--text-btn);
+  color: var(--yellow);
+  letter-spacing: 0.7px;
+}
+
+.playerList {
+  display: flex;
+  flex-direction: column;
+  gap: 14px; /* Figma 실측 행 간격 */
+}
+
+/* ---- 우측: 게임 선택 + 설정 ---- */
+.colGame {
+  display: flex;
+  flex-direction: column;
+  width: var(--grid-3col-c);
+}
+
+/* 게임 선택 타이틀·안내문과 잠금 칩(participant 전용)을 한 줄에 배치 */
+.gameHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.gameTitle {
+  font-family: var(--font-display);
+  font-weight: normal;
+  font-size: var(--text-display-lg);
+  color: var(--white);
+}
+
+.gameSubtitle {
+  margin-top: var(--space-2);
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: 16px; /* Figma 실측값 — text-meta 하한보다 작은 예외 */
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* 방장만 바꿀 수 있다는 잠금 안내 칩 — 타이틀과 같은 줄 우측에 얹힘(Figma "chip·lock") */
+.lockChip {
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+
+.gameGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  column-gap: 22px; /* Figma 실측 카드 간격 */
+  row-gap: 20px;
+  margin-top: var(--space-6);
+}
+
+.gameCard {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 104px;
+  padding: 0 var(--space-4);
+  background: var(--white);
+  border: 3px solid var(--ink);
+  border-radius: 14px;
+  box-shadow: 4px 4px 0 var(--ink);
+  text-align: left;
+  transition: transform 0.05s ease;
+}
+
+.gameCard:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+/* 선택된(방장이 고른) 게임 카드 — 배경/테두리를 해당 게임의 컬러 토큰(--game-*)으로 강조 */
+.gameCardSelected {
+  border-width: 4px;
+  box-shadow: var(--shadow-hard);
+}
+
+/* host 시점: 인원 미달 게임 — 클릭 불가 상태를 흐린 톤으로 표시 */
+.gameCardLocked {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* participant 시점: 선택되지 않은 나머지 카드 — 전부 흐리게 표시해 방장의 선택만 도드라지게 함 */
+.gameCardDimmed {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.gameIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 53px;
+  height: 53px;
+  border: 2.6px solid var(--ink);
+  border-radius: 12px;
+  margin-right: var(--space-4);
+}
+
+.gameIcon img {
+  width: 37px;
+  height: 37px;
+  object-fit: contain;
+}
+
+.gameText {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.gameName {
+  font-family: var(--font-display);
+  font-size: var(--text-btn);
+  color: var(--ink);
+}
+
+.gameDesc {
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: 16px; /* Figma 실측값 */
+  color: rgba(14, 13, 20, 0.6);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gameConditionChip {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+
+/* 선택된 카드 우상단 체크 배지 */
+.gameCheck {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 27px;
+  height: 27px;
+  background: var(--yellow);
+  border-radius: 50%;
+  color: var(--ink);
+  font-family: var(--font-display);
+  font-size: 16px;
+}
+
+.settingsPanel {
+  margin-top: var(--space-6);
+  width: 100%;
+}
+
+/* ---- 하단 상태 밴드 ---- */
+/* body와 마찬가지로 grid 토큰의 고정 y좌표에 절대 배치 — 위 본문(특히 게임 설정 패널)이 아무리 달라져도 이 자리를 벗어나지 않음 */
+.statusBand {
+  position: absolute;
+  top: var(--grid-band-y);
+  left: var(--grid-margin-x);
+  right: var(--grid-margin-x);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--grid-band-height);
+  padding: 0 var(--space-7);
+  background: var(--white);
+  border: var(--b-stat) solid var(--ink);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-hard);
+}
+
+.statusInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.statusIcon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 55px;
+  height: 55px;
+  background: var(--yellow);
+  border: var(--b-chip) solid var(--ink);
+  border-radius: 50%;
+}
+
+.statusIcon img {
+  width: 32px;
+  height: 32px;
+}
+
+.statusTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-headline);
+  color: var(--ink);
+}
+
+/* 잉크색 바탕이 아닌 흰 바탕이라 옅은 잉크 반투명으로 보조 텍스트 톤을 낮춤 */
+.statusSub {
+  margin-top: var(--space-1);
+  font-family: var(--font-tag);
+  font-size: 16px; /* Figma 실측값 */
+  color: rgba(14, 13, 20, 0.6);
+}
+
+.statusActions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  flex-shrink: 0;
+}
+
+.btnIcon {
+  width: 24px;
+  height: 24px;
+}
+
+/* Button 공통 컴포넌트의 기본 서체(Do Hyeon)는 이 화면의 상태 밴드 버튼과 안 맞음 —
+   Figma 실측은 네 버튼(랜덤 게임·나가기·게임 시작·준비 완료) 모두 Black Han Sans라 화면 전용으로 덮어씀 */
+.rerollButton,
+.exitButton,
+.startButton,
+.readyButton {
+  font-family: var(--font-display);
+}
+
+/* Button secondary variant(흰 배경) 위에 시안 배경만 덮어써서 재사용 — host 전용 */
+.rerollButton {
+  background: var(--cyan);
+}
+
+/* Button secondary variant 위에 경고색 배경만 덮어써서 재사용 */
+.exitButton {
+  background: var(--danger);
+}
+
+/* Button hero variant(잉크 배경) 위에 완료색 배경만 덮어써서 재사용 — host 전용 */
+.startButton {
+  background: var(--success);
+}

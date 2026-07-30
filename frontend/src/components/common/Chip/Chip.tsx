@@ -1,7 +1,7 @@
 import type { HTMLAttributes } from 'react';
 import styles from './Chip.module.css';
 
-type ChipColor = 'yellow' | 'pink' | 'cyan' | 'white';
+type ChipColor = 'yellow' | 'pink' | 'cyan' | 'white' | 'green';
 
 type ChipProps = HTMLAttributes<HTMLSpanElement> & {
   color?: ChipColor;

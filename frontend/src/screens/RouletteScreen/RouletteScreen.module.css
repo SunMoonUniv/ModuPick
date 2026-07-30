@@ -1,0 +1,353 @@
+/* 운명의 룰렛 실시간 진행 화면 (Figma 542:1289, "S-05 · 룰렛") — FHD 1920x1080 고정
+   화면 액자(뷰포트 스케일·테두리·귀퉁이 장식)는 공통 ScreenFrame 컴포넌트가 담당함 */
+
+/* ---- 헤더: 제목·부제 + 우측 상태 뱃지 ---- */
+.header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 44px var(--grid-margin-x) 0;
+}
+
+.titleBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.titleRow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--text-title);
+  color: var(--white);
+}
+
+.caption {
+  font-family: var(--font-display);
+  font-size: var(--text-sub);
+  color: var(--yellow);
+  letter-spacing: 0.5px;
+}
+
+/* 게임 가이드 진입용 원형 물음표 버튼 — 아직 실제 가이드 패널은 없어 시각 요소만 존재 */
+.helpBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 52px;
+  background: var(--yellow);
+  color: var(--ink);
+  border: var(--b-chip) solid var(--ink);
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-btn);
+  font-family: var(--font-display);
+  font-size: var(--text-headline);
+}
+
+.subtitle {
+  font-family: var(--font-tag);
+  font-size: var(--text-sub);
+  font-weight: 700;
+  color: var(--cyan);
+  letter-spacing: 0.7px;
+}
+
+.headerBadges {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+/* 공용 Chip은 라벨에 Nanum Gothic Coding(--font-tag)을 쓰지만, "팀장 뽑기" 칩만 Figma에서 Black Han Sans로 지정돼 있어 오버라이드 */
+.leaderChip {
+  font-family: var(--font-display);
+}
+
+/* ---- 본문: 좌측 팀 멤버 목록 + 중앙 룰렛판 ---- */
+.body {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-7);
+  padding: var(--space-6) var(--grid-margin-x) 0;
+  height: var(--grid-content-height);
+}
+
+.colPlayers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  width: 380px;
+  flex-shrink: 0;
+}
+
+.sectionLabel {
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: var(--text-btn);
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: 0.7px;
+}
+
+.playerList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  overflow-y: auto;
+}
+
+.playerCard {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  height: 104px;
+  padding: 0 var(--space-5);
+  background: var(--white);
+  border: var(--b-stat) solid var(--ink);
+  border-radius: var(--r-btn);
+  box-shadow: var(--shadow-hard);
+}
+
+.playerAvatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  overflow: hidden;
+}
+
+.playerAvatarImg {
+  width: 37px;
+  height: 37px;
+  object-fit: contain;
+}
+
+.playerText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.playerName {
+  font-family: var(--font-display);
+  font-size: var(--text-name);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* Figma 실측 16px — --text-meta(18px) 하한보다 작은 예외 표기(PlayerRow의 subtitle과 동일한 예외) */
+.playerStatus {
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: 16px;
+  color: var(--muted-text);
+  white-space: nowrap;
+}
+
+/* ---- 중앙: 룰렛판 ---- */
+.wheelWrap {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  height: 100%;
+}
+
+.wheelStage {
+  position: relative;
+  width: 620px;
+  height: 620px;
+}
+
+/* 판 뒤에서 은은하게 번지는 후광 — MainScreen 데모 룰렛과 같은 트릭을 더 크게 적용 */
+.wheelGlow {
+  position: absolute;
+  inset: -80px;
+  border-radius: 50%;
+  background:
+    repeating-conic-gradient(rgba(255, 255, 255, 0.12) 0deg 4deg, rgba(255, 255, 255, 0) 4deg 20deg),
+    radial-gradient(circle, rgba(255, 255, 255, 0.4) 0%, rgba(255, 255, 255, 0) 70%);
+  animation: wheel-glow-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes wheel-glow-pulse {
+  0%,
+  100% {
+    opacity: 0.6;
+  }
+
+  50% {
+    opacity: 1;
+  }
+}
+
+/* 판 테두리를 둘러싼 점 장식 20개 — 회전 트릭(rotate → translateY)으로 원형 배치, 홀/짝 색만 다름 */
+.wheelDot {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--white);
+  border: 2px solid var(--ink);
+  transform: rotate(calc(18deg * var(--i))) translateY(-330px);
+}
+
+.wheelDot:nth-child(odd) {
+  background: var(--yellow);
+}
+
+/* 6등분 색 조각판 — 배경만 계속 회전시켜 "돌리는 중" 느낌을 내고, 아바타는 고정해 이름이 읽히게 함 */
+.wheelDisc {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 8px solid var(--ink);
+  box-shadow: 0 0 0 5px var(--white);
+  background: conic-gradient(
+    var(--lavender) 0deg 60deg,
+    var(--game-sniper) 60deg 120deg,
+    var(--pink) 120deg 180deg,
+    var(--cyan) 180deg 240deg,
+    var(--yellow) 240deg 300deg,
+    var(--green) 300deg 360deg
+  );
+  animation: wheel-spin 6s linear infinite;
+}
+
+@keyframes wheel-spin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 6자리 아바타 — CSS만으로 균등 배치(회전 → 이동 → 역회전), --i는 WHEEL_SEATS의 순서(0~5) */
+.wheelAvatar {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100px;
+  margin: -62px 0 0 -50px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+  transform: rotate(calc(60deg * var(--i))) translateY(-210px) rotate(calc(60deg * var(--i) * -1));
+}
+
+.wheelAvatarName {
+  font-family: var(--font-display);
+  font-size: var(--text-meta);
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.85);
+  padding: 0 var(--space-2);
+  border-radius: var(--r-sm);
+  line-height: 1.4;
+}
+
+.wheelHub {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 180px;
+  height: 180px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--white);
+  border: var(--b-card) solid var(--ink);
+  box-shadow: var(--shadow-btn);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: var(--text-display-lg);
+  color: var(--ink);
+}
+
+/* 판 위쪽에 떠 있는 말풍선 — 위치만 고정, 판이 돌아도 함께 돌지 않음(wheelStage 기준 absolute) */
+.wheelBubble {
+  position: absolute;
+  top: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+  background: var(--ink);
+  color: var(--yellow);
+  font-family: var(--font-display);
+  font-size: var(--text-sub);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--r-pill);
+  box-shadow: var(--shadow-btn);
+  white-space: nowrap;
+}
+
+/* ---- 하단 HUD 상태 밴드 — 이 화면은 다른 화면과 달리 잉크색이 아니라 흰 바탕(Figma 실측) ---- */
+.statusBand {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: var(--space-6) var(--grid-margin-x) 0;
+  height: var(--grid-band-height);
+  padding: 0 var(--space-6);
+  background: var(--white);
+  border: var(--b-stat) solid var(--ink);
+  border-radius: var(--r-card);
+  box-shadow: var(--shadow-hard);
+}
+
+.statusInfo {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.countdownBadge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 55px;
+  height: 55px;
+  background: var(--white);
+  border: var(--b-chip) solid var(--ink);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: var(--text-head);
+  color: var(--ink);
+}
+
+.statusTitle {
+  font-family: var(--font-display);
+  font-size: var(--text-headline);
+  color: var(--ink);
+}
+
+/* 잉크색 바탕이 아닌 흰 바탕이라 옅은 잉크 반투명으로 보조 텍스트 톤을 낮춤(RoomCreateScreen의 밝은 카드 텍스트와 동일 관례) */
+/* Figma 실측은 Gothic A1 Bold — 이 폰트는 캐릭터 타일용 --font-tag가 아니라 본문용 --font-body(IBM Plex Sans KR)의 Figma 표기라 body 계열로 맞춤(RouletteResultScreen safeBandTitle과 동일 매핑) */
+.statusSub {
+  margin-top: var(--space-1);
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: var(--text-meta);
+  color: rgba(14, 13, 20, 0.6);
+}
+
+.notePill {
+  flex-shrink: 0;
+}

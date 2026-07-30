@@ -1,0 +1,71 @@
+/* 모든 화면이 공유하는 FHD 1920x1080 액자 — 배경 그리드, 잉크 테두리, 귀퉁이 포인트 장식 */
+
+/* 뷰포트 전체를 덮고 1920x1080 화면을 가운데 정렬 */
+.viewport {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: var(--bg-purple);
+}
+
+.screen {
+  position: relative;
+  flex-shrink: 0;
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: var(--bg-purple);
+  background-image:
+    repeating-linear-gradient(to right, rgba(255, 255, 255, 0.09) 0 1px, transparent 1px 106.6px),
+    repeating-linear-gradient(to bottom, rgba(255, 255, 255, 0.09) 0 1px, transparent 1px 84.4px);
+}
+
+/* 화면 가장자리를 두르는 잉크색 액자 테두리 */
+.frame {
+  position: absolute;
+  inset: 16px;
+  border: 6px solid var(--ink);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* 화면 네 귀퉁이 포인트 장식 사각형 */
+.corner {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: var(--pink);
+  border: 2.5px solid var(--ink);
+  z-index: 1;
+}
+
+.cornerTl {
+  top: 22px;
+  left: 22px;
+}
+
+.cornerTr {
+  top: 22px;
+  right: 22px;
+}
+
+.cornerBl {
+  bottom: 22px;
+  left: 22px;
+}
+
+.cornerBr {
+  bottom: 22px;
+  right: 22px;
+}
+
+/* 액자 안쪽 실제 콘텐츠 영역 — 화면마다 이 위에 자유롭게 배치 */
+.content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+}
