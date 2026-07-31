@@ -4,4 +4,4 @@
 <img src="../assets/InfraArchitecture.png" alt="k8s 인프라 아키텍처" width="100%" />
 </br>
 ## CD
-argo 사용
+- argo 사용
