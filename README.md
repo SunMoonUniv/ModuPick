@@ -102,7 +102,7 @@ flowchart LR
     U["참여자 브라우저"] --> N["Nginx"]
     N --> F["React + Vite"]
     F <-->|"REST API / Native WebSocket"| B["FastAPI"]
-    B --> P[("PostgreSQL")]
+    B --> P[("Mysql")]
     B -. "다중 Pod 확장 시" .-> R[("Redis")]
     G["GitHub Actions"] --> K["Kubernetes"]
     K --> N
