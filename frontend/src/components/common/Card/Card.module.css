@@ -1,7 +1,0 @@
-/* NEO-BRUTALIST 표면: 흐림 없는 하드 드롭섀도 + 굵은 잉크색 테두리 */
-.card {
-  background: var(--white);
-  border: var(--b-card) solid var(--ink);
-  border-radius: var(--r-card);
-  box-shadow: var(--shadow-hard);
-}

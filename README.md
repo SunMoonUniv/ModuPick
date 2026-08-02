@@ -157,6 +157,24 @@ MVP에서는 Ready·온라인 여부·현재 소켓처럼 수명이 짧은 상�
 
 ## 문서
 
+설계 정본은 [`docs/`](./docs/README.md)에 목적별 11개 폴더로 정리되어 있습니다.
+
+| 폴더 | 내용 |
+| --- | --- |
+| [01_overview](./docs/01_overview/README.md) | 제품 정의, 목표와 범위, 역할, 도메인 지도, 우선순위 |
+| [02_features](./docs/02_features/README.md) | 도메인별 기능 명세와 권한 매트릭스 |
+| [03_requirements](./docs/03_requirements/README.md) | 요구사항 정본, 전역 규칙, 비기능 요구사항, 인수 기준 |
+| [04_architecture](./docs/04_architecture/README.md) | 시스템 구조, WebSocket, 판정 엔진, 방 상태 머신, 배포 |
+| [05_game_rules](./docs/05_game_rules/README.md) | 게임 공통 기준과 미니게임 6종 상세 규칙 |
+| [06_database](./docs/06_database/README.md) | ERD, 테이블 명세, 제약조건, 트랜잭션, 마이그레이션 |
+| [07_api](./docs/07_api/README.md) | API 규약, REST, WebSocket 이벤트, 에러 매핑 |
+| [08_screen](./docs/08_screen/README.md) | 화면 표준, 디자인 토큰, 화면 명세와 추적성 |
+| [09_tech_stack](./docs/09_tech_stack/README.md) | 기술 스택과 선정 사유 |
+| [10_glossary](./docs/10_glossary/README.md) | 도메인 용어, 에러 코드, enum과 상태 머신, ID 규약 |
+| [11_fairness](./docs/11_fairness/README.md) | 서버 판정 권위, 익명성, 치팅 방지, 개인정보 수명, 위협 모델 |
+
+외부 링크
+
 - [프로젝트 허브 · Notion](https://app.notion.com/p/7-28-e6fde0c692b883b18f3d019ed917e9b8?source=copy_link)
 - [UI/UX 디자인 · Figma](https://www.figma.com/design/IIqIz0uigrSQJnyTDKDsg6/%EB%AA%B0%EC%9E%85-%EB%94%94%EC%9E%90%EC%9D%B8?node-id=0-1)
 - [프로젝트 조직 · GitHub](https://github.com/SunMoonUniv)
