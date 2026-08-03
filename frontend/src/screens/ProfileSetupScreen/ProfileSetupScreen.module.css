@@ -339,6 +339,52 @@
   flex-shrink: 0;
 }
 
+/* 캐릭터 페이지 넘김 바 — 좌우 화살표 + "n / 전체페이지" 표시, 타일 그리드 바로 위 */
+.tileNav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+}
+
+/* 화살표 버튼 — 공용 Button 대신 화면 전용 원형 버튼(Figma 실측 44px)으로 구성 */
+.tileNavArrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: var(--white);
+  color: var(--ink);
+  border: var(--b-chip) solid var(--ink);
+  border-radius: 50%;
+  box-shadow: var(--shadow-btn);
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: var(--text-meta);
+  transition: transform 0.05s ease;
+}
+
+.tileNavArrow:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+/* 첫/마지막 페이지에서는 순환하지 않고 그 방향 화살표를 비활성화로 표시 */
+.tileNavArrow:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.tileNavPage {
+  min-width: 60px;
+  text-align: center;
+  font-family: var(--font-tag);
+  font-weight: 700;
+  font-size: var(--text-meta);
+  color: rgba(255, 255, 255, 0.8);
+}
+
 /* 캐릭터 선택 타일 15칸 — 5열 × 3행, 타일 폭(140px) 기준으로 나온 간격을 그대로 사용 */
 .tileGrid {
   display: grid;
