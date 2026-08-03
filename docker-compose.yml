@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  modupick-app:
+    build: .
+    container_name: modupick-app
+    # 🌟 윈도우 PC의 8080 포트와 도커 컨테이너의 8080 포트를 연결합니다.
+    ports:
+      - "8080:8080"
+    restart: always
+    networks:
+      - modupick-network
+
+networks:
+  modupick-network:
+    driver: bridge
