@@ -1,4 +1,4 @@
-name: ModuPick Develop CD Pipeline
+name: Develop CD Pipeline
 
 on:
   push:
@@ -13,7 +13,10 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 🌟 토큰 발급 단계가 사라지고, 바로 도커 빌드 및 실행만 진행합니다.
+      - name: Create .env file for Cloudflare Tunnel
+        run: |
+          "CF_TUNNEL_TOKEN=${{ secrets.CF_TUNNEL_TOKEN }}" | Out-File -FilePath .env -Encoding utf8
+
       - name: Build and Deploy with Docker Compose
         run: |
           docker-compose down
