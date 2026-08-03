@@ -14,7 +14,7 @@
     <img src="https://img.shields.io/badge/React-20232A?style=flat-square&logo=react&logoColor=61DAFB" alt="React" />
     <img src="https://img.shields.io/badge/Vite-646CFF?style=flat-square&logo=vite&logoColor=white" alt="Vite" />
     <img src="https://img.shields.io/badge/FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" />
-    <img src="https://img.shields.io/badge/PostgreSQL-4169E1?style=flat-square&logo=postgresql&logoColor=white" alt="PostgreSQL" />
+    <img src="https://img.shields.io/badge/MySQL-4479A1?style=flat-square&logo=mysql&logoColor=white" alt="MySQL" />
     <img src="https://img.shields.io/badge/Native_WebSocket-010101?style=flat-square" alt="Native WebSocket" />
     <img src="https://img.shields.io/badge/Docker-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker" />
     <img src="https://img.shields.io/badge/Kubernetes-326CE5?style=flat-square&logo=kubernetes&logoColor=white" alt="Kubernetes" />
@@ -102,13 +102,13 @@ flowchart LR
     U["참여자 브라우저"] --> N["Nginx"]
     N --> F["React + Vite"]
     F <-->|"REST API / Native WebSocket"| B["FastAPI"]
-    B --> P[("PostgreSQL")]
+    B --> P[("MySQL")]
     B -. "다중 Pod 확장 시" .-> R[("Redis")]
     G["GitHub Actions"] --> K["Kubernetes"]
     K --> N
 ```
 
-MVP에서는 Ready·온라인 여부·현재 소켓처럼 수명이 짧은 상태를 서버 메모리에서 관리하고, 방·참여자·게임 회차·투표·최종 결과처럼 복구가 필요한 데이터만 PostgreSQL에 저장합니다. 여러 서버 인스턴스로 확장할 때 Redis 도입을 고려합니다.
+MVP에서는 Ready·온라인 여부·현재 소켓처럼 수명이 짧은 상태를 서버 메모리에서 관리하고, 방·참여자·게임 회차·투표·최종 결과처럼 복구가 필요한 데이터만 MySQL에 저장합니다. 여러 서버 인스턴스로 확장할 때 Redis 도입을 고려합니다.
 
 ## 기술 스택
 
@@ -117,7 +117,7 @@ MVP에서는 Ready·온라인 여부·현재 소켓처럼 수명이 짧은 상�
 | Frontend | React, Vite | 실시간 SPA를 빠르게 개발하고 사용자 상태 변화에 즉시 반응 |
 | Backend | Python, FastAPI | 비동기 API와 WebSocket 로직을 한 흐름으로 구현 |
 | Realtime | Native WebSocket | 의존성을 줄이고 이벤트 프로토콜을 명확하게 관리 |
-| Database | PostgreSQL, SQLAlchemy, Alembic | 관계·제약조건 중심의 데이터 설계와 안전한 마이그레이션 |
+| Database | MySQL, SQLAlchemy, Alembic | 관계·제약조건 중심의 데이터 설계와 안전한 마이그레이션 |
 | Local Infra | Docker, Docker Compose | 팀원이 같은 환경을 빠르게 구성 |
 | Deployment | Kubernetes, Nginx | 컨테이너 운영, 트래픽 분산, 확장 기반 마련 |
 | CI/CD | GitHub Actions | 테스트·빌드·배포 작업 자동화 |
