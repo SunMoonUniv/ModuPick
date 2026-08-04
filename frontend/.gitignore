@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .vercel
 .env*
+
+# 검증 스크린샷
+shots/

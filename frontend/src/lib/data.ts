@@ -174,7 +174,7 @@ export const GAMES: GameMeta[] = [
     variant: "tally",
   },
   {
-    id: "timecatch",
+    id: "timer",
     no: "GAME 04",
     icon: "💣",
     name: "시간초 잡기",
@@ -186,7 +186,7 @@ export const GAMES: GameMeta[] = [
     variant: "winner",
   },
   {
-    id: "sniper",
+    id: "snipe",
     no: "GAME 05",
     icon: "🎯",
     name: "익명 저격",
@@ -218,8 +218,8 @@ export const TOPIC_PRESETS: Record<GameId, string[]> = {
   roulette: ["팀장", "발표자", "당첨", "벌칙"],
   ladder: ["역할 분담", "청소 구역", "벌칙"],
   kingmaker: ["팀장", "주제 발표", "의제", "팀명", "당번"],
-  timecatch: ["팀장", "발표자", "벌칙"],
-  sniper: [],
+  timer: ["팀장", "발표자", "벌칙"],
+  snipe: [],
   nunchi: ["팀장", "벌칙", "커피 셔틀"],
 };
 export const SNIPER_PRESETS = [
@@ -232,7 +232,8 @@ export function defaultSettings(game: GameId): GameSettings {
   return {
     topic: TOPIC_PRESETS[game][0] ?? "팀장",
     // 시안(542:935) 하단 역할칩 6종 — 참가자 수만큼만 배정된다
-    ladderRoles: ["팀장", "자료조사", "PPT 제작", "발표", "디자인", "총무"],
+    // 정본의 조별과제 세트(05_game_rules/01_common.md) — 마지막은 총무가 아니라 최종 정리다
+    ladderRoles: ["팀장", "자료 조사", "PPT 제작", "발표", "디자인", "최종 정리"],
     ladderSpeed: "보통",
     kmVotes: 1,
     kmReveal: "익명",
@@ -241,7 +242,9 @@ export function defaultSettings(game: GameId): GameSettings {
     snQuestion: SNIPER_PRESETS[0],
     snDup: "불가",
     snTime: 10,
+    snReveal: "비공개",
     nzWindow: 0.3,
+    nzRound: 15,
   };
 }
 
@@ -285,7 +288,7 @@ export const GUIDES: Record<GameId, GuideSpec> = {
     ],
     tip: "투표하는 동안엔 누가 냈는지 아무도 몰라요",
   },
-  timecatch: {
+  timer: {
     oneLiner: "감으로 목표 시간에 맞춰 STOP을 누르세요",
     steps: [
       { title: "START", desc: "내 타이머는 내가 눌러야 시작돼요" },
@@ -295,7 +298,7 @@ export const GUIDES: Record<GameId, GuideSpec> = {
     ],
     tip: "판정은 화면이 아니라 서버 시각 기준이에요",
   },
-  sniper: {
+  snipe: {
     oneLiner: "질문에 가장 어울리는 사람을 몰래 지목하세요",
     steps: [
       { title: "질문 확인", desc: "상단 질문을 읽고 후보를 살펴봐요" },

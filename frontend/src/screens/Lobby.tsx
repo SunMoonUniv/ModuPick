@@ -8,6 +8,8 @@ import type { GameId, GameSettings } from "../lib/types";
 /* ============ S-04 실시간 대기방 · 방장 (레이어 542:422) ============ */
 export function Lobby() {
   const st = useApp();
+  const me = st.members.find((m) => m.isMe);
+  const isHost = me?.isHost ?? false;
   const readyCount = st.members.filter((m) => !m.isHost && m.ready).length;
   const guestCount = st.members.filter((m) => !m.isHost).length;
   const allReady = guestCount > 0 && readyCount === guestCount;
@@ -17,13 +19,8 @@ export function Lobby() {
     st.members.length >=
       (st.selectedGame ? gameMeta(st.selectedGame).minPlayers : 99);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "r" || e.key === "R") st.toggleReadyDemo();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  // 데모용 'R = 전원 준비' 단축키는 제거했다. 준비는 각자가 서버에 보내는 것이며
+  // 한 화면이 남의 상태를 바꿀 수 있으면 그것이 곧 클라이언트 판정이다.
 
   const copyCode = () => {
     navigator.clipboard?.writeText(`MODU-${st.roomCode}`).catch(() => {});
@@ -94,30 +91,49 @@ export function Lobby() {
                 ? "게임을 골라 주세요"
                 : "준비를 기다리는 중…"
           }
-          sub={`2명 이상이면 시작할 수 있어요 · 현재 ${st.members.length}명 · READY ${readyCount}/${guestCount} (데모 팁: R 키 = 전원 준비)`}
+          sub={`2명 이상이면 시작할 수 있어요 · 현재 ${st.members.length}명 · READY ${readyCount}/${guestCount}`}
           right={
             <>
-              <button
-                className="btn btn-cyan"
-                style={{ height: 60, padding: "0 22px" }}
-                onClick={st.randomGame}
-              >
-                🎲 랜덤 게임
-              </button>
-              <button
-                className="btn"
-                disabled={!canStart}
-                onClick={st.startGame}
-                style={{
-                  width: 203,
-                  height: 60,
-                  background: "var(--green-cta)",
-                  color: "var(--yellow)",
-                  fontSize: 28,
-                }}
-              >
-                ▶ 게임 시작
-              </button>
+              {/* 게임 선택·시작은 방장만. 참여자에게는 준비 토글이 그 자리를 쓴다 */}
+              {isHost ? (
+                <>
+                  <button
+                    className="btn btn-cyan"
+                    style={{ height: 60, padding: "0 22px" }}
+                    onClick={st.randomGame}
+                  >
+                    🎲 랜덤 게임
+                  </button>
+                  <button
+                    className="btn"
+                    disabled={!canStart}
+                    onClick={st.startGame}
+                    style={{
+                      width: 203,
+                      height: 60,
+                      background: "var(--green-cta)",
+                      color: "var(--yellow)",
+                      fontSize: 28,
+                    }}
+                  >
+                    ▶ 게임 시작
+                  </button>
+                </>
+              ) : (
+                <button
+                  className="btn"
+                  onClick={st.toggleReady}
+                  style={{
+                    width: 240,
+                    height: 60,
+                    background: me?.ready ? "var(--ink)" : "var(--green-cta)",
+                    color: me?.ready ? "#fff" : "var(--yellow)",
+                    fontSize: 28,
+                  }}
+                >
+                  {me?.ready ? "준비 해제" : "✓ 준비 완료"}
+                </button>
+              )}
               <button
                 className="btn"
                 onClick={() => st.openModal({ kind: "explode" })}
@@ -671,7 +687,7 @@ function SettingsPanel() {
           >
             게임을 바꾸면 설정도 자동으로 바뀌어요 · 참여자에겐 읽기 전용
           </div>
-          {selectedGame !== "sniper" && (
+          {selectedGame !== "snipe" && (
             <TopicPicker
               game={selectedGame}
               settings={settings}
@@ -711,7 +727,7 @@ function SettingsPanel() {
               />
             </>
           )}
-          {selectedGame === "timecatch" && (
+          {selectedGame === "timer" && (
             <>
               <ChipRow
                 label="목표 시간 (최대 10초)"
@@ -731,7 +747,7 @@ function SettingsPanel() {
               />
             </>
           )}
-          {selectedGame === "sniper" && (
+          {selectedGame === "snipe" && (
             <>
               <div>
                 <SettingLabel text="질문 (프리셋 또는 직접 입력)" />

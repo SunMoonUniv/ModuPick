@@ -2,7 +2,7 @@ export type Screen =
   "landing" | "create" | "profile" | "lobby" | "game" | "result";
 
 export type GameId =
-  "roulette" | "ladder" | "kingmaker" | "timecatch" | "sniper" | "nunchi";
+  "roulette" | "ladder" | "kingmaker" | "timer" | "snipe" | "nunchi";
 
 export interface Member {
   id: string;
@@ -47,8 +47,12 @@ export interface GameSettings {
   snDup: "불가" | "가능";
   /** 익명 저격 · 투표 시간(초) */
   snTime: number;
+  /** 익명 저격 · 누가 눌렀는지 공개 여부 (configSchema revealVoters) */
+  snReveal: "비공개" | "공개";
   /** 눈치 · 동시 판정 시간 */
   nzWindow: 0.3 | 0.5;
+  /** 눈치 · 라운드 제한 시간(초) — 정본은 방장이 10·15·20 중 고른다(D-40) */
+  nzRound: 10 | 15 | 20;
 }
 
 /* ---------- 결과 (시트 12 · 4변형) ---------- */
