@@ -134,7 +134,7 @@
   }
   .who { flex: 1; min-width: 0; }
   .who .nm { font-weight: 600; }
-  .who .bio { font-size: 11px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .who .bio { font-size: 11px; color: var(--faint); margin-left: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .tag { font-size: 10px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line2); color: var(--dim); }
   .tag.host { border-color: #6b4a91; color: var(--host); }
   .tag.ready { border-color: #2f6b52; color: var(--ok); }
@@ -263,7 +263,7 @@
         <input type="text" id="in-ev" placeholder="chat:send" />
       </label>
       <label class="f"><span>data (JSON)</span>
-        <textarea id="in-data" placeholder='{"message":"안녕"}'></textarea>
+        <textarea id="in-data" placeholder='{"text":"안녕"}'></textarea>
       </label>
       <div class="row"><button id="btn-send">보내기</button></div>
       <p class="hint">아직 붙지 않은 이벤트는 <b>game.invalid_action</b>으로 돌아온다. 연결은 유지된다.</p>
@@ -471,6 +471,7 @@ const state = {
   game: null,           // { gameId, config, configSchemaVersion }
   configTimer: null,    // 설정 디바운스
   round: null,          // { roundId, gameId, roster, phase, phaseSeq, tieRound, deadlineAt }
+  closedReason: null,   // room:closed의 사유. 종료 코드보다 앞세운다
   remainMs: null,       // 마지막 틱의 남은 시간
 };
 
@@ -667,11 +668,18 @@ function apply(event, d) {
       if (i >= 0) state.members[i] = m;
       else state.members.push(m);
       state.members.sort((a, b) => a.joinOrder - b.joinOrder);
+      // **명단이 늘면 준비 모수도 늘어난다.** member:joined에는 집계가 실리지
+      // 않으므로(정본 페이로드에 없다) 명단에서 다시 센다.
+      state.activeCount = state.members.length;
       break;
     }
 
     case "member:left":
       state.members = state.members.filter((x) => x.memberId !== d.memberId);
+      // 이쪽은 서버가 activeCount를 실어 준다. 준비 수는 나간 사람이 준비 상태였을
+      // 수 있으므로 남은 명단에서 다시 센다.
+      state.activeCount = d.activeCount;
+      state.readyCount = state.members.filter((m) => m.ready && !m.isHost).length;
       banner("warn", `${d.memberId} 이탈 (${d.reason}) · 남은 인원 ${d.activeCount}`);
       break;
 
@@ -746,6 +754,9 @@ function apply(event, d) {
     }
 
     case "room:closed":
+      // **사유를 붙들어 둔다.** 직후에 소켓이 4410으로 닫히는데, 그때 종료 코드만
+      // 띄우면 "왜 사라졌는지"가 화면에서 사라진다. 사유별 안내가 규약이다.
+      state.closedReason = d.reason;
       banner("bad", `방이 종료됐다 — ${ROOM_CLOSED_REASON[d.reason] ?? d.reason}`);
       break;
 
@@ -760,7 +771,14 @@ function onClose(e) {
   state.closed = { code: e.code, reason: e.reason };
   const meaning = CLOSE_MEANING[e.code] ?? "정의되지 않은 코드";
   log(e.code === 1000 ? "sys" : "err", `소켓 닫힘 — ${e.code} · ${meaning}`, e.reason || null);
-  banner(e.code === 1000 ? "warn" : "bad", `소켓 닫힘 ${e.code} — ${meaning}`);
+
+  // 방이 사라져서 닫힌 것이면 **사유를 앞세운다.** 종료 코드는 그다음이다.
+  if (state.closedReason) {
+    const why = ROOM_CLOSED_REASON[state.closedReason] ?? state.closedReason;
+    banner("bad", `방이 종료됐다 — ${why} (소켓 ${e.code})`);
+  } else {
+    banner(e.code === 1000 ? "warn" : "bad", `소켓 닫힘 ${e.code} — ${meaning}`);
+  }
 
   // **재연결하지 않는다.** 재접속 경로가 없어 자리를 되찾지 못하고 4409만 반복된다.
   if (e.code === 4410 || e.code === 4401 || e.code === 4403) clearSession(false);
@@ -1136,7 +1154,7 @@ function render() {
   const rows = [
     ["코드", state.room?.displayCode ?? state.code],
     ["이름", state.room?.roomName],
-    ["상태", state.room?.roomStatus],
+    ["상태", state.round ? "PLAYING (라운드 진행 중)" : state.room?.roomStatus],
     ["정원", state.room?.maxMembers],
     ["만료", state.room?.expiresAt],
     ["내 ID", state.memberId],
@@ -1215,6 +1233,8 @@ function clearSession(reload) {
     code: null, memberId: null, memberToken: null, memberStatus: null,
     isHost: false, roomVersion: 0, versionBroken: false, room: null,
     members: [], avatars: [], selectedAvatar: null,
+    game: null, round: null, closedReason: null,
+    ready: false, readyCount: 0, activeCount: 0, remainMs: null,
   });
 }
 
