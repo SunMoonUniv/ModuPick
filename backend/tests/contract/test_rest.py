@@ -331,3 +331,25 @@ class TestLeave:
         room = create_room(client)
         client.delete(f"/api/rooms/{room['code']}/members/me", headers=auth(room["memberToken"]))
         assert client.get(f"/api/rooms/{room['code']}").status_code == 404
+
+
+# ── 7. 인계 산출물 ──────────────────────────────────────────────────────────
+
+
+class TestHandoff:
+    """프론트에 넘기는 두 산출물이 실제로 응답하는지 본다.
+
+    콘솔은 같은 오리진에서 열려야 하므로 API 서버가 직접 내려준다. 경로나 파일이
+    조용히 어긋나면 인계가 깨지는데, 그건 서버를 띄워봐야만 드러난다.
+    """
+
+    def test_검증_콘솔이_같은_오리진에서_열린다(self, client):
+        r = client.get("/devtools/console.html")
+        assert r.status_code == 200
+        assert r.headers["content-type"].startswith("text/html")
+        assert "conn:auth" in r.text
+
+    def test_콘솔은_openapi에_실리지_않는다(self, client):
+        paths = client.get("/openapi.json").json()["paths"]
+        assert "/devtools/console.html" not in paths
+        assert "/api/rooms" in paths

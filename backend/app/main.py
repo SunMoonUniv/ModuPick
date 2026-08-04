@@ -1,8 +1,10 @@
 import logging
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 
 from app.api import rooms
 from app.api.errors import register_exception_handlers
@@ -57,6 +59,21 @@ async def health() -> dict[str, bool]:
     읽는 표면이라 제품 규약을 따를 이유가 없다.
     """
     return {"ok": True}
+
+
+if settings.devtools_enabled:
+    _CONSOLE = Path(__file__).resolve().parents[1] / "devtools" / "console.html"
+
+    @app.get("/devtools/console.html", include_in_schema=False)
+    async def devtools_console() -> FileResponse:
+        """검증 콘솔.
+
+        정적 파일 하나를 API 서버가 직접 내려준다. **같은 오리진에서 열려야** REST가
+        CORS를 타지 않고 소켓 URL도 location에서 그대로 유도된다.
+
+        /openapi.json은 프론트 인계 산출물이므로 이 경로를 스키마에서 뺀다.
+        """
+        return FileResponse(_CONSOLE, media_type="text/html; charset=utf-8")
 
 
 @app.websocket("/ws/rooms/{code}")
