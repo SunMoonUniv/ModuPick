@@ -15,6 +15,16 @@ class Settings(BaseSettings):
     grace_member_s: float = 30.0
     grace_host_s: float = 60.0
 
+    log_level: str = "INFO"
+
+    # 가입 후 이 시간 안에 핸드셰이크가 없으면 슬롯을 푼다. **가입 경로에만 적용한다** —
+    # 정본이 이 값을 POST /rooms/{code}/members 절에 두었다(07_api/02_rest.md).
+    # 방 생성 직후의 방장 슬롯은 3분 미확정 회수와 10분 만료가 맡는다.
+    unconnected_release_s: float = 15.0
+
+    # 스위퍼 주기. 만료 지연 상한이 곧 이 값이다 — 최대 10분 + 60초 뒤에 삭제된다.
+    sweep_interval_s: float = 60.0
+
     # 하트비트는 WebSocket 제어 프레임 ping이다. 애플리케이션 이벤트를 두지 않는다 —
     # 제어 프레임의 pong은 브라우저가 JS 실행 없이 돌려주므로 백그라운드 탭에서도 산다.
     # 이 값은 uvicorn에 넘긴다: --ws-ping-interval 20 --ws-ping-timeout 60

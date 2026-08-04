@@ -295,6 +295,13 @@ async def join_room(code: str) -> JoinedMember:
         TokenBinding(participant_id=participant_pk, room_id=room.id, room_code=code),
     )
 
+    # 곧바로 소켓 핸드셰이크가 오는 것이 정상 흐름이다. 오지 않으면 슬롯을 되돌린다.
+    from app.services import leave_service
+
+    leave_service.schedule_unconnected_release(
+        participant_pk=participant_pk, room_pk=room.id
+    )
+
     return JoinedMember(
         member_id=member_id,
         member_token=token,
@@ -454,6 +461,21 @@ async def active_count(room_pk: int) -> int:
                 )
             )
         ).scalar_one()
+
+
+async def purge_orphan_rooms() -> int:
+    """기동 시 DB에 남은 방을 전부 지운다.
+
+    **진행 중 상태는 프로세스 메모리에만 있다.** 재기동하면 그것이 사라지는데 DB의
+    방은 그대로 남아, 어떤 소켓도 붙어 있지 않은 고아가 된다. 그 방의 코드로 새
+    사람이 들어와도 방장이 없고 게임을 시작할 수 없다.
+
+    삭제 한 문장으로 처리한다 — 하위 5테이블은 CASCADE로 함께 사라지고, 트랜잭션
+    하나라 정리가 절반만 끝나는 상태가 없다.
+    """
+    async with transaction() as conn:
+        result = await conn.execute(rooms.delete())
+    return result.rowcount or 0
 
 
 async def touch(room_pk: int) -> None:

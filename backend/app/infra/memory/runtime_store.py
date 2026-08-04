@@ -88,6 +88,7 @@ class RuntimeStore:
     _ready: dict[int, set[int]] = field(default_factory=dict)
     _chat_seq: dict[int, int] = field(default_factory=dict)
     _grace: dict[int, dict[int, GraceEntry]] = field(default_factory=dict)
+    _handshaked: dict[int, set[int]] = field(default_factory=dict)
 
     # ── 토큰 ───────────────────────────────────────────────────────────────
 
@@ -125,6 +126,7 @@ class RuntimeStore:
         self._versions.pop(room_id, None)
         self._ready.pop(room_id, None)
         self._chat_seq.pop(room_id, None)
+        self._handshaked.pop(room_id, None)
         for entry in self._grace.pop(room_id, {}).values():
             _cancel(entry.task)
 
@@ -174,6 +176,19 @@ class RuntimeStore:
             self._ready.pop(room_id, None)
         else:
             self._ready.get(room_id, set()).discard(participant_id)
+
+    # ── 핸드셰이크 흔적 ────────────────────────────────────────────────────
+
+    def mark_handshake(self, room_id: int, participant_id: int) -> None:
+        """소켓이 한 번이라도 붙었다는 표식.
+
+        **지금 붙어 있는가와 다르다.** 붙었다가 끊긴 사람은 유예가 맡으므로 미연결
+        회수 대상이 아니다. 현재 연결만 보면 그 사람을 두 번 처리하게 된다.
+        """
+        self._handshaked.setdefault(room_id, set()).add(participant_id)
+
+    def has_handshaked(self, room_id: int, participant_id: int) -> bool:
+        return participant_id in self._handshaked.get(room_id, ())
 
     # ── 이탈 유예 ──────────────────────────────────────────────────────────
 

@@ -348,6 +348,13 @@ const STATE_EVENTS = new Set([
   "room:closed", "game:selected", "game:started", "game:ended",
 ]);
 
+/** 방이 사라진 사유. 화면은 사유별로 다른 안내를 띄우고 표지로 보낸다. */
+const ROOM_CLOSED_REASON = {
+  HOST_LEFT: "방장이 나갔다",
+  LAST_MEMBER_LEFT: "마지막 참가자가 나갔다",
+  EXPIRED: "10분 동안 아무 활동이 없었다",
+};
+
 /** 소켓 종료 코드. 어느 코드에서도 자동 재연결하지 않는다 — 재접속 경로가 없다. */
 const CLOSE_MEANING = {
   1000: "정상 종료 (나가기)",
@@ -624,7 +631,7 @@ function apply(event, d) {
     }
 
     case "room:closed":
-      banner("bad", `방이 종료됐다 — ${d.reason}`);
+      banner("bad", `방이 종료됐다 — ${ROOM_CLOSED_REASON[d.reason] ?? d.reason}`);
       break;
 
     default:

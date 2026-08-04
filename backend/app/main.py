@@ -1,27 +1,53 @@
+import asyncio
 import logging
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from pathlib import Path
 
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
+from app import tasks
 from app.api import rooms
 from app.api.errors import register_exception_handlers
 from app.config import settings
 from app.infra.db.session import dispose, missing_tables
+from app.services import room_service
 from app.ws import router as ws_router
 
 log = logging.getLogger("modupick")
+
+
+def _configure_logging() -> None:
+    """modupick 로거가 실제로 내보내게 한다.
+
+    **기동 정리 건수는 예기치 않은 재기동을 사후에 알 수 있는 유일한 흔적이다.**
+    핸들러가 없으면 그 기록이 어디에도 남지 않는다 — uvicorn의 기본 설정은 자기
+    로거만 붙이고 애플리케이션 로거는 건드리지 않는다.
+    """
+    logger = logging.getLogger("modupick")
+    if logger.handlers:
+        return
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-7s %(name)s — %(message)s"))
+    logger.addHandler(handler)
+    logger.setLevel(settings.log_level.upper())
+
+
+_configure_logging()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """기동·종료 절차.
 
-    **스키마가 적용되지 않은 DB에 붙은 채로 뜨지 않는다.** 서버는 기동 시 모든 방을
-    삭제하는 정리 절차를 갖게 되므로(1c 이후), 구조가 어긋난 DB에 그 절차를 돌리면
-    위험하다. Alembic 리비전 대조를 두지 않는 대신의 최소 확인이다.
+    순서가 규정돼 있다 — **정리가 끝나기 전에는 트래픽을 받지 않는다.** 정리 도중에
+    만들어진 새 방이 삭제 대상에 섞이지 않게 하려는 것이다.
+
+        스키마 확인 → 고아 방 정리 → 스케줄러 기동 → (트래픽 수용)
+
+    스키마 확인이 앞에 오는 이유는 그다음이 **전건 삭제**이기 때문이다. 구조가 어긋난
+    DB에 그 절차를 돌리면 위험하다. Alembic 리비전 대조를 두지 않는 대신의 확인이다.
     """
     del app
     missing = await missing_tables()
@@ -31,7 +57,19 @@ async def lifespan(app: FastAPI):
             "— backend/sql/schema.sql을 적용한 뒤 다시 기동하세요."
         )
     log.info("업무 테이블 6개 확인됨")
+
+    orphans = await room_service.purge_orphan_rooms()
+    if orphans:
+        log.warning("기동 정리 — 고아 방 %d개 삭제. 예기치 않은 재기동의 흔적이다", orphans)
+
+    sweeper = asyncio.create_task(tasks.run_forever())
+    log.info("청소 스케줄러 기동 — 주기 %.0f초", settings.sweep_interval_s)
+
     yield
+
+    sweeper.cancel()
+    with suppress(asyncio.CancelledError):
+        await sweeper
     await dispose()
 
 

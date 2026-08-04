@@ -10,7 +10,6 @@ from tests.conftest import (
     confirm,
     connected,
     create_room,
-    data_of,
     join,
 )
 from tests.conftest import expect_close as _expect_close

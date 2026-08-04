@@ -51,7 +51,7 @@ AUTH_TIMEOUT_S = 3.0
 _detached: set[asyncio.Task] = set()
 
 
-def _detach(coro) -> None:
+def detach(coro) -> None:
     """소켓 태스크의 수명에서 떼어 낸다.
 
     **이탈 처리는 소켓보다 오래 산다** — 유예가 30·60초다. 소켓 태스크의 finally
@@ -251,6 +251,8 @@ async def serve(ws: WebSocket, code: str) -> None:
         return
 
     registry.add(conn)
+    # 핸드셰이크가 있었다는 표식. 미연결 슬롯 회수가 이 값을 본다.
+    store.mark_handshake(conn.room_id, conn.participant_id)
     log.info("소켓 연결 — room=%s member=%s", code, conn.member_id)
 
     close_code: int | None = None
@@ -282,7 +284,7 @@ async def serve(ws: WebSocket, code: str) -> None:
         log.info("소켓 종료 — room=%s member=%s code=%s", code, conn.member_id, close_code)
         if EVICTED not in conn.flags:
             # 서버가 닫은 소켓은 이미 처리가 끝났다. 두 번 이탈시키지 않는다.
-            _detach(
+            detach(
                 leave_service.on_socket_closed(
                     participant_pk=conn.participant_id,
                     room_pk=conn.room_id,

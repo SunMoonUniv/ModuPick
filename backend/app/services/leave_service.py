@@ -298,3 +298,55 @@ async def on_socket_closed(
         return
 
     await enter_unstable(participant_pk=participant_pk, room_pk=room_pk, member_id=member_id)
+
+
+# ── 미연결 슬롯 회수 ───────────────────────────────────────────────────────
+
+
+async def release_if_unconnected(*, participant_pk: int, room_pk: int) -> bool:
+    """가입 후 정해진 시간 안에 핸드셰이크가 없으면 슬롯을 푼다.
+
+    **주기 스위퍼가 아니라 가입 시점에 예약한 타이머로 잰다.** 60초 주기에 맡기면
+    15초 규칙이 실질적으로 15~75초가 되고, 정원이 찬 방에서 그 차이는 못 들어오는
+    사람의 대기 시간이 된다.
+
+    회수 대상은 **가입 경로의 참가자뿐이다.** 방 생성 직후의 방장은 여기 걸리지
+    않는다 — 정본이 이 값을 가입 절에 두었다.
+    """
+    if store.has_handshaked(room_pk, participant_pk):
+        return False
+
+    async with readonly() as conn:
+        row = (
+            await conn.execute(
+                select(participants.c.status, participants.c.left_at, participants.c.member_id)
+                .where(participants.c.id == participant_pk)
+            )
+        ).first()
+
+    if row is None or row.left_at is not None or row.status != MemberStatus.PENDING.value:
+        return False
+
+    log.info("미연결 슬롯 회수 — room=%s member=%s", room_pk, row.member_id)
+    await confirm(
+        participant_pk=participant_pk,
+        room_pk=room_pk,
+        member_id=row.member_id,
+        reason=LeaveReason.DISCONNECT,
+    )
+    return True
+
+
+def schedule_unconnected_release(*, participant_pk: int, room_pk: int) -> None:
+    """가입 직후에 회수 타이머를 건다. 실패해도 요청을 막지 않는다."""
+    from app.ws.router import detach
+
+    async def _later() -> None:
+        await asyncio.sleep(settings.unconnected_release_s)
+        await release_if_unconnected(participant_pk=participant_pk, room_pk=room_pk)
+
+    try:
+        detach(_later())
+    except RuntimeError:
+        # 이벤트 루프 밖이다(단위 테스트 등). 회수는 스위퍼가 대신 잡는다.
+        log.debug("회수 타이머를 걸지 못했다 — room=%s", room_pk)
