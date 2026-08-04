@@ -54,6 +54,19 @@ def client():
     _truncate()
 
 
+@pytest.fixture(autouse=True)
+def _fresh_rate_limit():
+    """테스트마다 호출 상한 카운터를 비운다.
+
+    상한이 IP 단위라 TestClient의 모든 요청이 한 통에 들어간다. 비우지 않으면
+    조회를 쓰는 테스트가 늘어날 때마다 무관한 테스트가 429로 깨진다.
+    """
+    from app.api.deps import lookup_limiter
+
+    lookup_limiter.reset()
+    yield
+
+
 @pytest.fixture
 def clean():
     """방이 남아 있으면 안 되는 테스트가 쓴다."""

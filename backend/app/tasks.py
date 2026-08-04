@@ -20,6 +20,7 @@ from dataclasses import dataclass
 
 from sqlalchemy import select, text
 
+from app.api.deps import lookup_limiter
 from app.config import settings
 from app.domain.enums import LeaveReason, MemberStatus, RoomClosedReason, RoomStatus
 from app.infra.db.session import readonly, transaction
@@ -36,6 +37,7 @@ class SweepReport:
     expired_rooms: int
     reclaimed_pending: int
     purged_idempotency: int
+    purged_rate_limit: int = 0
 
     def any(self) -> bool:
         return bool(self.expired_rooms or self.reclaimed_pending or self.purged_idempotency)
@@ -153,6 +155,8 @@ async def sweep_once() -> SweepReport:
         expired_rooms=await _sweep_expired_rooms(),
         reclaimed_pending=await _sweep_pending(),
         purged_idempotency=store.purge_expired_idempotency(),
+        # 한 번씩 들른 IP의 항목이 프로세스 수명 동안 쌓이지 않게 한다.
+        purged_rate_limit=lookup_limiter.purge_expired(),
     )
     if report.any():
         log.info(

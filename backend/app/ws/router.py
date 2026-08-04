@@ -19,7 +19,7 @@ from fastapi import WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 from sqlalchemy import select
 
-from app.domain import errors
+from app.domain import errors, state_machine
 from app.domain.enums import RoomStatus
 from app.infra.db.session import readonly
 from app.infra.db.tables import participants, rooms
@@ -263,12 +263,44 @@ _HANDLERS = {
 }
 
 
+#: 소켓 이벤트를 전표의 이벤트로 옮긴다. 여기 없는 것은 상태 게이트를 타지 않는다.
+_ACTIONS = {
+    "chat:send": state_machine.Action.CHAT,
+    "chat:typing": state_machine.Action.CHAT,
+    "member:ready": state_machine.Action.READY,
+    "member:kick": state_machine.Action.KICK,
+    "game:select": state_machine.Action.GAME_SELECT,
+    "game:random": state_machine.Action.GAME_SELECT,
+    "game:config": state_machine.Action.GAME_CONFIG,
+    "game:start": state_machine.Action.GAME_START,
+    "round:close": state_machine.Action.ROUND_CLOSE,
+}
+
+
+def _phase_of(room_pk: int) -> state_machine.RoomPhase:
+    """개념 상태를 **인메모리만 보고** 낸다.
+
+    라운드 상태는 방 상태 전이와 같은 서비스에서 함께 만들어지고 사라지므로, 빠른
+    실패용 판정에는 DB를 다시 읽을 이유가 없다. 매 채팅마다 질의를 붙이면 그것이
+    브로드캐스트 경로의 비용이 된다.
+    """
+    state = store.round_of(room_pk)
+    if state is None:
+        return state_machine.RoomPhase.WAITING
+    if state.phase == "RESULT":
+        return state_machine.RoomPhase.RESULT
+    return state_machine.RoomPhase.PLAYING
+
+
 async def _dispatch(conn: SocketConn, event: str, data: dict) -> None:
     """인증 이후의 이벤트 분기.
 
     **실패해도 연결을 닫지 않는다.** 규약 위반이 아니라 요청 처리 실패이므로
     보낸 사람에게만 error를 돌려주고 소켓은 살려 둔다. 조용히 삼키면 클라이언트가
     입력이 반영된 줄 알고 기다린다.
+
+    상태 전표를 **먼저** 본다. 빠른 실패용이며, 최종 판정은 서비스가 잠근 뒤에
+    다시 한다 — 정원·준비 상태는 검사와 커밋 사이에 바뀔 수 있다.
     """
     handler = _HANDLERS.get(event)
     if handler is None:
@@ -276,6 +308,9 @@ async def _dispatch(conn: SocketConn, event: str, data: dict) -> None:
         return
 
     try:
+        action = _ACTIONS.get(event)
+        if action is not None:
+            state_machine.ensure(action, _phase_of(conn.room_id))
         await handler(conn, data)
     except errors.DomainError as exc:
         await _send_error(conn, exc.spec, event, message=exc.message)

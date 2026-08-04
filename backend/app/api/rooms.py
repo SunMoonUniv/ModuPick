@@ -15,6 +15,7 @@ from app.api.deps import (
     IdempotencyKey,
     MemberContext,
     idempotency_key,
+    rate_limit_lookup,
     require_member,
 )
 from app.api.errors import ok, success_body
@@ -74,12 +75,13 @@ async def create_room(
     return JSONResponse(status_code=201, content=envelope)
 
 
-@router.get("/rooms/{code}")
+@router.get("/rooms/{code}", dependencies=[Depends(rate_limit_lookup)])
 async def lookup_room(code: CodePath) -> JSONResponse:
     """초대 코드 검증. 인증이 필요 없다.
 
-    TODO(배포 전): IP 단위 rate limiting. 코드 공간이 100만이라 상한이 없으면
-    전수 탐색으로 방 존재 여부를 캐낼 수 있다(common.rate_limited).
+    **IP 단위 분당 상한이 걸려 있다.** 코드 공간이 100만이라 상한이 없으면 전수
+    탐색으로 방 존재 여부를 캐낼 수 있다. 상한을 넘으면 지연을 준 뒤
+    common.rate_limited로 거절한다.
     """
     found = await room_service.lookup_room(code)
     return ok(

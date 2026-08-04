@@ -12,6 +12,7 @@
 **권한은 토큰에서 읽지 않는다.** 방장 여부는 조회한 participants.role로 판단한다.
 """
 
+import asyncio
 import hashlib
 import json
 from dataclasses import dataclass
@@ -20,10 +21,12 @@ from typing import Annotated
 from fastapi import Depends, Header, Path, Request
 from sqlalchemy import select
 
+from app.config import settings
 from app.domain import errors
 from app.domain.enums import MemberStatus, Role
 from app.infra.db.session import readonly
 from app.infra.db.tables import participants, rooms
+from app.infra.memory.rate_limit import FixedWindowLimiter
 from app.infra.memory.runtime_store import store
 
 
@@ -151,3 +154,36 @@ async def idempotency_key(
 ) -> IdempotencyKey:
     del request
     return IdempotencyKey(key=idempotency_key)
+
+
+# ── 호출 빈도 상한 ─────────────────────────────────────────────────────────
+
+lookup_limiter = FixedWindowLimiter(limit=settings.lookup_rate_per_min)
+
+
+def client_ip(request: Request) -> str:
+    """상한을 세는 단위.
+
+    **X-Forwarded-For를 기본으로 믿지 않는다.** 프록시 없이 노출된 상태에서 믿으면
+    헤더를 매 요청 바꿔 상한을 그냥 우회한다. 프록시 뒤에 둘 때만 켠다.
+    """
+    if settings.trust_proxy:
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"
+
+
+async def rate_limit_lookup(request: Request) -> None:
+    """초대 코드 조회의 무차별 대입을 막는다.
+
+    **이 표면에만 건다.** 코드가 숫자 6자리라 여기만 전수 탐색으로 방 존재 여부를
+    캐낼 수 있고, 다른 표면에 걸면 정상 사용자의 연타가 먼저 걸린다.
+
+    거절에 지연을 준다 — 탐색 속도를 한 번 더 깎는다.
+    """
+    if lookup_limiter.allow(client_ip(request)):
+        return
+    if settings.lookup_reject_delay_s > 0:
+        await asyncio.sleep(settings.lookup_reject_delay_s)
+    raise errors.DomainError(errors.COMMON_RATE_LIMITED)

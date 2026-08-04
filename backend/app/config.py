@@ -17,6 +17,15 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
 
+    # GET /api/rooms/{code}의 IP 단위 분당 상한. 코드 공간이 100만이라 상한이 없으면
+    # 전수 탐색으로 방 존재 여부를 캐낼 수 있다(07_api/02_rest.md).
+    lookup_rate_per_min: int = 20
+    # 거절에 주는 지연. 무차별 대입의 속도를 한 번 더 깎는다.
+    lookup_reject_delay_s: float = 0.5
+    # 프록시 뒤에 있으면 X-Forwarded-For의 첫 항목을 클라이언트 IP로 본다.
+    # **기본값은 끔** — 켠 채로 프록시 없이 노출하면 헤더를 위조해 상한을 우회한다.
+    trust_proxy: bool = False
+
     # 가입 후 이 시간 안에 핸드셰이크가 없으면 슬롯을 푼다. **가입 경로에만 적용한다** —
     # 정본이 이 값을 POST /rooms/{code}/members 절에 두었다(07_api/02_rest.md).
     # 방 생성 직후의 방장 슬롯은 3분 미확정 회수와 10분 만료가 맡는다.

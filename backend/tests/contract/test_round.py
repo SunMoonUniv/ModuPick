@@ -72,6 +72,18 @@ def playing(client, size: int, game: str = "roulette"):
         yield room, members, host_ws, guests, started
 
 
+def _to_result(client, code: str, host_ws) -> None:
+    """결과 단계로 옮긴다.
+
+    **대기방 복귀는 결과에서만 받는다**(전표 15행). 판정이 아직 없으므로 단계 전이
+    원시 연산을 직접 불러 그 자리를 만든다.
+    """
+    client.portal.call(
+        partial(round_service.emit_phase, _room_pk(code), phase="RESULT")
+    )
+    _drain(host_ws, "game:phase")
+
+
 def _round_row(round_id: str) -> dict:
     conn = pymysql.connect(**_dsn())
     try:
@@ -321,6 +333,7 @@ class TestClose:
     def test_방장이_닫으면_대기방으로_돌아간다(self, client):
         with playing(client, 2) as (room, _members, host_ws, _guests, started):
             _drain(host_ws, "game:phase")
+            _to_result(client, room["code"], host_ws)
             host_ws.send_json({
                 "event": "round:close", "data": {"roundId": started["data"]["roundId"]},
             })
@@ -334,8 +347,9 @@ class TestClose:
             assert row["ended_at"] is not None
 
     def test_복귀하면_준비가_전부_해제된다(self, client):
-        with playing(client, 2) as (_room, _members, host_ws, _guests, started):
+        with playing(client, 2) as (room, _members, host_ws, _guests, started):
             _drain(host_ws, "game:phase")
+            _to_result(client, room["code"], host_ws)
             host_ws.send_json({
                 "event": "round:close", "data": {"roundId": started["data"]["roundId"]},
             })
@@ -346,8 +360,9 @@ class TestClose:
 
     def test_복귀_뒤에는_다시_시작할_수_있다(self, client):
         """결과 화면의 다시 하기도 같은 이벤트를 재사용한다."""
-        with playing(client, 2) as (_room, _members, host_ws, guests, started):
+        with playing(client, 2) as (room, _members, host_ws, guests, started):
             _drain(host_ws, "game:phase")
+            _to_result(client, room["code"], host_ws)
             host_ws.send_json({
                 "event": "round:close", "data": {"roundId": started["data"]["roundId"]},
             })
@@ -365,15 +380,27 @@ class TestClose:
             assert again["data"]["roundId"] != started["data"]["roundId"]
 
     def test_방장이_아니면_닫을_수_없다(self, client):
-        with playing(client, 2) as (_room, _members, _host, guests, started):
+        with playing(client, 2) as (room, _members, host_ws, guests, started):
+            _drain(host_ws, "game:phase")
+            _to_result(client, room["code"], host_ws)
             guests[0].send_json({
                 "event": "round:close", "data": {"roundId": started["data"]["roundId"]},
             })
             assert _drain(guests[0], "error")["code"] == "member.not_host"
 
+    def test_진행_중에는_닫을_수_없다(self, client):
+        """진행 중 취소 경로를 두지 않는다(전표 15행)."""
+        with playing(client, 2) as (_room, _members, host_ws, _guests, started):
+            _drain(host_ws, "game:phase")  # READY
+            host_ws.send_json({
+                "event": "round:close", "data": {"roundId": started["data"]["roundId"]},
+            })
+            assert _drain(host_ws, "error")["code"] == "game.invalid_action"
+
     def test_다른_roundId로는_닫을_수_없다(self, client):
-        with playing(client, 2) as (_room, _members, host_ws, _guests, _started):
+        with playing(client, 2) as (room, _members, host_ws, _guests, _started):
             _drain(host_ws, "game:phase")
+            _to_result(client, room["code"], host_ws)
             host_ws.send_json({
                 "event": "round:close", "data": {"roundId": "rnd_0000000000000000"},
             })
