@@ -49,6 +49,22 @@ class KickRequest(BaseModel):
     memberId: str
 
 
+class GameSelectRequest(BaseModel):
+    """C->S game:select — 방장만."""
+
+    gameId: str
+
+
+class GameConfigRequest(BaseModel):
+    """C->S game:config — 방장만. **부분 갱신이다.**
+
+    gameId를 함께 받아 디바운스로 늦게 도착한 이전 게임의 변경을 걸러낸다.
+    """
+
+    gameId: str
+    config: dict
+
+
 class MemberView(BaseModel):
     """명단에 보이는 참가자. ACTIVE만 실린다."""
 
@@ -170,6 +186,27 @@ class ChatTypingData(BaseModel):
     roomVersion: int
     memberId: str
     typing: bool
+
+
+class GameSelectedData(BaseModel):
+    """S->C game:selected — game:select · game:random 양쪽의 응답.
+
+    configSchemaVersion을 함께 싣는 이유는 클라이언트가 캐시한 규격과 대조하게
+    하려는 것이다.
+    """
+
+    roomVersion: int
+    gameId: str
+    config: dict
+    configSchemaVersion: int
+
+
+class GameConfigChangedData(BaseModel):
+    """S->C game:config_changed — **참여자 화면도 함께 바뀐다.** 읽기 전용일 뿐이다."""
+
+    roomVersion: int
+    gameId: str
+    config: dict
 
 
 class RoomClosedData(BaseModel):

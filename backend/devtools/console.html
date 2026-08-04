@@ -141,6 +141,14 @@
   .tag.bad { border-color: #7a3b36; color: var(--err); }
   .empty { color: var(--faint); font-size: 12px; padding: 10px 2px; }
 
+  /* 게임 */
+  .games { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .games button { padding: 6px 0; font-size: 11px; }
+  .games button.sel { background: #2a4a7c; border-color: var(--accent); color: #fff; }
+  #config { margin-top: 8px; display: grid; gap: 6px; }
+  #config label { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: center;
+                  font-size: 11px; color: var(--dim); }
+
   /* 채팅 */
   #chat { max-height: 220px; overflow-y: auto; }
   .msg { display: flex; gap: 7px; padding: 3px 0; font-size: 12px; align-items: baseline; }
@@ -306,6 +314,16 @@
     </div>
     <p class="hint" id="hint-ready">방장은 준비 상태를 갖지 않는다. 목표치는 <b>activeCount − 1</b>.</p>
 
+    <h2 style="border:0;padding:0;margin:14px 0 6px">
+      게임 <span class="mono" id="game-id"></span>
+    </h2>
+    <div class="games" id="games"></div>
+    <div class="row" style="margin-top:6px">
+      <button id="btn-random" disabled>랜덤 뽑기 (서버가 고른다)</button>
+    </div>
+    <div id="config"></div>
+    <p class="hint" id="hint-game">방장만 바꾼다. 참여자 화면은 <b>읽기 전용이되 실시간으로 함께 바뀐다</b>.</p>
+
     <h2 style="border:0;padding:0;margin:14px 0 6px">채팅</h2>
     <div id="chat"></div>
     <div class="empty" id="chat-empty">서버는 채팅을 저장하지 않는다. 지금 붙어 있는 동안 온 것만 보인다.</div>
@@ -344,9 +362,15 @@ const AVATAR_IDS = Array.from({ length: 30 }, (_, i) => "A" + String(i + 1).padS
  * 바꾸지 않는 이벤트가 직전 상태 이벤트와 같은 번호를 달고 나가 전부 버려진다.
  */
 const STATE_EVENTS = new Set([
-  "room:snapshot", "member:joined", "member:left", "member:ready_changed",
-  "room:closed", "game:selected", "game:started", "game:ended",
+  "room:snapshot", "room:closed",
+  "member:joined", "member:left", "member:ready_changed", "member:connection",
+  "game:selected", "game:config_changed", "game:started", "game:phase",
+  "game:progress", "game:tie", "game:decision_required", "game:result",
+  "round:closed",
 ]);
+
+/** 게이트를 걸지 않는 통지 이벤트. 목록을 함께 적어 두 집합이 어긋나지 않게 한다. */
+const NOTICE_EVENTS = new Set(["chat:message", "chat:typing", "game:tick", "error"]);
 
 /** 방이 사라진 사유. 화면은 사유별로 다른 안내를 띄우고 표지로 보낸다. */
 const ROOM_CLOSED_REASON = {
@@ -368,6 +392,50 @@ const CLOSE_MEANING = {
   4409: "같은 토큰의 다른 소켓이 이미 있음 (기존 소켓은 살아 있다)",
   4410: "방 종료 — 직전에 room:closed가 왔다",
   4413: "프레임 상한(64KB) 초과",
+};
+
+/** 게임 6종과 최소 인원. 프로토타입의 timecatch·sniper는 계약값이 아니다. */
+const GAMES = [
+  { id: "roulette", label: "룰렛", min: 2 },
+  { id: "ladder", label: "사다리", min: 2 },
+  { id: "kingmaker", label: "킹메이커", min: 3 },
+  { id: "timer", label: "시간초", min: 2 },
+  { id: "snipe", label: "저격", min: 3 },
+  { id: "nunchi", label: "눈치", min: 3 },
+];
+
+/**
+ * 설정 항목 규격. 정본은 07_api/03_socket_events.md의 configSchema 표(16개)다.
+ * 콘솔은 입력 위젯을 그리려고 갖고 있을 뿐이며 **검증은 서버가 한다** —
+ * 여기서 미리 막으면 서버가 정말 거절하는지 확인할 수 없다.
+ */
+const CONFIG_FIELDS = {
+  roulette: [{ name: "topic", kind: "text" }],
+  ladder: [
+    { name: "resultItems", kind: "list" },
+    { name: "speed", kind: "enum", choices: ["FAST", "NORMAL", "SLOW"] },
+  ],
+  kingmaker: [
+    { name: "topic", kind: "text" },
+    { name: "votesPerMember", kind: "enum", choices: [1, 2, 3] },
+    { name: "revealAuthors", kind: "bool" },
+  ],
+  timer: [
+    { name: "topic", kind: "text" },
+    { name: "targetSeconds", kind: "enum", choices: [5, 7, 10] },
+    { name: "criterion", kind: "enum", choices: ["CLOSEST", "FARTHEST"] },
+  ],
+  snipe: [
+    { name: "question", kind: "text" },
+    { name: "voteSeconds", kind: "number" },
+    { name: "multiVote", kind: "bool" },
+    { name: "revealVoters", kind: "bool" },
+  ],
+  nunchi: [
+    { name: "topic", kind: "text" },
+    { name: "windowMs", kind: "enum", choices: [300, 500] },
+    { name: "roundSeconds", kind: "enum", choices: [10, 15, 20] },
+  ],
 };
 
 const SESSION_KEY = "modupick:devconsole";
@@ -394,6 +462,8 @@ const state = {
   activeCount: 0,
   typers: new Map(),    // memberId -> 해제 타이머. 3초간 갱신이 없으면 스스로 내린다
   typingSentAt: 0,      // chat:typing 스로틀
+  game: null,           // { gameId, config, configSchemaVersion }
+  configTimer: null,    // 설정 디바운스
 };
 
 const $ = (id) => document.getElementById(id);
@@ -577,6 +647,7 @@ function apply(event, d) {
       state.activeCount = state.members.length;
       state.readyCount = state.members.filter((m) => m.ready && !m.isHost).length;
       state.ready = Boolean(state.members.find((m) => m.memberId === state.memberId)?.ready);
+      state.game = d.game ?? null;
       banner("ok", `스냅샷 수신 — 참가자 ${state.members.length}명 · 서버시각 ${d.serverTime}`);
       save();
       break;
@@ -604,6 +675,15 @@ function apply(event, d) {
       state.activeCount = d.activeCount;
       break;
     }
+
+    case "game:selected":
+    case "game:config_changed":
+      state.game = {
+        gameId: d.gameId,
+        config: d.config,
+        configSchemaVersion: d.configSchemaVersion ?? state.game?.configSchemaVersion,
+      };
+      break;
 
     case "chat:message":
       appendMessage(d);
@@ -794,6 +874,103 @@ function renderAvatars() {
     : "선택하지 않으면 서버가 남은 것 중 <b>무작위</b>로 배정한다.";
 }
 
+/**
+ * 게임 목록과 설정 위젯.
+ *
+ * **설정 변경은 디바운스해서 보낸다.** 슬라이더·텍스트 입력을 조작할 때마다 보내면
+ * 트래픽이 과하다. 정본은 200~300ms를 권한다.
+ */
+function sendConfig(patch) {
+  if (!state.game) return;
+  const merged = { ...(state.pendingPatch ?? {}), ...patch };
+  state.pendingPatch = merged;
+  clearTimeout(state.configTimer);
+  state.configTimer = setTimeout(() => {
+    send("game:config", { gameId: state.game.gameId, config: merged });
+    state.pendingPatch = null;
+  }, 250);
+}
+
+function renderGames() {
+  const open = state.ws?.readyState === WebSocket.OPEN;
+  const canEdit = open && state.isHost && state.memberStatus === "ACTIVE";
+
+  const box = $("games");
+  box.innerHTML = "";
+  for (const g of GAMES) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = `${g.label} ${g.min}+`;
+    if (state.game?.gameId === g.id) b.className = "sel";
+    // **인원 미달을 콘솔이 막지 않는다.** 서버가 game.not_enough_members를
+    // 돌려주는지 확인해야 하기 때문이다.
+    b.disabled = !canEdit;
+    b.onclick = () => send("game:select", { gameId: g.id });
+    box.appendChild(b);
+  }
+
+  $("game-id").textContent = state.game
+    ? `${state.game.gameId} · schema v${state.game.configSchemaVersion}`
+    : "선택 안 됨";
+  $("btn-random").disabled = !canEdit;
+
+  const cfg = $("config");
+  cfg.innerHTML = "";
+  if (!state.game) return;
+
+  for (const f of CONFIG_FIELDS[state.game.gameId] ?? []) {
+    const value = state.game.config[f.name];
+    const label = document.createElement("label");
+    label.innerHTML = `<span>${f.name}</span>`;
+
+    let input;
+    if (f.kind === "enum") {
+      input = document.createElement("select");
+      for (const c of f.choices) {
+        const opt = document.createElement("option");
+        opt.value = String(c);
+        opt.textContent = String(c);
+        opt.selected = String(c) === String(value);
+        input.appendChild(opt);
+      }
+      input.onchange = () => sendConfig({
+        [f.name]: typeof f.choices[0] === "number" ? Number(input.value) : input.value,
+      });
+    } else if (f.kind === "bool") {
+      input = document.createElement("select");
+      for (const c of [false, true]) {
+        const opt = document.createElement("option");
+        opt.value = String(c);
+        opt.textContent = String(c);
+        opt.selected = c === value;
+        input.appendChild(opt);
+      }
+      input.onchange = () => sendConfig({ [f.name]: input.value === "true" });
+    } else if (f.kind === "list") {
+      input = document.createElement("input");
+      input.type = "text";
+      input.value = (value ?? []).join(", ");
+      input.oninput = () => sendConfig({
+        [f.name]: input.value.split(",").map((s) => s.trim()).filter(Boolean),
+      });
+    } else {
+      input = document.createElement("input");
+      input.type = f.kind === "number" ? "number" : "text";
+      input.value = value ?? "";
+      input.oninput = () => sendConfig({
+        [f.name]: f.kind === "number" ? Number(input.value) : input.value,
+      });
+    }
+    input.disabled = !canEdit;
+    label.appendChild(input);
+    cfg.appendChild(label);
+  }
+
+  $("hint-game").innerHTML = canEdit
+    ? "설정은 <b>부분 갱신</b>이다. 보낸 필드만 덮어쓴다. 250ms 디바운스 후 전송."
+    : "방장만 바꾼다. 참여자 화면은 <b>읽기 전용이되 실시간으로 함께 바뀐다</b>.";
+}
+
 /** 채팅은 서버가 보관하지 않는다. 화면에 쌓인 것이 전부다. */
 function appendMessage(d) {
   const box = $("chat");
@@ -931,6 +1108,7 @@ function render() {
   $("btn-open2").disabled = !state.code;
 
   renderMembers();
+  renderGames();
 }
 
 /* ───────────────────────── 세션 ───────────────────────── */
@@ -1017,6 +1195,7 @@ $("btn-send").onclick = () => {
 };
 
 $("btn-ready").onclick = () => send("member:ready", { ready: !state.ready });
+$("btn-random").onclick = () => send("game:random", {});
 
 $("btn-chat").onclick = () => {
   const text = $("in-chat").value;

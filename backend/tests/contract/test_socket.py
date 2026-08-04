@@ -262,3 +262,27 @@ class TestPlayingRoom:
             _send_auth(ws, room["code"], room["memberToken"])
             assert ws.receive_json()["code"] == "room.already_playing"
             _expect_close(ws, 4401)
+
+
+class TestHandlerFailure:
+    def test_핸들러_결함이_사람을_쫓아내지_않는다(self, client, monkeypatch):
+        """예외가 serve()까지 오르면 소켓이 조용히 닫히고 이탈로 이어진다."""
+        from app.services import chat_service
+
+        async def boom(**kwargs):
+            raise RuntimeError("일부러 낸 결함")
+
+        monkeypatch.setattr(chat_service, "send", boom)
+
+        room = create_room(client)
+        confirm(client, room["code"], room["memberToken"], nickname="지호")
+        with connected(client, room["code"], room["memberToken"]) as (ws, _):
+            ws.send_json({"event": "chat:send", "data": {"text": "안녕"}})
+            err = ws.receive_json()
+            assert err["event"] == "error"
+            assert err["code"] == "common.internal"
+            assert err["data"]["event"] == "chat:send"
+
+            # 연결은 살아 있다
+            ws.send_json({"event": "game:start", "data": {}})
+            assert ws.receive_json()["code"] == "game.invalid_action"

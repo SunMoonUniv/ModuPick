@@ -72,6 +72,19 @@ class GraceEntry:
 
 
 @dataclass(slots=True)
+class Selection:
+    """게임 시작 전의 선택과 설정.
+
+    **DB에 쓰지 않는다.** 라운드가 만들어지는 순간(game:start)에야 game_rounds에
+    영속되며, 그전까지는 재기동으로 사라지는 것이 정상이다 — 재기동이 방을 전부
+    지우므로 남길 대상 자체가 없다.
+    """
+
+    game_id: str
+    config: dict
+
+
+@dataclass(slots=True)
 class IdempotencyEntry:
     body_hash: str
     status: int
@@ -89,6 +102,7 @@ class RuntimeStore:
     _chat_seq: dict[int, int] = field(default_factory=dict)
     _grace: dict[int, dict[int, GraceEntry]] = field(default_factory=dict)
     _handshaked: dict[int, set[int]] = field(default_factory=dict)
+    _selection: dict[int, "Selection"] = field(default_factory=dict)
 
     # ── 토큰 ───────────────────────────────────────────────────────────────
 
@@ -127,6 +141,7 @@ class RuntimeStore:
         self._ready.pop(room_id, None)
         self._chat_seq.pop(room_id, None)
         self._handshaked.pop(room_id, None)
+        self._selection.pop(room_id, None)
         for entry in self._grace.pop(room_id, {}).values():
             _cancel(entry.task)
 
@@ -176,6 +191,19 @@ class RuntimeStore:
             self._ready.pop(room_id, None)
         else:
             self._ready.get(room_id, set()).discard(participant_id)
+
+    # ── 게임 선택 ──────────────────────────────────────────────────────────
+
+    def select_game(self, room_id: int, game_id: str, config: dict) -> Selection:
+        selection = Selection(game_id=game_id, config=config)
+        self._selection[room_id] = selection
+        return selection
+
+    def selection_of(self, room_id: int) -> Selection | None:
+        return self._selection.get(room_id)
+
+    def clear_selection(self, room_id: int) -> None:
+        self._selection.pop(room_id, None)
 
     # ── 핸드셰이크 흔적 ────────────────────────────────────────────────────
 

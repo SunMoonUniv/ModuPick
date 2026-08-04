@@ -27,11 +27,19 @@ from app.infra.memory.runtime_store import store
 from app.schemas.events import (
     AuthRequest,
     ChatSendRequest,
+    GameConfigRequest,
+    GameSelectRequest,
     KickRequest,
     ReadyRequest,
     TypingRequest,
 )
-from app.services import chat_service, leave_service, lobby_service, room_service
+from app.services import (
+    chat_service,
+    game_setup_service,
+    leave_service,
+    lobby_service,
+    room_service,
+)
 from app.ws.connection import EVICTED, SocketConn, registry
 from app.ws.envelope import (
     PROTOCOL_VERSION,
@@ -201,12 +209,41 @@ async def _handle_member_kick(conn: SocketConn, data: dict) -> None:
     )
 
 
-#: 인증 이후에 받는 이벤트. 게임 선택·입력은 이후 슬라이스에서 붙는다.
+async def _handle_game_select(conn: SocketConn, data: dict) -> None:
+    req = GameSelectRequest(**data)
+    await game_setup_service.select_game(
+        participant_pk=conn.participant_id,
+        room_pk=conn.room_id,
+        raw_game_id=req.gameId,
+    )
+
+
+async def _handle_game_random(conn: SocketConn, data: dict) -> None:
+    del data  # 페이로드가 없다. 서버가 고른다
+    await game_setup_service.pick_random(
+        participant_pk=conn.participant_id, room_pk=conn.room_id
+    )
+
+
+async def _handle_game_config(conn: SocketConn, data: dict) -> None:
+    req = GameConfigRequest(**data)
+    await game_setup_service.change_config(
+        participant_pk=conn.participant_id,
+        room_pk=conn.room_id,
+        raw_game_id=req.gameId,
+        patch=req.config,
+    )
+
+
+#: 인증 이후에 받는 이벤트. 게임 시작·입력은 이후 단계에서 붙는다.
 _HANDLERS = {
     "chat:send": _handle_chat_send,
     "chat:typing": _handle_chat_typing,
     "member:ready": _handle_member_ready,
     "member:kick": _handle_member_kick,
+    "game:select": _handle_game_select,
+    "game:random": _handle_game_random,
+    "game:config": _handle_game_config,
 }
 
 
@@ -228,6 +265,12 @@ async def _dispatch(conn: SocketConn, event: str, data: dict) -> None:
         await _send_error(conn, exc.spec, event, message=exc.message)
     except ValidationError:
         await _send_error(conn, errors.COMMON_VALIDATION_FAILED, event)
+    except Exception:
+        # **핸들러의 결함이 사람을 방에서 쫓아내지 않는다.** 여기서 잡지 않으면
+        # 예외가 serve()까지 올라가 소켓이 조용히 닫히고, 그 사람은 이유도 모른 채
+        # 유예를 거쳐 이탈 확정된다.
+        log.exception("이벤트 처리 실패 — event=%s room=%s", event, conn.room_code)
+        await _send_error(conn, errors.COMMON_INTERNAL, event)
 
 
 async def _send_error(

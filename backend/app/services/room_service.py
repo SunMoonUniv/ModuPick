@@ -370,6 +370,7 @@ async def build_snapshot(*, room_pk: int, me_participant_pk: int) -> dict:
         raise errors.DomainError(errors.COMMON_SESSION_EXPIRED)
 
     from app.infra.clock import clock
+    from app.services import game_setup_service
 
     unstable = store.unstable_ids(room_pk)
 
@@ -405,7 +406,8 @@ async def build_snapshot(*, room_pk: int, me_participant_pk: int) -> dict:
             )
             for i, r in enumerate(active)
         ],
-        game=None,
+        # 아직 고르지 않았으면 null이다. 뒤늦게 붙은 사람도 현재 선택을 그대로 본다.
+        game=game_setup_service.view_of(room_pk),
     ).model_dump()
 
 
