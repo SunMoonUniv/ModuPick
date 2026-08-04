@@ -21,6 +21,9 @@ from fastapi import WebSocket
 
 log = logging.getLogger("modupick.ws")
 
+#: 서버가 직접 닫은 소켓의 표식. 이 소켓의 종료는 이탈 사건이 아니다.
+EVICTED = "evicted"
+
 
 @dataclass(frozen=True, slots=True)
 class SocketConn:
@@ -36,6 +39,8 @@ class SocketConn:
     member_id: str
     room_id: int
     room_code: str
+    #: 소켓 수명 동안의 표식. 값이 아니라 이 소켓의 처지를 적는 곳이라 비교에서 뺀다
+    flags: set[str] = field(default_factory=set, compare=False)
 
 
 @dataclass(slots=True)
@@ -118,11 +123,31 @@ class ConnectionRegistry:
         for conn in self.members_of(room_id):
             if frame is not None:
                 await self.send(conn, frame)
-            try:
-                await conn.ws.close(code=code)
-            except Exception:
-                pass
-            self.remove(conn)
+            await self._shutdown(conn, code)
+
+    async def evict(self, room_id: int, participant_id: int, spec, code: int) -> bool:
+        """한 소켓만 사유를 알리고 닫는다. 강퇴가 쓴다."""
+        from app.ws.envelope import outgoing_error
+
+        conn = self.find(room_id, participant_id)
+        if conn is None:
+            return False
+        await self.send(conn, outgoing_error(spec))
+        await self._shutdown(conn, code)
+        return True
+
+    async def _shutdown(self, conn: SocketConn, code: int) -> None:
+        """서버가 닫는다. **표식을 남겨 이탈 처리를 두 번 하지 않게 한다.**
+
+        표식이 없으면 방장 이탈로 닫힌 소켓 하나하나가 다시 유예에 들어가고, 사라진
+        방을 두고 이탈을 확정하려는 태스크가 인원수만큼 생긴다.
+        """
+        conn.flags.add(EVICTED)
+        try:
+            await conn.ws.close(code=code)
+        except Exception:
+            pass
+        self.remove(conn)
 
     def stats(self) -> dict[str, int]:
         return {

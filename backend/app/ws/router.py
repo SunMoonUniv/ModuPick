@@ -24,9 +24,15 @@ from app.domain.enums import RoomStatus
 from app.infra.db.session import readonly
 from app.infra.db.tables import participants, rooms
 from app.infra.memory.runtime_store import store
-from app.schemas.events import AuthRequest, ChatSendRequest, ReadyRequest, TypingRequest
-from app.services import chat_service, lobby_service, room_service
-from app.ws.connection import SocketConn, registry
+from app.schemas.events import (
+    AuthRequest,
+    ChatSendRequest,
+    KickRequest,
+    ReadyRequest,
+    TypingRequest,
+)
+from app.services import chat_service, leave_service, lobby_service, room_service
+from app.ws.connection import EVICTED, SocketConn, registry
 from app.ws.envelope import (
     PROTOCOL_VERSION,
     CloseCode,
@@ -40,6 +46,21 @@ log = logging.getLogger("modupick.ws")
 
 #: 연결 후 conn:auth를 기다리는 시간.
 AUTH_TIMEOUT_S = 3.0
+
+#: 소켓에서 떼어 낸 뒷정리 태스크. 참조를 들고 있지 않으면 GC가 중간에 거둬 간다.
+_detached: set[asyncio.Task] = set()
+
+
+def _detach(coro) -> None:
+    """소켓 태스크의 수명에서 떼어 낸다.
+
+    **이탈 처리는 소켓보다 오래 산다** — 유예가 30·60초다. 소켓 태스크의 finally
+    안에서 await하면, 그 태스크가 취소되는 순간 열려 있던 DB 커넥션이 반납되지 않은
+    채 남는다(정리 코드도 취소된 컨텍스트에서는 끝까지 돌지 못한다).
+    """
+    task = asyncio.create_task(coro)
+    _detached.add(task)
+    task.add_done_callback(_detached.discard)
 
 
 async def _reject(ws: WebSocket, spec, close_code: CloseCode, event: str | None = None) -> None:
@@ -96,6 +117,14 @@ async def _authenticate(ws: WebSocket, code: str) -> SocketConn | None:
     # 같은 토큰의 두 번째 연결을 거부한다. **기존 소켓은 유지한다.**
     if registry.is_bound(req.memberToken):
         await _reject(ws, errors.COMMON_SESSION_EXPIRED, CloseCode.DUPLICATE, event)
+        return None
+
+    # **유예 중인 자리는 되찾을 수 없다.** 유예는 회복을 기다리는 창이 아니라 이탈
+    # 확정의 부작용을 늦추는 창이다. 여기를 열어 두면 그것이 곧 재접속이 되고,
+    # 재접속 불가 위에 세운 판정·명단·익명성 설계가 흔들린다. 링크를 다시 연 사람은
+    # 새 참가자이며 정원에 자리가 있어야 들어온다.
+    if store.grace_of(binding.room_id, binding.participant_id) is not None:
+        await _reject(ws, errors.COMMON_SESSION_EXPIRED, CloseCode.UNAUTHORIZED, event)
         return None
 
     async with readonly() as conn:
@@ -163,11 +192,21 @@ async def _handle_member_ready(conn: SocketConn, data: dict) -> None:
     )
 
 
+async def _handle_member_kick(conn: SocketConn, data: dict) -> None:
+    req = KickRequest(**data)
+    await lobby_service.kick(
+        actor_pk=conn.participant_id,
+        room_pk=conn.room_id,
+        target_member_id=req.memberId,
+    )
+
+
 #: 인증 이후에 받는 이벤트. 게임 선택·입력은 이후 슬라이스에서 붙는다.
 _HANDLERS = {
     "chat:send": _handle_chat_send,
     "chat:typing": _handle_chat_typing,
     "member:ready": _handle_member_ready,
+    "member:kick": _handle_member_kick,
 }
 
 
@@ -214,6 +253,7 @@ async def serve(ws: WebSocket, code: str) -> None:
     registry.add(conn)
     log.info("소켓 연결 — room=%s member=%s", code, conn.member_id)
 
+    close_code: int | None = None
     try:
         snapshot = await room_service.build_snapshot(
             room_pk=conn.room_id, me_participant_pk=conn.participant_id
@@ -229,12 +269,25 @@ async def serve(ws: WebSocket, code: str) -> None:
                 return
             await _dispatch(conn, event, data)
 
-    except WebSocketDisconnect:
+    except WebSocketDisconnect as exc:
+        # **클라이언트가 보낸 종료 코드다.** 1000만 즉시 이탈이고 나머지는 유예로 간다.
+        close_code = exc.code
+    except RuntimeError:
+        # 서버가 먼저 닫은 뒤의 receive다. 이탈 사건이 아니다.
         pass
     except Exception:
         log.exception("소켓 처리 중 오류 — room=%s member=%s", code, conn.member_id)
     finally:
-        # 명부에서만 뺀다. **이탈 확정과 member:left는 이후 슬라이스가 맡는다** —
-        # 소켓 종료와 사람이 방을 떠난 것은 다르고, 그 사이에 유예 창이 들어간다.
         registry.remove(conn)
-        log.info("소켓 종료 — room=%s member=%s", code, conn.member_id)
+        log.info("소켓 종료 — room=%s member=%s code=%s", code, conn.member_id, close_code)
+        if EVICTED not in conn.flags:
+            # 서버가 닫은 소켓은 이미 처리가 끝났다. 두 번 이탈시키지 않는다.
+            _detach(
+                leave_service.on_socket_closed(
+                    participant_pk=conn.participant_id,
+                    room_pk=conn.room_id,
+                    member_id=conn.member_id,
+                    token=conn.token,
+                    close_code=close_code,
+                )
+            )

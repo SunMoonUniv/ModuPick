@@ -138,6 +138,7 @@
   .tag { font-size: 10px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line2); color: var(--dim); }
   .tag.host { border-color: #6b4a91; color: var(--host); }
   .tag.ready { border-color: #2f6b52; color: var(--ok); }
+  .tag.bad { border-color: #7a3b36; color: var(--err); }
   .empty { color: var(--faint); font-size: 12px; padding: 10px 2px; }
 
   /* 채팅 */
@@ -266,9 +267,13 @@
         <button class="danger" id="btn-disconnect">소켓 닫기 (1000)</button>
         <button class="danger" id="btn-leave-rest">REST 이탈</button>
       </div>
-      <p class="hint">소켓이 열려 있으면 이탈은 REST가 아니라 <b>종료 코드 1000</b>이다.
-      REST 이탈은 소켓을 열기 전 구간에만 쓴다. <b>방장이 나가면 방이 삭제</b>되고 남은
-      창은 room:closed 뒤 4410으로 밀려난다.</p>
+      <div class="row" style="margin-top:6px">
+        <button class="danger" id="btn-drop">비정상 종료 흉내 (1001)</button>
+      </div>
+      <p class="hint"><b>1000만 즉시 확정</b>이다. 그 밖의 종료는 의심(UNSTABLE)을 거쳐
+      유예 만료 시 확정된다 — 참가자 30초 · 방장 60초. 1001은 브라우저가 페이지를 떠난
+      경우이며, 클라이언트가 페이지 숨김·새로고침에 1000을 보내면 안 되는 이유다.
+      <b>방장이 나가면 방이 삭제</b>되고 남은 창은 room:closed 뒤 4410으로 밀려난다.</p>
     </fieldset>
 
     <fieldset>
@@ -347,6 +352,7 @@ const STATE_EVENTS = new Set([
 const CLOSE_MEANING = {
   1000: "정상 종료 (나가기)",
   1001: "브라우저가 페이지를 떠남",
+  1005: "코드 없이 닫힘 — 서버는 유예로 보낸다",
   1006: "비정상 종료 (서버 중단·네트워크)",
   4002: "규약 위반 · 지원하지 않는 protocolVersion",
   4401: "인증 실패 · 토큰 무효 · 방 없음",
@@ -600,6 +606,23 @@ function apply(event, d) {
       markTyping(d.memberId, d.typing);
       break;
 
+    case "member:connection": {
+      // **이 이벤트는 이탈이 아니다.** 이탈은 member:left 또는 room:closed로만 확정된다.
+      const m = state.members.find((x) => x.memberId === d.memberId);
+      if (m) {
+        m.connection = d.state;
+        m.graceEndsAt = d.graceEndsAt;
+      }
+      if (d.state === "UNSTABLE") {
+        const who = m ? m.nickname : d.memberId;
+        banner(m?.isHost ? "bad" : "warn",
+          m?.isHost
+            ? `방장 연결이 끊겼다 — ${d.graceEndsAt}까지 돌아오지 않으면 방이 닫힌다`
+            : `${who} 연결 확인 중 — 유예 만료 ${d.graceEndsAt}`);
+      }
+      break;
+    }
+
     case "room:closed":
       banner("bad", `방이 종료됐다 — ${d.reason}`);
       break;
@@ -822,7 +845,15 @@ function renderMembers() {
     if (m.isHost) li.insertAdjacentHTML("beforeend", `<span class="tag host">방장</span>`);
     if (m.ready) li.insertAdjacentHTML("beforeend", `<span class="tag ready">준비</span>`);
     if (m.connection && m.connection !== "ONLINE") {
-      li.insertAdjacentHTML("beforeend", `<span class="tag">${m.connection}</span>`);
+      li.insertAdjacentHTML("beforeend", `<span class="tag bad">연결 끊김</span>`);
+    }
+    // 강퇴는 방장만, 자기 자신 말고, 대기 상태에서만.
+    if (state.isHost && m.memberId !== state.memberId && state.ws?.readyState === WebSocket.OPEN) {
+      const b = document.createElement("button");
+      b.className = "ghost";
+      b.textContent = "내보내기";
+      b.onclick = () => send("member:kick", { memberId: m.memberId });
+      li.appendChild(b);
     }
     ul.appendChild(li);
   }
@@ -883,6 +914,7 @@ function render() {
     : "목표치는 <b>activeCount − 1</b> — 방장은 모수에서 빠진다.";
   $("btn-connect").disabled = Boolean(state.ws);
   $("btn-disconnect").disabled = !open;
+  $("btn-drop").disabled = !open;
   $("btn-send").disabled = !open;
   $("btn-leave-rest").disabled = !hasToken || open;
   $("btn-create").disabled = hasToken;
@@ -959,6 +991,11 @@ $("btn-connect").onclick = () => connect();
 $("btn-disconnect").onclick = () => {
   // 나가기 버튼에서만 1000을 쓴다. 페이지를 숨기거나 새로고침할 때는 쓰지 않는다.
   state.ws?.close(1000, "leave");
+};
+$("btn-drop").onclick = () => {
+  // 브라우저 API는 1000·3000~4999만 허용하므로 1001을 직접 보낼 수 없다.
+  // 코드 없이 닫으면 1005로 나가며, 서버에게는 "1000이 아닌 종료"라는 점이 같다.
+  state.ws?.close();
 };
 $("btn-send").onclick = () => {
   const ev = $("in-ev").value.trim();

@@ -43,6 +43,12 @@ class ReadyRequest(BaseModel):
     ready: bool
 
 
+class KickRequest(BaseModel):
+    """C->S member:kick — 방장만. 대상은 외부 식별자로 지목한다."""
+
+    memberId: str
+
+
 class MemberView(BaseModel):
     """명단에 보이는 참가자. ACTIVE만 실린다."""
 
@@ -126,6 +132,19 @@ class MemberReadyChangedData(BaseModel):
     ready: bool
     readyCount: int
     activeCount: int
+
+
+class MemberConnectionData(BaseModel):
+    """S->C member:connection — 유예 진입·취소.
+
+    **이 이벤트가 이탈을 뜻하지 않는다.** 이탈은 member:left 또는 room:closed로만
+    확정된다. state는 ONLINE · UNSTABLE 2값이고, graceEndsAt은 ONLINE일 때 null이다.
+    """
+
+    roomVersion: int
+    memberId: str
+    state: str
+    graceEndsAt: str | None
 
 
 class ChatMessageData(BaseModel):

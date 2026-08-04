@@ -364,6 +364,8 @@ async def build_snapshot(*, room_pk: int, me_participant_pk: int) -> dict:
 
     from app.infra.clock import clock
 
+    unstable = store.unstable_ids(room_pk)
+
     return SnapshotData(
         roomVersion=store.version(room_pk),
         serverTime=iso_z(clock.now()),
@@ -390,8 +392,8 @@ async def build_snapshot(*, room_pk: int, me_participant_pk: int) -> dict:
                 isHost=r.role == Role.HOST.value,
                 # 준비 상태는 인메모리가 정본이다. 방장은 애초에 집합에 들어가지 않는다.
                 ready=store.is_ready(room_pk, r.id),
-                # 연결 상태는 1e에서 유예 집합이 채운다.
-                connection="ONLINE",
+                # 유예 중이면 UNSTABLE이다. 뒤늦게 붙은 사람도 연결 끊김 표시를 본다.
+                connection="UNSTABLE" if r.id in unstable else "ONLINE",
                 joinOrder=i + 1,
             )
             for i, r in enumerate(active)

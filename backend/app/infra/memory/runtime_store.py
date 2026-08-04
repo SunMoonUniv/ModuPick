@@ -4,13 +4,14 @@
 기동 정리가 DB의 모든 방을 삭제하므로, 토큰과 멱등 캐시가 함께 사라지는 것이
 오히려 정합적이다. 살아남은 토큰이 가리킬 방이 없기 때문이다.
 
-담는 것은 다섯이다.
+담는 것은 여섯이다.
 
     토큰 바인딩   token -> (participant_id, room_id, room_code)
     멱등 캐시     Idempotency-Key -> 최초 응답
     방 상태 버전  room_id -> 단조 증가 정수
     준비 상태     room_id -> 준비한 participant_id 집합
     채팅 시퀀스   room_id -> messageId 카운터
+    이탈 유예     room_id -> participant_id -> (만료 예정 시각, 확정 태스크)
 
 **준비 상태를 DB에 두지 않는다.** participants에 ready 컬럼이 없는 것이 설계다 —
 방이 사라지면 함께 사라져야 하는 값이고, 매 토글마다 쓰기를 만들 이유가 없다.
@@ -19,6 +20,7 @@
 """
 
 from dataclasses import dataclass, field
+from datetime import datetime
 
 from app.infra.clock import clock
 
@@ -40,6 +42,35 @@ class TokenBinding:
     room_code: str
 
 
+def _cancel(task: object | None) -> None:
+    """유예 태스크를 접는다. 자기 자신을 취소하는 경우는 건너뛴다 —
+    확정 처리 도중 end_grace를 부르면 그 태스크가 자기 목을 치게 된다."""
+    if task is None:
+        return
+    import asyncio
+
+    if not isinstance(task, asyncio.Task) or task.done():
+        return
+    try:
+        if asyncio.current_task() is task:
+            return
+    except RuntimeError:
+        pass
+    task.cancel()
+
+
+@dataclass(slots=True)
+class GraceEntry:
+    """이탈 유예 하나.
+
+    태스크를 함께 들고 있는 이유는 **방이 먼저 사라질 수 있기** 때문이다. 방 삭제가
+    태스크를 취소하지 않으면 유예가 만료될 때 없는 방을 두고 이탈을 확정하려 든다.
+    """
+
+    grace_ends_at: datetime
+    task: object | None = None
+
+
 @dataclass(slots=True)
 class IdempotencyEntry:
     body_hash: str
@@ -56,6 +87,7 @@ class RuntimeStore:
     _versions: dict[int, int] = field(default_factory=dict)
     _ready: dict[int, set[int]] = field(default_factory=dict)
     _chat_seq: dict[int, int] = field(default_factory=dict)
+    _grace: dict[int, dict[int, GraceEntry]] = field(default_factory=dict)
 
     # ── 토큰 ───────────────────────────────────────────────────────────────
 
@@ -93,6 +125,8 @@ class RuntimeStore:
         self._versions.pop(room_id, None)
         self._ready.pop(room_id, None)
         self._chat_seq.pop(room_id, None)
+        for entry in self._grace.pop(room_id, {}).values():
+            _cancel(entry.task)
 
     # ── 방 상태 버전 ───────────────────────────────────────────────────────
 
@@ -140,6 +174,37 @@ class RuntimeStore:
             self._ready.pop(room_id, None)
         else:
             self._ready.get(room_id, set()).discard(participant_id)
+
+    # ── 이탈 유예 ──────────────────────────────────────────────────────────
+
+    def start_grace(self, room_id: int, participant_id: int, entry: GraceEntry) -> bool:
+        """유예를 연다. **이미 열려 있으면 False**이며 기존 창을 유지한다.
+
+        같은 사람이 두 번 의심에 들어가는 경우(전송 실패 직후 소켓 종료 관측)에
+        창이 새로 열리면 이탈 확정이 무한히 미뤄진다.
+        """
+        bucket = self._grace.setdefault(room_id, {})
+        if participant_id in bucket:
+            return False
+        bucket[participant_id] = entry
+        return True
+
+    def grace_of(self, room_id: int, participant_id: int) -> GraceEntry | None:
+        return self._grace.get(room_id, {}).get(participant_id)
+
+    def unstable_ids(self, room_id: int) -> set[int]:
+        return set(self._grace.get(room_id, {}))
+
+    def end_grace(self, room_id: int, participant_id: int) -> None:
+        """유예를 닫는다. 확정됐거나 취소된 경우 모두 여기를 지난다."""
+        bucket = self._grace.get(room_id)
+        if bucket is None:
+            return
+        entry = bucket.pop(participant_id, None)
+        if entry is not None:
+            _cancel(entry.task)
+        if not bucket:
+            del self._grace[room_id]
 
     # ── 채팅 시퀀스 ────────────────────────────────────────────────────────
 
