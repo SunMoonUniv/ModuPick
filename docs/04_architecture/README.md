@@ -19,7 +19,7 @@ ModuPick의 **구조와 그 구조를 만든 결정**을 담는 폴더다. 프�
 | [05_room_state_machine.md](./05_room_state_machine.md) | 방 상태 4종 전이도 · **(상태 × 이벤트) 전표** · 상태별 허용·거부 동작 |
 | [06_memory_persistence_split.md](./06_memory_persistence_split.md) | 인메모리↔DB 경계 정본 · 데이터별 소재 표 · 정합 유지 규칙 · **서버 재시작 시 고아 방 정리** |
 | [07_deployment_topology.md](./07_deployment_topology.md) | 배치 구성 · Nginx WebSocket 프록시 · 도메인과 TLS · 배포와 롤백 · **비기능 목표 판정** · **부하 특성 추정** · 모니터링 |
-| [08_decision_records.md](./08_decision_records.md) | **기술 결정 ADR-01~27**(채번 유일 정본) |
+| [08_decision_records.md](./08_decision_records.md) | **기술 결정 ADR-01~37**(채번 유일 정본) |
 
 ## 아키텍처 한눈
 
