@@ -1,13 +1,14 @@
 import logging
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import rooms
 from app.api.errors import register_exception_handlers
 from app.config import settings
 from app.infra.db.session import dispose, missing_tables
+from app.ws import router as ws_router
 
 log = logging.getLogger("modupick")
 
@@ -58,12 +59,11 @@ async def health() -> dict[str, bool]:
     return {"ok": True}
 
 
-@app.websocket("/ws/echo")
-async def echo(websocket: WebSocket) -> None:
-    """소켓 배선 확인용. 1c에서 /ws/rooms/{code}로 교체한다."""
-    await websocket.accept()
-    try:
-        while True:
-            await websocket.send_text(await websocket.receive_text())
-    except WebSocketDisconnect:
-        pass
+@app.websocket("/ws/rooms/{code}")
+async def room_socket(websocket: WebSocket, code: str) -> None:
+    """대기방 진입 이후의 전 실시간 통신.
+
+    토큰은 경로가 아니라 첫 프레임(conn:auth)으로 받는다. 쿼리 문자열에 담으면
+    프록시·접근 로그에 토큰이 그대로 남는다.
+    """
+    await ws_router.serve(websocket, code)

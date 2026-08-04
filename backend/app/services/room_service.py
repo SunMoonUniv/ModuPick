@@ -163,6 +163,7 @@ async def create_room(room_name: str | None, max_members: int | None) -> Created
             raise
         else:
             token = new_token()
+            store.init_version(room_pk)
             store.bind_token(
                 token,
                 TokenBinding(participant_id=participant_pk, room_id=room_pk, room_code=code),
@@ -310,6 +311,146 @@ async def delete_room_now(room_pk: int) -> None:
     async with transaction() as conn:
         await _delete_room(conn, room_pk)
     store.revoke_room(room_pk)
+
+
+async def build_snapshot(*, room_pk: int, me_participant_pk: int) -> dict:
+    """방 스냅샷 하나로 대기방 화면을 통째로 그릴 수 있게 만든다.
+
+    members에는 **ACTIVE만** 들어간다. 프로필 입력 중인 PENDING은 소켓이 붙어 있어도
+    다른 사람 화면에 보이지 않는다 — 그 구간이 존재하는 것이 이 설계의 특징이다.
+    """
+    from app.schemas.events import MeView, MemberView, RoomView, SnapshotData
+    from app.schemas.rest import iso_z
+
+    async with readonly() as conn:
+        room = (
+            await conn.execute(
+                select(
+                    rooms.c.code,
+                    rooms.c.room_name,
+                    rooms.c.max_members,
+                    rooms.c.status,
+                    rooms.c.expires_at,
+                ).where(rooms.c.id == room_pk)
+            )
+        ).first()
+        if room is None:
+            raise errors.DomainError(errors.ROOM_NOT_FOUND)
+
+        rows = (
+            await conn.execute(
+                select(
+                    participants.c.id,
+                    participants.c.member_id,
+                    participants.c.nickname,
+                    participants.c.avatar_id,
+                    participants.c.bio,
+                    participants.c.role,
+                    participants.c.status,
+                )
+                .where(
+                    participants.c.room_id == room_pk,
+                    participants.c.left_at.is_(None),
+                )
+                .order_by(participants.c.joined_at, participants.c.id)
+            )
+        ).all()
+
+    active = [r for r in rows if r.status == MemberStatus.ACTIVE.value]
+    host_member_id = next((r.member_id for r in rows if r.role == Role.HOST.value), None)
+    me = next((r for r in rows if r.id == me_participant_pk), None)
+    if me is None:
+        raise errors.DomainError(errors.COMMON_SESSION_EXPIRED)
+
+    from app.infra.clock import clock
+
+    return SnapshotData(
+        roomVersion=store.version(room_pk),
+        serverTime=iso_z(clock.now()),
+        room=RoomView(
+            code=room.code,
+            displayCode=f"MODU-{room.code}",
+            roomName=room.room_name,
+            maxMembers=room.max_members,
+            roomStatus=RoomStatus(room.status).name,
+            hostMemberId=host_member_id,
+            expiresAt=iso_z(room.expires_at),
+        ),
+        me=MeView(
+            memberId=me.member_id,
+            isHost=me.role == Role.HOST.value,
+            memberStatus=MemberStatus(me.status).name,
+        ),
+        members=[
+            MemberView(
+                memberId=r.member_id,
+                nickname=r.nickname,
+                avatarId=r.avatar_id,
+                bio=r.bio,
+                isHost=r.role == Role.HOST.value,
+                # 준비 상태와 연결 상태는 이후 슬라이스에서 인메모리가 채운다.
+                ready=False,
+                connection="ONLINE",
+                joinOrder=i + 1,
+            )
+            for i, r in enumerate(active)
+        ],
+        game=None,
+    ).model_dump()
+
+
+async def member_view_of(room_pk: int, participant_pk: int) -> dict:
+    """한 참가자의 명단 표현. member:joined가 쓴다."""
+    from app.schemas.events import MemberView
+
+    async with readonly() as conn:
+        rows = (
+            await conn.execute(
+                select(
+                    participants.c.id,
+                    participants.c.member_id,
+                    participants.c.nickname,
+                    participants.c.avatar_id,
+                    participants.c.bio,
+                    participants.c.role,
+                )
+                .where(
+                    participants.c.room_id == room_pk,
+                    participants.c.status == MemberStatus.ACTIVE.value,
+                    participants.c.left_at.is_(None),
+                )
+                .order_by(participants.c.joined_at, participants.c.id)
+            )
+        ).all()
+
+    for i, r in enumerate(rows):
+        if r.id == participant_pk:
+            return MemberView(
+                memberId=r.member_id,
+                nickname=r.nickname,
+                avatarId=r.avatar_id,
+                bio=r.bio,
+                isHost=r.role == Role.HOST.value,
+                ready=False,
+                connection="ONLINE",
+                joinOrder=i + 1,
+            ).model_dump()
+    raise errors.DomainError(errors.MEMBER_NOT_FOUND)
+
+
+async def active_count(room_pk: int) -> int:
+    async with readonly() as conn:
+        return (
+            await conn.execute(
+                select(func.count())
+                .select_from(participants)
+                .where(
+                    participants.c.room_id == room_pk,
+                    participants.c.status == MemberStatus.ACTIVE.value,
+                    participants.c.left_at.is_(None),
+                )
+            )
+        ).scalar_one()
 
 
 async def touch(room_pk: int) -> None:

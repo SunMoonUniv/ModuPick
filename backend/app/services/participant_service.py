@@ -94,7 +94,7 @@ async def confirm_profile(
 
     for attempt in range(2):
         try:
-            return await _confirm_once(
+            confirmed = await _confirm_once(
                 participant_pk=participant_pk,
                 room_pk=room_pk,
                 desired=desired,
@@ -108,7 +108,25 @@ async def confirm_profile(
                 # 같은 닉네임을 동시에 확정한 경합이다. 다시 세어 접미를 새로 붙인다.
                 continue
             raise
+        else:
+            # 커밋 이후에만 발행한다. 이 순간부터 다른 사람 화면에 보인다.
+            await _broadcast_joined(room_pk=room_pk, participant_pk=participant_pk)
+            return confirmed
     raise errors.DomainError(errors.MEMBER_NICKNAME_INVALID)
+
+
+async def _broadcast_joined(*, room_pk: int, participant_pk: int) -> None:
+    from app.schemas.events import MemberJoinedData
+    from app.services import room_service
+    from app.ws.connection import registry
+    from app.ws.envelope import outgoing
+
+    member = await room_service.member_view_of(room_pk, participant_pk)
+    frame = outgoing(
+        "member:joined",
+        MemberJoinedData(roomVersion=store.bump_version(room_pk), member=member).model_dump(),
+    )
+    await registry.broadcast(room_pk, frame)
 
 
 async def _confirm_once(
@@ -190,6 +208,7 @@ async def _confirm_once(
 @dataclass(frozen=True, slots=True)
 class LeaveOutcome:
     room_deleted: bool
+    was_host: bool
 
 
 async def leave_before_socket(*, participant_pk: int, room_pk: int, token: str) -> LeaveOutcome:
@@ -208,11 +227,16 @@ async def leave_before_socket(*, participant_pk: int, room_pk: int, token: str) 
         ).first()
         if room is None:
             store.revoke_token(token)
-            return LeaveOutcome(room_deleted=True)
+            return LeaveOutcome(room_deleted=True, was_host=False)
 
         me = (
             await conn.execute(
-                select(participants.c.role, participants.c.left_at)
+                select(
+                    participants.c.role,
+                    participants.c.left_at,
+                    participants.c.member_id,
+                    participants.c.status,
+                )
                 .where(participants.c.id == participant_pk)
                 .with_for_update()
             )
@@ -238,9 +262,65 @@ async def leave_before_socket(*, participant_pk: int, room_pk: int, token: str) 
             await conn.execute(rooms.delete().where(rooms.c.id == room_pk))
             room_deleted = True
 
+    # 커밋 이후에만 발행한다.
+    await _broadcast_leave(
+        room_pk=room_pk,
+        member_id=me.member_id if me is not None else "",
+        was_active=me is not None and me.status == MemberStatus.ACTIVE.value,
+        room_deleted=room_deleted,
+        is_host=is_host,
+    )
+
     if room_deleted:
         store.revoke_room(room_pk)
     else:
         store.revoke_token(token)
 
-    return LeaveOutcome(room_deleted=room_deleted)
+    return LeaveOutcome(room_deleted=room_deleted, was_host=is_host)
+
+
+async def _broadcast_leave(
+    *,
+    room_pk: int,
+    member_id: str,
+    was_active: bool,
+    room_deleted: bool,
+    is_host: bool,
+) -> None:
+    """이탈을 알린다.
+
+    **방장이 나간 경우는 member:left가 아니라 room:closed다.** 방이 사라졌다는 사실이
+    한 사람이 나갔다는 사실보다 중요하고, 남은 사람은 표지로 돌아가야 한다.
+
+    PENDING이라 아직 아무에게도 보이지 않았다면 브로드캐스트하지 않는다.
+    """
+    from app.domain.enums import LeaveReason, RoomClosedReason
+    from app.schemas.events import MemberLeftData, RoomClosedData
+    from app.services import room_service
+    from app.ws.connection import registry
+    from app.ws.envelope import CloseCode, outgoing
+
+    if room_deleted:
+        reason = RoomClosedReason.HOST_LEFT if is_host else RoomClosedReason.LAST_MEMBER_LEFT
+        frame = outgoing(
+            "room:closed",
+            RoomClosedData(
+                roomVersion=store.bump_version(room_pk), reason=reason.value
+            ).model_dump(),
+        )
+        await registry.close_room(room_pk, frame, CloseCode.ROOM_CLOSED)
+        return
+
+    if not was_active:
+        return
+
+    frame = outgoing(
+        "member:left",
+        MemberLeftData(
+            roomVersion=store.bump_version(room_pk),
+            memberId=member_id,
+            reason=LeaveReason.LEAVE.value,
+            activeCount=await room_service.active_count(room_pk),
+        ).model_dump(),
+    )
+    await registry.broadcast(room_pk, frame)

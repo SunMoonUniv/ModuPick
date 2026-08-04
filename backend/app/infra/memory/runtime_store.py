@@ -4,12 +4,13 @@
 기동 정리가 DB의 모든 방을 삭제하므로, 토큰과 멱등 캐시가 함께 사라지는 것이
 오히려 정합적이다. 살아남은 토큰이 가리킬 방이 없기 때문이다.
 
-지금 담는 것은 둘이다.
+담는 것은 셋이다.
 
     토큰 바인딩   token -> (participant_id, room_id, room_code)
     멱등 캐시     Idempotency-Key -> 최초 응답
+    방 상태 버전  room_id -> 단조 증가 정수
 
-준비 상태·라운드 단계·판정창 그룹 등 나머지 인메모리 상태는 1c 이후에 붙는다.
+준비 상태·라운드 단계·판정창 그룹 등 나머지 인메모리 상태는 이후 슬라이스에서 붙는다.
 """
 
 from dataclasses import dataclass, field
@@ -47,6 +48,7 @@ class RuntimeStore:
     _tokens: dict[str, TokenBinding] = field(default_factory=dict)
     _room_tokens: dict[int, set[str]] = field(default_factory=dict)
     _idem: dict[str, IdempotencyEntry] = field(default_factory=dict)
+    _versions: dict[int, int] = field(default_factory=dict)
 
     # ── 토큰 ───────────────────────────────────────────────────────────────
 
@@ -74,9 +76,31 @@ class RuntimeStore:
                 del self._room_tokens[binding.room_id]
 
     def revoke_room(self, room_id: int) -> None:
-        """방 삭제 시 그 방의 토큰을 일괄 제거한다."""
+        """방 삭제 시 그 방의 토큰과 버전을 함께 버린다."""
         for token in self._room_tokens.pop(room_id, set()):
             self._tokens.pop(token, None)
+        self._versions.pop(room_id, None)
+
+    # ── 방 상태 버전 ───────────────────────────────────────────────────────
+
+    def init_version(self, room_id: int) -> int:
+        """방 생성 시 1에서 시작한다."""
+        self._versions[room_id] = 1
+        return 1
+
+    def version(self, room_id: int) -> int:
+        return self._versions.get(room_id, 1)
+
+    def bump_version(self, room_id: int) -> int:
+        """방 상태가 바뀔 때마다 1 올린다.
+
+        **상태 이벤트에만 올린다.** 채팅·타이머 틱·에러는 방 상태를 바꾸지 않으므로
+        버전을 올리지 않는다. 올리면 그 이벤트들이 직전 상태 이벤트와 같은 번호를
+        달고 나가 클라이언트의 버전 게이트에 전부 걸러진다.
+        """
+        current = self._versions.get(room_id, 1) + 1
+        self._versions[room_id] = current
+        return current
 
     # ── 멱등 ───────────────────────────────────────────────────────────────
 
@@ -112,6 +136,7 @@ class RuntimeStore:
             "tokens": len(self._tokens),
             "rooms": len(self._room_tokens),
             "idempotency": len(self._idem),
+            "versions": len(self._versions),
         }
 
 
