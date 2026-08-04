@@ -6,9 +6,10 @@ on:
     paths:
       - 'backend/**'  # backend 폴더에 변경이 있을 때만 실행
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
     paths:
       - 'backend/**'
+  workflow_call:  # develop 배포 파이프라인이 게이트로 호출한다
 
 jobs:
   build-and-test:

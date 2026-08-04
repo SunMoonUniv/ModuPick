@@ -6,7 +6,15 @@ on:
       - develop
 
 jobs:
+  # CI 게이트 — 하나라도 실패하면 deploy 가 아예 시작되지 않는다.
+  ci-backend:
+    uses: ./.github/workflows/ci-backend.yml
+
+  ci-frontend:
+    uses: ./.github/workflows/ci-frontend.yml
+
   deploy:
+    needs: [ci-backend, ci-frontend]
     runs-on: self-hosted
 
     steps:
