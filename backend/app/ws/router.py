@@ -24,8 +24,8 @@ from app.domain.enums import RoomStatus
 from app.infra.db.session import readonly
 from app.infra.db.tables import participants, rooms
 from app.infra.memory.runtime_store import store
-from app.schemas.events import AuthRequest
-from app.services import room_service
+from app.schemas.events import AuthRequest, ChatSendRequest, ReadyRequest, TypingRequest
+from app.services import chat_service, lobby_service, room_service
 from app.ws.connection import SocketConn, registry
 from app.ws.envelope import (
     PROTOCOL_VERSION,
@@ -133,18 +133,73 @@ async def _authenticate(ws: WebSocket, code: str) -> SocketConn | None:
     )
 
 
+async def _handle_chat_send(conn: SocketConn, data: dict) -> None:
+    req = ChatSendRequest(**data)
+    await chat_service.send(
+        participant_pk=conn.participant_id,
+        room_pk=conn.room_id,
+        member_id=conn.member_id,
+        raw_text=req.text,
+    )
+
+
+async def _handle_chat_typing(conn: SocketConn, data: dict) -> None:
+    req = TypingRequest(**data)
+    await chat_service.typing(
+        participant_pk=conn.participant_id,
+        room_pk=conn.room_id,
+        member_id=conn.member_id,
+        typing=req.typing,
+    )
+
+
+async def _handle_member_ready(conn: SocketConn, data: dict) -> None:
+    req = ReadyRequest(**data)
+    await lobby_service.set_ready(
+        participant_pk=conn.participant_id,
+        room_pk=conn.room_id,
+        member_id=conn.member_id,
+        ready=req.ready,
+    )
+
+
+#: 인증 이후에 받는 이벤트. 게임 선택·입력은 이후 슬라이스에서 붙는다.
+_HANDLERS = {
+    "chat:send": _handle_chat_send,
+    "chat:typing": _handle_chat_typing,
+    "member:ready": _handle_member_ready,
+}
+
+
 async def _dispatch(conn: SocketConn, event: str, data: dict) -> None:
     """인증 이후의 이벤트 분기.
 
-    준비 토글·채팅·게임 선택·게임 입력은 이후 슬라이스에서 붙는다. 지금은 모르는
-    이벤트를 개인 error로 돌려주고 연결은 유지한다.
+    **실패해도 연결을 닫지 않는다.** 규약 위반이 아니라 요청 처리 실패이므로
+    보낸 사람에게만 error를 돌려주고 소켓은 살려 둔다. 조용히 삼키면 클라이언트가
+    입력이 반영된 줄 알고 기다린다.
     """
-    del data
+    handler = _HANDLERS.get(event)
+    if handler is None:
+        await _send_error(conn, errors.GAME_INVALID_ACTION, event)
+        return
+
+    try:
+        await handler(conn, data)
+    except errors.DomainError as exc:
+        await _send_error(conn, exc.spec, event, message=exc.message)
+    except ValidationError:
+        await _send_error(conn, errors.COMMON_VALIDATION_FAILED, event)
+
+
+async def _send_error(
+    conn: SocketConn, spec, event: str, *, message: str | None = None
+) -> None:
     await conn.ws.send_text(
         outgoing_error(
-            errors.GAME_INVALID_ACTION,
+            spec,
             source_event=event,
             room_version=store.version(conn.room_id),
+            message=message,
         )
     )
 

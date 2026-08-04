@@ -388,8 +388,9 @@ async def build_snapshot(*, room_pk: int, me_participant_pk: int) -> dict:
                 avatarId=r.avatar_id,
                 bio=r.bio,
                 isHost=r.role == Role.HOST.value,
-                # 준비 상태와 연결 상태는 이후 슬라이스에서 인메모리가 채운다.
-                ready=False,
+                # 준비 상태는 인메모리가 정본이다. 방장은 애초에 집합에 들어가지 않는다.
+                ready=store.is_ready(room_pk, r.id),
+                # 연결 상태는 1e에서 유예 집합이 채운다.
                 connection="ONLINE",
                 joinOrder=i + 1,
             )

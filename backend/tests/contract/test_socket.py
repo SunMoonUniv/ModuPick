@@ -5,45 +5,16 @@
     accept -> (3초 안) conn:auth -> 인증 -> room:snapshot 1회 -> 부분 갱신
 """
 
-from contextlib import contextmanager
-
-import pytest
-from starlette.websockets import WebSocketDisconnect
-
-from tests.conftest import auth, confirm, create_room, data_of, join
-
-
-def _send_auth(ws, code, token, *, version=1, room_code=None):
-    ws.send_json(
-        {
-            "event": "conn:auth",
-            "data": {
-                "protocolVersion": version,
-                "roomCode": room_code or code,
-                "memberToken": token,
-            },
-        }
-    )
-
-
-def _expect_close(ws, code: int) -> None:
-    with pytest.raises(WebSocketDisconnect) as exc:
-        ws.receive_json()
-    assert exc.value.code == code
-
-
-@contextmanager
-def connected(client, code, token):
-    """인증까지 마치고 스냅샷을 받은 소켓.
-
-    반드시 with으로 쓴다 — TestClient의 소켓 컨텍스트는 종료 시 백그라운드 스레드를
-    정리하므로, close()만 부르고 빠져나오면 스레드가 쌓여 뒤 테스트가 멈춘다.
-    """
-    with client.websocket_connect(f"/ws/rooms/{code}") as ws:
-        _send_auth(ws, code, token)
-        snapshot = ws.receive_json()
-        assert snapshot["event"] == "room:snapshot"
-        yield ws, snapshot
+from tests.conftest import (
+    auth,
+    confirm,
+    connected,
+    create_room,
+    data_of,
+    join,
+)
+from tests.conftest import expect_close as _expect_close
+from tests.conftest import send_auth as _send_auth
 
 
 # ── 인증 ───────────────────────────────────────────────────────────────────

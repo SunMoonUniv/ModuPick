@@ -4,13 +4,18 @@
 기동 정리가 DB의 모든 방을 삭제하므로, 토큰과 멱등 캐시가 함께 사라지는 것이
 오히려 정합적이다. 살아남은 토큰이 가리킬 방이 없기 때문이다.
 
-담는 것은 셋이다.
+담는 것은 다섯이다.
 
     토큰 바인딩   token -> (participant_id, room_id, room_code)
     멱등 캐시     Idempotency-Key -> 최초 응답
     방 상태 버전  room_id -> 단조 증가 정수
+    준비 상태     room_id -> 준비한 participant_id 집합
+    채팅 시퀀스   room_id -> messageId 카운터
 
-준비 상태·라운드 단계·판정창 그룹 등 나머지 인메모리 상태는 이후 슬라이스에서 붙는다.
+**준비 상태를 DB에 두지 않는다.** participants에 ready 컬럼이 없는 것이 설계다 —
+방이 사라지면 함께 사라져야 하는 값이고, 매 토글마다 쓰기를 만들 이유가 없다.
+
+라운드 단계·판정창 그룹 등 나머지 인메모리 상태는 이후 슬라이스에서 붙는다.
 """
 
 from dataclasses import dataclass, field
@@ -49,6 +54,8 @@ class RuntimeStore:
     _room_tokens: dict[int, set[str]] = field(default_factory=dict)
     _idem: dict[str, IdempotencyEntry] = field(default_factory=dict)
     _versions: dict[int, int] = field(default_factory=dict)
+    _ready: dict[int, set[int]] = field(default_factory=dict)
+    _chat_seq: dict[int, int] = field(default_factory=dict)
 
     # ── 토큰 ───────────────────────────────────────────────────────────────
 
@@ -76,10 +83,16 @@ class RuntimeStore:
                 del self._room_tokens[binding.room_id]
 
     def revoke_room(self, room_id: int) -> None:
-        """방 삭제 시 그 방의 토큰과 버전을 함께 버린다."""
+        """방 삭제 시 그 방에 딸린 인메모리 상태를 전부 버린다.
+
+        **하나라도 빠뜨리면 그 방의 흔적이 프로세스가 죽을 때까지 남는다.** 방 식별자는
+        재사용되지 않으므로 오염은 아니지만 누수다.
+        """
         for token in self._room_tokens.pop(room_id, set()):
             self._tokens.pop(token, None)
         self._versions.pop(room_id, None)
+        self._ready.pop(room_id, None)
+        self._chat_seq.pop(room_id, None)
 
     # ── 방 상태 버전 ───────────────────────────────────────────────────────
 
@@ -101,6 +114,40 @@ class RuntimeStore:
         current = self._versions.get(room_id, 1) + 1
         self._versions[room_id] = current
         return current
+
+    # ── 준비 상태 ──────────────────────────────────────────────────────────
+
+    def set_ready(self, room_id: int, participant_id: int, ready: bool) -> None:
+        """마지막 값이 이긴다. 토글이 아니라 대입이므로 멱등 키가 필요 없다."""
+        bucket = self._ready.setdefault(room_id, set())
+        if ready:
+            bucket.add(participant_id)
+        else:
+            bucket.discard(participant_id)
+
+    def is_ready(self, room_id: int, participant_id: int) -> bool:
+        return participant_id in self._ready.get(room_id, ())
+
+    def ready_ids(self, room_id: int) -> set[int]:
+        return set(self._ready.get(room_id, set()))
+
+    def clear_ready(self, room_id: int, participant_id: int | None = None) -> None:
+        """participant_id를 주면 그 사람만, 없으면 방 전체를 해제한다.
+
+        전체 해제는 대기방 복귀 시점(round:closed)에 쓴다.
+        """
+        if participant_id is None:
+            self._ready.pop(room_id, None)
+        else:
+            self._ready.get(room_id, set()).discard(participant_id)
+
+    # ── 채팅 시퀀스 ────────────────────────────────────────────────────────
+
+    def next_message_id(self, room_id: int) -> str:
+        """방 수명 동안만 유일한 10진 문자열. 방이 사라지면 1로 돌아간다."""
+        nxt = self._chat_seq.get(room_id, 0) + 1
+        self._chat_seq[room_id] = nxt
+        return str(nxt)
 
     # ── 멱등 ───────────────────────────────────────────────────────────────
 
@@ -137,6 +184,7 @@ class RuntimeStore:
             "rooms": len(self._room_tokens),
             "idempotency": len(self._idem),
             "versions": len(self._versions),
+            "ready": sum(len(v) for v in self._ready.values()),
         }
 
 

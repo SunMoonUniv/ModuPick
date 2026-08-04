@@ -140,6 +140,15 @@
   .tag.ready { border-color: #2f6b52; color: var(--ok); }
   .empty { color: var(--faint); font-size: 12px; padding: 10px 2px; }
 
+  /* 채팅 */
+  #chat { max-height: 220px; overflow-y: auto; }
+  .msg { display: flex; gap: 7px; padding: 3px 0; font-size: 12px; align-items: baseline; }
+  .msg .id { flex: none; color: var(--faint); font-family: ui-monospace, Menlo, monospace; font-size: 10px; }
+  .msg .nm { flex: none; color: var(--dim); font-weight: 600; }
+  .msg .tx { flex: 1; word-break: break-all; }
+  .msg.mine .nm { color: var(--accent); }
+  .typing { min-height: 16px; font-size: 11px; color: var(--faint); font-style: italic; }
+
   dl.kv { display: grid; grid-template-columns: 88px 1fr; gap: 3px 10px; margin: 0 0 10px; font-size: 12px; }
   dl.kv dt { color: var(--faint); }
   dl.kv dd { margin: 0; font-family: ui-monospace, Menlo, monospace; word-break: break-all; }
@@ -280,9 +289,27 @@
   <div class="body">
     <div id="banner"></div>
     <dl class="kv" id="kv"></dl>
-    <h2 style="border:0;padding:0;margin:14px 0 6px">참가자 <span id="cnt" class="mono"></span></h2>
+    <h2 style="border:0;padding:0;margin:14px 0 6px">
+      참가자 <span id="cnt" class="mono"></span>
+      <span class="badge" id="b-ready" style="float:right">준비 <b>0/0</b></span>
+    </h2>
     <ul class="members" id="members"></ul>
     <div class="empty" id="members-empty">아직 명단이 없다. 소켓을 연결하면 room:snapshot이 채운다.</div>
+
+    <div class="row" style="margin-top:10px">
+      <button id="btn-ready" disabled>준비 완료</button>
+    </div>
+    <p class="hint" id="hint-ready">방장은 준비 상태를 갖지 않는다. 목표치는 <b>activeCount − 1</b>.</p>
+
+    <h2 style="border:0;padding:0;margin:14px 0 6px">채팅</h2>
+    <div id="chat"></div>
+    <div class="empty" id="chat-empty">서버는 채팅을 저장하지 않는다. 지금 붙어 있는 동안 온 것만 보인다.</div>
+    <div class="typing" id="typing"></div>
+    <div class="row" style="margin-top:6px">
+      <input type="text" id="in-chat" placeholder="1~200자" style="flex:3" />
+      <button id="btn-chat" disabled style="flex:1">보내기</button>
+    </div>
+    <p class="hint">공백만 보내면 <b>아무 응답도 오지 않는다</b>(서버가 조용히 무시). 201자는 common.payload_too_large.</p>
   </div>
 </section>
 
@@ -349,6 +376,11 @@ const state = {
   selectedAvatar: null,
   ws: null,
   closed: null,         // { code, reason }
+  ready: false,         // 내 준비 상태
+  readyCount: 0,
+  activeCount: 0,
+  typers: new Map(),    // memberId -> 해제 타이머. 3초간 갱신이 없으면 스스로 내린다
+  typingSentAt: 0,      // chat:typing 스로틀
 };
 
 const $ = (id) => document.getElementById(id);
@@ -529,6 +561,9 @@ function apply(event, d) {
       state.memberStatus = d.me?.memberStatus ?? state.memberStatus;
       state.isHost = d.me?.isHost ?? state.isHost;
       state.memberId = d.me?.memberId ?? state.memberId;
+      state.activeCount = state.members.length;
+      state.readyCount = state.members.filter((m) => m.ready && !m.isHost).length;
+      state.ready = Boolean(state.members.find((m) => m.memberId === state.memberId)?.ready);
       banner("ok", `스냅샷 수신 — 참가자 ${state.members.length}명 · 서버시각 ${d.serverTime}`);
       save();
       break;
@@ -550,8 +585,20 @@ function apply(event, d) {
     case "member:ready_changed": {
       const m = state.members.find((x) => x.memberId === d.memberId);
       if (m) m.ready = d.ready;
+      if (d.memberId === state.memberId) state.ready = d.ready;
+      // **집계는 서버 값을 쓴다.** 직접 세면 화면마다 값이 갈린다.
+      state.readyCount = d.readyCount;
+      state.activeCount = d.activeCount;
       break;
     }
+
+    case "chat:message":
+      appendMessage(d);
+      break;
+
+    case "chat:typing":
+      markTyping(d.memberId, d.typing);
+      break;
 
     case "room:closed":
       banner("bad", `방이 종료됐다 — ${d.reason}`);
@@ -717,6 +764,49 @@ function renderAvatars() {
     : "선택하지 않으면 서버가 남은 것 중 <b>무작위</b>로 배정한다.";
 }
 
+/** 채팅은 서버가 보관하지 않는다. 화면에 쌓인 것이 전부다. */
+function appendMessage(d) {
+  const box = $("chat");
+  const el = document.createElement("div");
+  el.className = "msg" + (d.memberId === state.memberId ? " mine" : "");
+  el.innerHTML = `<span class="id"></span><span class="nm"></span><span class="tx"></span>`;
+  const who = state.members.find((m) => m.memberId === d.memberId);
+  el.querySelector(".id").textContent = "#" + d.messageId;
+  el.querySelector(".nm").textContent = who ? who.nickname : d.memberId;
+  el.querySelector(".tx").textContent = d.text;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+  $("chat-empty").style.display = "none";
+}
+
+/**
+ * 입력 중 표시.
+ *
+ * **3초간 갱신이 없으면 클라이언트가 스스로 내린다.** 서버는 false를 보장해 주지
+ * 않는다 — 보내던 사람의 소켓이 끊기면 true가 영원히 남기 때문이다.
+ */
+function markTyping(memberId, typing) {
+  const prev = state.typers.get(memberId);
+  if (prev) clearTimeout(prev);
+  if (!typing) {
+    state.typers.delete(memberId);
+  } else {
+    state.typers.set(memberId, setTimeout(() => {
+      state.typers.delete(memberId);
+      renderTyping();
+    }, 3000));
+  }
+  renderTyping();
+}
+
+function renderTyping() {
+  const names = [...state.typers.keys()].map((id) => {
+    const m = state.members.find((x) => x.memberId === id);
+    return m ? m.nickname : id;
+  });
+  $("typing").textContent = names.length ? `${names.join(" · ")} 입력 중…` : "";
+}
+
 function renderMembers() {
   const ul = $("members");
   ul.innerHTML = "";
@@ -776,8 +866,21 @@ function render() {
   const isActive = state.memberStatus === "ACTIVE";
 
   $("fs-profile").disabled = !hasToken || isActive;
-  $("fs-socket").disabled = !isActive;
+  // **PENDING도 소켓을 연다.** 프로필 화면에 머무는 동안에도 member:joined를 받아
+  // 아바타 선점 현황을 갱신해야 하기 때문이다(07_api/03 §room:snapshot me).
+  $("fs-socket").disabled = !hasToken;
   $("fs-exit").disabled = !hasToken;
+
+  // 준비는 방장이 아닌 ACTIVE만. 채팅도 명단에 오른 사람만 보낼 수 있다.
+  $("btn-ready").disabled = !open || !isActive || state.isHost;
+  $("btn-ready").textContent = state.ready ? "준비 해제" : "준비 완료";
+  $("btn-chat").disabled = !open || !isActive;
+  $("in-chat").disabled = !open || !isActive;
+  $("b-ready").innerHTML =
+    `준비 <b>${state.readyCount}/${Math.max(0, state.activeCount - 1)}</b>`;
+  $("hint-ready").innerHTML = state.isHost
+    ? "방장은 준비 상태를 갖지 않는다. 보내면 <b>game.invalid_action</b>이 돌아온다."
+    : "목표치는 <b>activeCount − 1</b> — 방장은 모수에서 빠진다.";
   $("btn-connect").disabled = Boolean(state.ws);
   $("btn-disconnect").disabled = !open;
   $("btn-send").disabled = !open;
@@ -867,6 +970,24 @@ $("btn-send").onclick = () => {
     catch { banner("bad", "data가 JSON이 아니다"); return; }
   }
   send(ev, data);
+};
+
+$("btn-ready").onclick = () => send("member:ready", { ready: !state.ready });
+
+$("btn-chat").onclick = () => {
+  const text = $("in-chat").value;
+  $("in-chat").value = "";
+  // 다듬지 않고 그대로 보낸다 — 공백만 보냈을 때 서버가 무시하는지 확인해야 한다.
+  send("chat:send", { text });
+  send("chat:typing", { typing: false });
+};
+$("in-chat").onkeydown = (e) => { if (e.key === "Enter") $("btn-chat").click(); };
+$("in-chat").oninput = () => {
+  // 매 글자마다 보내지 않는다. 1초에 한 번이면 상대 화면의 표시가 유지된다.
+  const now = performance.now();
+  if (now - state.typingSentAt < 1000) return;
+  state.typingSentAt = now;
+  send("chat:typing", { typing: true });
 };
 
 $("btn-open2").onclick = () => {
