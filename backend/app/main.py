@@ -1,9 +1,38 @@
+import logging
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api import rooms
+from app.api.errors import register_exception_handlers
 from app.config import settings
+from app.infra.db.session import dispose, missing_tables
 
-app = FastAPI(title="ModuPick API")
+log = logging.getLogger("modupick")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """기동·종료 절차.
+
+    **스키마가 적용되지 않은 DB에 붙은 채로 뜨지 않는다.** 서버는 기동 시 모든 방을
+    삭제하는 정리 절차를 갖게 되므로(1c 이후), 구조가 어긋난 DB에 그 절차를 돌리면
+    위험하다. Alembic 리비전 대조를 두지 않는 대신의 최소 확인이다.
+    """
+    del app
+    missing = await missing_tables()
+    if missing:
+        raise RuntimeError(
+            f"스키마가 적용되지 않았습니다. 없는 테이블: {', '.join(missing)} "
+            "— backend/sql/schema.sql을 적용한 뒤 다시 기동하세요."
+        )
+    log.info("업무 테이블 6개 확인됨")
+    yield
+    await dispose()
+
+
+app = FastAPI(title="ModuPick API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -13,15 +42,25 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+register_exception_handlers(app)
+app.include_router(rooms.router)
+
 
 @app.get("/health")
 async def health() -> dict[str, bool]:
+    """프로세스 생존 확인.
+
+    **DB 연결을 확인하지 않는다.** 방 상태가 프로세스 메모리에 있으므로 DB가 잠시
+    끊겨도 진행 중인 판은 계속되어야 하고, 여기서 실패를 보고하면 배포 도구가
+    프로세스를 죽여 방을 통째로 날린다. 공통 응답 봉투도 쓰지 않는다 — 로드밸런서가
+    읽는 표면이라 제품 규약을 따를 이유가 없다.
+    """
     return {"ok": True}
 
 
 @app.websocket("/ws/echo")
 async def echo(websocket: WebSocket) -> None:
-    """소켓 배선 확인용. 방 단위 이벤트 라우팅(F-601)으로 교체한다."""
+    """소켓 배선 확인용. 1c에서 /ws/rooms/{code}로 교체한다."""
     await websocket.accept()
     try:
         while True:
