@@ -31,6 +31,7 @@ from app.schemas.events import (
     GameSelectRequest,
     KickRequest,
     ReadyRequest,
+    RoundCloseRequest,
     TypingRequest,
 )
 from app.services import (
@@ -39,6 +40,7 @@ from app.services import (
     leave_service,
     lobby_service,
     room_service,
+    round_service,
 )
 from app.ws.connection import EVICTED, SocketConn, registry
 from app.ws.envelope import (
@@ -235,7 +237,19 @@ async def _handle_game_config(conn: SocketConn, data: dict) -> None:
     )
 
 
-#: 인증 이후에 받는 이벤트. 게임 시작·입력은 이후 단계에서 붙는다.
+async def _handle_game_start(conn: SocketConn, data: dict) -> None:
+    del data  # 페이로드가 없다. 현재 선택과 설정으로 라운드를 만든다
+    await round_service.start(participant_pk=conn.participant_id, room_pk=conn.room_id)
+
+
+async def _handle_round_close(conn: SocketConn, data: dict) -> None:
+    req = RoundCloseRequest(**data)
+    await round_service.close(
+        participant_pk=conn.participant_id, room_pk=conn.room_id, round_id=req.roundId
+    )
+
+
+#: 인증 이후에 받는 이벤트. 게임 입력·판정은 판정 담당과 합류한 뒤에 붙는다.
 _HANDLERS = {
     "chat:send": _handle_chat_send,
     "chat:typing": _handle_chat_typing,
@@ -244,6 +258,8 @@ _HANDLERS = {
     "game:select": _handle_game_select,
     "game:random": _handle_game_random,
     "game:config": _handle_game_config,
+    "game:start": _handle_game_start,
+    "round:close": _handle_round_close,
 }
 
 

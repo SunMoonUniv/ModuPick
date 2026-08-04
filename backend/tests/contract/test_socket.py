@@ -234,12 +234,12 @@ class TestPlayingRoom:
         room = create_room(client)
         confirm(client, room["code"], room["memberToken"], nickname="지호")
         with connected(client, room["code"], room["memberToken"]) as (ws, _):
-            ws.send_json({"event": "game:start", "data": {}})
+            ws.send_json({"event": "game:action", "data": {}})
             err = ws.receive_json()
             assert err["event"] == "error"
-            assert err["data"]["event"] == "game:start"
+            assert err["data"]["event"] == "game:action"
             # 연결은 살아 있다
-            ws.send_json({"event": "game:start", "data": {}})
+            ws.send_json({"event": "game:action", "data": {}})
             assert ws.receive_json()["event"] == "error"
 
     def test_진행_중인_방에는_새_소켓이_붙지_않는다(self, client):
@@ -284,5 +284,5 @@ class TestHandlerFailure:
             assert err["data"]["event"] == "chat:send"
 
             # 연결은 살아 있다
-            ws.send_json({"event": "game:start", "data": {}})
+            ws.send_json({"event": "game:action", "data": {}})
             assert ws.receive_json()["code"] == "game.invalid_action"

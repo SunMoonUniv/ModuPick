@@ -324,6 +324,12 @@
     <div id="config"></div>
     <p class="hint" id="hint-game">방장만 바꾼다. 참여자 화면은 <b>읽기 전용이되 실시간으로 함께 바뀐다</b>.</p>
 
+    <div class="row" style="margin-top:8px">
+      <button class="primary" id="btn-start" disabled>게임 시작</button>
+      <button id="btn-close" disabled>대기방으로</button>
+    </div>
+    <div id="round"></div>
+
     <h2 style="border:0;padding:0;margin:14px 0 6px">채팅</h2>
     <div id="chat"></div>
     <div class="empty" id="chat-empty">서버는 채팅을 저장하지 않는다. 지금 붙어 있는 동안 온 것만 보인다.</div>
@@ -464,6 +470,8 @@ const state = {
   typingSentAt: 0,      // chat:typing 스로틀
   game: null,           // { gameId, config, configSchemaVersion }
   configTimer: null,    // 설정 디바운스
+  round: null,          // { roundId, gameId, roster, phase, phaseSeq, tieRound, deadlineAt }
+  remainMs: null,       // 마지막 틱의 남은 시간
 };
 
 const $ = (id) => document.getElementById(id);
@@ -648,6 +656,7 @@ function apply(event, d) {
       state.readyCount = state.members.filter((m) => m.ready && !m.isHost).length;
       state.ready = Boolean(state.members.find((m) => m.memberId === state.memberId)?.ready);
       state.game = d.game ?? null;
+      state.round = null;
       banner("ok", `스냅샷 수신 — 참가자 ${state.members.length}명 · 서버시각 ${d.serverTime}`);
       save();
       break;
@@ -683,6 +692,32 @@ function apply(event, d) {
         config: d.config,
         configSchemaVersion: d.configSchemaVersion ?? state.game?.configSchemaVersion,
       };
+      break;
+
+    case "game:started":
+      // **roster가 명단 스냅샷이다.** 도중 이탈해도 바뀌지 않는다.
+      state.round = { roundId: d.roundId, gameId: d.gameId, roster: d.roster,
+                      phase: null, phaseSeq: 0, tieRound: 0, deadlineAt: null };
+      banner("ok", `게임 시작 — ${d.gameId} · 후보 ${d.roster.length}명`);
+      break;
+
+    case "game:phase":
+      if (!state.round) break;
+      Object.assign(state.round, {
+        phase: d.phase, phaseSeq: d.phaseSeq, tieRound: d.tieRound, deadlineAt: d.deadlineAt,
+      });
+      state.remainMs = null;
+      break;
+
+    case "game:tick":
+      // 표시 전용이다. 판정 근거가 아니며 단계 전환의 트리거도 아니다.
+      if (state.round && d.phaseSeq === state.round.phaseSeq) state.remainMs = d.remainMs;
+      break;
+
+    case "round:closed":
+      state.round = null;
+      state.remainMs = null;
+      banner("warn", `대기방으로 돌아왔다 — ${d.roomStatus}`);
       break;
 
     case "chat:message":
@@ -971,6 +1006,42 @@ function renderGames() {
     : "방장만 바꾼다. 참여자 화면은 <b>읽기 전용이되 실시간으로 함께 바뀐다</b>.";
 }
 
+/**
+ * 진행 중인 라운드.
+ *
+ * **남은 시간을 틱마다 다시 그리지 않는다.** 정본은 첫 틱에서 오프셋을 재고 자체
+ * 타이머로 매 프레임 그리라고 한다 — 여기서는 검증이 목적이라 서버 값을 그대로
+ * 보여주되, 화면 전환은 반드시 game:phase로만 한다는 규칙은 그대로 지킨다.
+ */
+function renderRound() {
+  const open = state.ws?.readyState === WebSocket.OPEN;
+  const r = state.round;
+
+  $("btn-start").disabled = !open || !state.isHost || Boolean(r)
+    || !state.game || state.readyCount < Math.max(0, state.activeCount - 1)
+    || state.activeCount < 2;
+  $("btn-close").disabled = !open || !state.isHost || !r;
+
+  const box = $("round");
+  box.innerHTML = "";
+  if (!r) return;
+
+  const rows = [
+    ["roundId", r.roundId],
+    ["phase", `${r.phase ?? "—"} · seq ${r.phaseSeq}${r.tieRound ? ` · 결선 ${r.tieRound}` : ""}`],
+    ["마감", r.deadlineAt ?? "없음 (틱이 흐르지 않는다)"],
+    ["남은 시간", state.remainMs === null ? "—" : `${(state.remainMs / 1000).toFixed(1)}초`],
+    ["명단 스냅샷", r.roster.map((m) => m.nickname).join(" · ")],
+  ];
+  const dl = document.createElement("dl");
+  dl.className = "kv";
+  for (const [k, v] of rows) {
+    dl.insertAdjacentHTML("beforeend", `<dt>${k}</dt><dd></dd>`);
+    dl.lastElementChild.textContent = String(v);
+  }
+  box.appendChild(dl);
+}
+
 /** 채팅은 서버가 보관하지 않는다. 화면에 쌓인 것이 전부다. */
 function appendMessage(d) {
   const box = $("chat");
@@ -1109,6 +1180,7 @@ function render() {
 
   renderMembers();
   renderGames();
+  renderRound();
 }
 
 /* ───────────────────────── 세션 ───────────────────────── */
@@ -1196,6 +1268,8 @@ $("btn-send").onclick = () => {
 
 $("btn-ready").onclick = () => send("member:ready", { ready: !state.ready });
 $("btn-random").onclick = () => send("game:random", {});
+$("btn-start").onclick = () => send("game:start", {});
+$("btn-close").onclick = () => send("round:close", { roundId: state.round?.roundId });
 
 $("btn-chat").onclick = () => {
   const text = $("in-chat").value;

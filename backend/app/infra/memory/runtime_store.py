@@ -85,6 +85,30 @@ class Selection:
 
 
 @dataclass(slots=True)
+class RoundState:
+    """진행 중인 라운드의 인메모리 상태.
+
+    **명단 스냅샷이 여기에 있다.** 시작 순간 고정되며 도중 이탈해도 바뀌지 않는다 —
+    나간 사람도 후보로 남고 결과에 이탈 표시와 함께 나온다.
+
+    phase·마감 시각·타이머 핸들은 밀리초 경로라 DB에 쓰지 않는다. 라운드 자체는
+    game_rounds에 있고 여기 있는 것은 그 위의 진행 상태다.
+    """
+
+    round_id: str
+    round_pk: int
+    game_id: str
+    config: dict
+    roster: list[dict]
+    seed: int
+    phase: str = "READY"
+    phase_seq: int = 0
+    tie_round: int = 0
+    deadline_at: datetime | None = None
+    tick_task: object | None = None
+
+
+@dataclass(slots=True)
 class IdempotencyEntry:
     body_hash: str
     status: int
@@ -103,6 +127,7 @@ class RuntimeStore:
     _grace: dict[int, dict[int, GraceEntry]] = field(default_factory=dict)
     _handshaked: dict[int, set[int]] = field(default_factory=dict)
     _selection: dict[int, "Selection"] = field(default_factory=dict)
+    _rounds: dict[int, "RoundState"] = field(default_factory=dict)
 
     # ── 토큰 ───────────────────────────────────────────────────────────────
 
@@ -142,6 +167,7 @@ class RuntimeStore:
         self._chat_seq.pop(room_id, None)
         self._handshaked.pop(room_id, None)
         self._selection.pop(room_id, None)
+        self.end_round(room_id)
         for entry in self._grace.pop(room_id, {}).values():
             _cancel(entry.task)
 
@@ -204,6 +230,25 @@ class RuntimeStore:
 
     def clear_selection(self, room_id: int) -> None:
         self._selection.pop(room_id, None)
+
+    # ── 라운드 ─────────────────────────────────────────────────────────────
+
+    def begin_round(self, room_id: int, state: "RoundState") -> None:
+        self._rounds[room_id] = state
+
+    def round_of(self, room_id: int) -> "RoundState | None":
+        return self._rounds.get(room_id)
+
+    def end_round(self, room_id: int) -> "RoundState | None":
+        """라운드를 걷어낸다. **틱 타이머를 반드시 함께 접는다.**
+
+        남겨 두면 끝난 라운드의 틱이 계속 나가고, 방이 사라진 뒤에도 브로드캐스트를
+        시도한다.
+        """
+        state = self._rounds.pop(room_id, None)
+        if state is not None:
+            _cancel(state.tick_task)
+        return state
 
     # ── 핸드셰이크 흔적 ────────────────────────────────────────────────────
 

@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from sqlalchemy import select, text
 
 from app.config import settings
-from app.domain.enums import LeaveReason, MemberStatus, RoomClosedReason
+from app.domain.enums import LeaveReason, MemberStatus, RoomClosedReason, RoomStatus
 from app.infra.db.session import readonly, transaction
 from app.infra.db.tables import participants, rooms
 from app.infra.memory.runtime_store import store
@@ -53,7 +53,11 @@ async def _delete_if_expired(room_pk: int) -> bool:
         row = (
             await conn.execute(
                 select(rooms.c.id)
-                .where(rooms.c.id == room_pk, rooms.c.expires_at <= _NOW)
+                .where(
+                    rooms.c.id == room_pk,
+                    rooms.c.expires_at <= _NOW,
+                    rooms.c.status == RoomStatus.WAITING.value,
+                )
                 .with_for_update()
             )
         ).first()
@@ -72,7 +76,14 @@ async def _sweep_expired_rooms() -> int:
         targets = [
             r.id
             for r in (
-                await conn.execute(select(rooms.c.id).where(rooms.c.expires_at <= _NOW))
+                await conn.execute(
+                    select(rooms.c.id).where(
+                        rooms.c.expires_at <= _NOW,
+                        # **진행 중에는 만료 타이머가 멈춰 있다.** 판이 도는 방을
+                        # 무활동으로 지우면 결과를 눈앞에서 잃는다.
+                        rooms.c.status == RoomStatus.WAITING.value,
+                    )
+                )
             ).all()
         ]
 

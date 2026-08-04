@@ -201,6 +201,62 @@ class GameSelectedData(BaseModel):
     configSchemaVersion: int
 
 
+class RoundCloseRequest(BaseModel):
+    """C->S round:close — 방장만. game:action에 흡수하지 않는다."""
+
+    roundId: str
+
+
+class GameStartedData(BaseModel):
+    """S->C game:started.
+
+    **roster가 명단 스냅샷이다.** 이 배열이 그 판의 후보 전량이며 도중 이탈해도
+    바뀌지 않는다. joinOrder 순으로 정렬돼 있고 룰렛 조각·사다리 레인 배치가 이
+    순서를 따른다.
+    """
+
+    roomVersion: int
+    roundId: str
+    gameId: str
+    config: dict
+    roster: list[dict]
+
+
+class GamePhaseData(BaseModel):
+    """S->C game:phase — 단계 전이.
+
+    **클라이언트는 이 이벤트만 보고 화면을 전환한다.** 자체 타이머가 0에 닿았다는
+    이유로 전환하지 않는다.
+
+    deadlineAt이 null이면 제한 시간이 없는 단계이며 이때 game:tick도 흐르지 않는다.
+    """
+
+    roomVersion: int
+    roundId: str
+    phaseSeq: int
+    phase: str
+    tieRound: int
+    deadlineAt: str | None
+    serverTime: str
+
+
+class GameTickData(BaseModel):
+    """S->C game:tick — 1초 주기. **표시 전용이며 판정 근거가 아니다.**"""
+
+    roomVersion: int
+    roundId: str
+    phaseSeq: int
+    remainMs: int
+    serverTime: str
+
+
+class RoundClosedData(BaseModel):
+    """S->C round:closed — 대기방 복귀. 참여자 준비가 전부 해제된다."""
+
+    roomVersion: int
+    roomStatus: str
+
+
 class GameConfigChangedData(BaseModel):
     """S->C game:config_changed — **참여자 화면도 함께 바뀐다.** 읽기 전용일 뿐이다."""
 

@@ -128,10 +128,10 @@ class TestChatTyping:
         with connected(client, room["code"], pending["memberToken"]) as (ws, _):
             ws.send_json({"event": "chat:typing", "data": {"typing": True}})
             # 에러도 오지 않는다. 다음에 보낸 잘못된 이벤트의 error가 첫 프레임이다
-            ws.send_json({"event": "game:start", "data": {}})
+            ws.send_json({"event": "game:action", "data": {}})
             frame = ws.receive_json()
         assert frame["event"] == "error"
-        assert frame["data"]["event"] == "game:start"
+        assert frame["data"]["event"] == "game:action"
 
 
 # ── member:ready ───────────────────────────────────────────────────────────
