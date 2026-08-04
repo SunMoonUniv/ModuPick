@@ -1,13 +1,36 @@
 version: '3.8'
 
 services:
+  # 1. 프론트엔드 서버 (React + Nginx) - Cloudflare가 여기로 접속함 포트 8080
   modupick-app:
-    build: .
+    build: ./frontend
     container_name: modupick-app
-    # 🌟 윈도우 PC의 8080 포트와 도커 컨테이너의 8080 포트를 연결합니다.
-    ports:
-      - "8080:8080"
+    expose:
+      - "8080"
     restart: always
+    networks:
+      - modupick-network
+
+  # 2. 백엔드 서버 (FastAPI) - 포트 8000
+  modupick-backend:
+    build: ./backend
+    container_name: modupick-backend
+    expose:
+      - "8000"
+    restart: always
+    networks:
+      - modupick-network
+
+  # 3. Cloudflare 터널
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: cloudflared
+    command: tunnel run
+    environment:
+      - TUNNEL_TOKEN=${CF_TUNNEL_TOKEN}
+    restart: always
+    depends_on:
+      - modupick-app
     networks:
       - modupick-network
 
