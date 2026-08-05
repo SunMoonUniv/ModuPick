@@ -2,7 +2,7 @@ name: Backend CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
     paths:
       - 'backend/**'  # backend 폴더에 변경이 있을 때만 실행
   pull_request:
