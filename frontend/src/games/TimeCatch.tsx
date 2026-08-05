@@ -105,7 +105,7 @@ export function TimeCatch() {
       };
       st.finishGame({
         variant: "winner",
-        game: "timecatch",
+        game: "timer",
         winnerId: win.m.id,
         purpose: st.settings.topic,
         stats: [

@@ -7,10 +7,11 @@ on:
       - 'frontend/**'  # frontend 폴더에 변경이 있을 때만 실행
       - '.github/workflows/ci-frontend.yml'  # 워크플로우 자체를 수정했을 때도 검증
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
     paths:
       - 'frontend/**'
       - '.github/workflows/ci-frontend.yml'
+  workflow_call:  # develop 배포 파이프라인이 게이트로 호출한다
   workflow_dispatch:  # Actions 탭에서 수동 실행 가능
 
 # 같은 브랜치/PR에 새 커밋이 올라오면 이전 실행은 취소해 러너 낭비를 막습니다.

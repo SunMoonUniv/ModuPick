@@ -1,0 +1,71 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# ModuPick — 로컬 개발 DB
+#
+# MySQL만 컨테이너로 띄우고 FastAPI는 로컬에서 uvicorn --reload로 돌린다
+# (plan.md P-06). DDL이 MySQL 8.4 문법(VIRTUAL 생성 컬럼·복합 FK·CHECK·
+# REGEXP_LIKE 3인자)을 쓰므로 버전 고정이 필수인 반면, 소켓 타이머 디버깅은
+# 반복 주기가 짧을수록 유리해 컨테이너 재빌드가 병목이 된다.
+#
+#   docker compose up -d          기동 (첫 기동에 schema.sql·grants.sql 자동 적용)
+#   docker compose logs -f db     기동 로그
+#   docker compose down           정지 (데이터 유지)
+#   docker compose down -v        정지 + 데이터 삭제 (스키마를 바꿨을 때)
+#
+# 포트는 3307이다. 이 기기의 로컬 mysqld가 3306을 점유하고 있어 피했다.
+# 로컬 MySQL을 끄고 3306을 쓰려면 아래 ports와 app/config.py를 함께 고친다.
+# ═══════════════════════════════════════════════════════════════════════════
+
+services:
+  db:
+    image: mysql:8.4
+    container_name: modupick-db
+    restart: unless-stopped
+
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-devroot}
+      MYSQL_DATABASE: modupick
+
+    # 세션 시간대 +00:00은 서버 전역으로 박는다. 저장은 UTC이고 판정 시각은
+    # 정수 밀리초라, 시간대가 어긋나면 만료·감사 시각이 통째로 밀린다.
+    command:
+      - --default-time-zone=+00:00
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+
+    ports:
+      - "3307:3306"
+
+    volumes:
+      - modupick-db-data:/var/lib/mysql
+      # 알파벳 순으로 실행된다. 테이블 단위 GRANT는 대상 테이블이 있어야
+      # 하므로 스키마가 먼저다.
+      - ./sql/schema.sql:/docker-entrypoint-initdb.d/10_schema.sql:ro
+      - ./sql/grants.sql:/docker-entrypoint-initdb.d/20_grants.sql:ro
+
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - mysqladmin ping -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+volumes:
+  modupick-db-data:
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 스키마를 바꿨을 때
+#
+# initdb.d는 데이터 디렉터리가 비어 있을 때만 실행된다. 둘 중 하나를 쓴다.
+#
+#   1) 통째로 다시                docker compose down -v && docker compose up -d
+#   2) 스키마만 다시 적용          docker compose exec -T db \
+#                                   mysql -uroot -pdevroot modupick < sql/schema.sql
+#
+# schema.sql 맨 앞에 DROP TABLE IF EXISTS가 있어 2번도 깨끗하게 다시 만든다.
+# 다만 계정 권한은 grants.sql을 따로 돌려야 갱신된다.
+#
+# ModuPick은 서버를 재기동할 때마다 모든 방을 삭제하므로 보존할 데이터가
+# 구조적으로 없다. 어느 쪽을 써도 잃을 것이 없다.
+# ═══════════════════════════════════════════════════════════════════════════

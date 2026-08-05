@@ -6,9 +6,10 @@ on:
     paths:
       - 'backend/**'  # backend 폴더에 변경이 있을 때만 실행
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "develop" ]
     paths:
       - 'backend/**'
+  workflow_call:  # develop 배포 파이프라인이 게이트로 호출한다
 
 jobs:
   build-and-test:
@@ -43,7 +44,26 @@ jobs:
           flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
           flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
+      # 계약 테스트는 실제 MySQL 8.4에 붙어 돈다(tests/conftest.py). VIRTUAL 생성
+      # 컬럼 위의 UNIQUE와 CHECK 12건이 이 제품의 마지막 방어선이라 가짜 DB로는
+      # 검증되지 않는다.
+      #
+      # 서비스 컨테이너 대신 개발용 compose를 그대로 쓴다. 서비스 컨테이너에는
+      # command를 줄 수 없어 --default-time-zone=+00:00 과 utf8mb4_0900_ai_ci 가
+      # 빠지고, 그러면 만료 시각 계산과 닉네임 대소문자 중복 판정이 로컬과 달라진다.
+      # compose를 쓰면 schema.sql -> grants.sql 적용 순서도 함께 재현된다.
+      - name: Start MySQL
+        run: docker compose up -d --wait --wait-timeout 180
+
       - name: Run Tests with pytest
         run: |
           # 작성된 테스트 코드 실행
           pytest
+
+      - name: Dump MySQL logs on failure
+        if: failure()
+        run: docker compose logs db
+
+      - name: Stop MySQL
+        if: always()
+        run: docker compose down -v

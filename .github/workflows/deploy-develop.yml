@@ -1,0 +1,31 @@
+name: Develop CD Pipeline
+
+on:
+  push:
+    branches:
+      - develop
+
+jobs:
+  # CI 게이트 — 하나라도 실패하면 deploy 가 아예 시작되지 않는다.
+  ci-backend:
+    uses: ./.github/workflows/ci-backend.yml
+
+  ci-frontend:
+    uses: ./.github/workflows/ci-frontend.yml
+
+  deploy:
+    needs: [ci-backend, ci-frontend]
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env file for Cloudflare Tunnel
+        run: |
+          "CF_TUNNEL_TOKEN=${{ secrets.CF_TUNNEL_TOKEN }}" | Out-File -FilePath .env -Encoding utf8
+
+      - name: Build and Deploy with Docker Compose
+        run: |
+          docker-compose down
+          docker-compose up -d --build
