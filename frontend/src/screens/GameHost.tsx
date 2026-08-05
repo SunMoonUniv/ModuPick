@@ -28,8 +28,8 @@ export function GameHost() {
       {selectedGame === "roulette" && <Roulette />}
       {selectedGame === "ladder" && <Ladder />}
       {selectedGame === "kingmaker" && <Kingmaker />}
-      {selectedGame === "timecatch" && <TimeCatch />}
-      {selectedGame === "sniper" && <Sniper />}
+      {selectedGame === "timer" && <TimeCatch />}
+      {selectedGame === "snipe" && <Sniper />}
       {selectedGame === "nunchi" && <Nunchi />}
       {guideOpen && <GuideModal />}
     </>

@@ -1,7 +1,7 @@
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { useApp } from "../lib/store";
 import { Shell } from "../components/ui";
-import { AVATARS, BOTS } from "../lib/data";
+import { AVATARS } from "../lib/data";
 import { AvatarById } from "../components/Avatar";
 
 const PAGE_SIZE = 15; // 5×3 그리드 · 좌우 페이징 (레이어 542:724 / 542:760)
@@ -19,11 +19,9 @@ export function Profile() {
   const [avatarId, setAvatarId] = useState<number | null>(null);
   const [page, setPage] = useState(0);
 
-  const dupError = useMemo(
-    () => BOTS.some((b) => b.nick === nick.trim()),
-    [nick],
-  );
-  const canEnter = nick.trim().length > 0 && avatarId !== null && !dupError;
+  // **닉네임 중복을 화면이 막지 않는다.** 같은 방에 같은 이름이 있으면 서버가
+  // 뒤에 숫자를 붙여 확정한다(지호 → 지호2). 거부 코드 자체가 규약에 없다.
+  const canEnter = nick.trim().length > 0 && avatarId !== null;
   const pages = Math.ceil(AVATARS.length / PAGE_SIZE);
   const pageAvatars = AVATARS.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
@@ -307,7 +305,7 @@ export function Profile() {
             width: 523,
             height: 72,
             background: "var(--white)",
-            border: `3.16px solid ${dupError ? "var(--pink)" : "var(--ink)"}`,
+            border: "3.16px solid var(--ink)",
             borderRadius: 10.5,
             boxShadow: "4.2px 4.2px 0 var(--ink)",
             padding: "0 20px",
@@ -315,14 +313,6 @@ export function Profile() {
             fontSize: 28,
           }}
         />
-        {dupError && (
-          <div
-            className="f-meta"
-            style={{ color: "var(--pink)", marginTop: 6 }}
-          >
-            ⚠ 같은 방에 이미 있는 닉네임이에요
-          </div>
-        )}
       </div>
       {/* 한 줄 소개 — @1339,188 */}
       <div style={{ position: "absolute", left: 1339, top: 156 }}>

@@ -50,7 +50,7 @@
 | 기능 | **121건** — ROOM 17 · LOBBY 13 · SETUP 13 · PLAY 12 · CMN 10 · KING 9 · NUNCHI 9 · RESULT 9 · TIMER 9 · SNIPE 8 · LADDER 7 · WHEEL 5 (정본 [02_features/README.md](./02_features/README.md)) |
 | 요구사항 | **194항** — 도메인 154 + 횡단 40(REQ-GLB 24 · REQ-NFR 16) (정본 [03_requirements/README.md](./03_requirements/README.md)) |
 | 인수 기준 | **120항** — AC-NN (정본 [03_requirements/10_acceptance_criteria.md](./03_requirements/10_acceptance_criteria.md)) |
-| 제품 결정 · 기술 결정 | **D 48건 · ADR 27건** (정본 [01_overview/06_design_decisions.md](./01_overview/06_design_decisions.md) · [04_architecture/08_decision_records.md](./04_architecture/08_decision_records.md)) |
+| 제품 결정 · 기술 결정 | **D 48건 · ADR 37건** (정본 [01_overview/06_design_decisions.md](./01_overview/06_design_decisions.md) · [04_architecture/08_decision_records.md](./04_architecture/08_decision_records.md)) |
 | 화면 | **12본** — ROOM 3 · LOBBY 1 · SETUP 1 · 게임 6 · RESULT 1. 화면 내 요소 **13종** (정본 [08_screen/README.md](./08_screen/README.md)) |
 | 테이블 | **6개** — rooms · participants · game_rounds · game_options · votes · game_results. 이름 집합 정본은 [06_database/README.md](./06_database/README.md) |
 | REST · WebSocket | REST **8본**(+ 운영 1본) · WebSocket 이벤트 **31종**(C→S 12 · S→C 19) (정본 [07_api/README.md](./07_api/README.md)). 이벤트명은 콜론 표기(room:snapshot 형식)만 쓴다 |

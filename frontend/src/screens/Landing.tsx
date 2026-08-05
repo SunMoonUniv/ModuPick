@@ -12,8 +12,8 @@ const DEMO_BADGES: Record<GameId, { left: string; center: string }> = {
   roulette: { left: "◷ 돌리는 중 2초", center: "누가 걸릴까?! 👀" },
   ladder: { left: "◷ 경로 추적 중", center: "누가 어떤 역할 될까?! 🪜" },
   kingmaker: { left: "◷ 개표 중", center: "VOTE! 👑" },
-  timecatch: { left: "◷ 타이머 진행", center: "감으로 멈춰! 💣" },
-  sniper: { left: "◷ 투표 9초", center: "🔒 쉿! 조준 중" },
+  timer: { left: "◷ 타이머 진행", center: "감으로 멈춰! 💣" },
+  snipe: { left: "◷ 투표 9초", center: "🔒 쉿! 조준 중" },
   nunchi: { left: "◷ ROUND 1", center: "혼자 눌러야 통과 👀" },
 };
 
@@ -25,9 +25,10 @@ export function Landing() {
   const [codeError, setCodeError] = useState<string | null>(null);
   const [demoGame, setDemoGame] = useState<GameId>("roulette");
 
-  const join = () => {
+  const join = async () => {
     if (code.length !== 6) return;
-    const r = tryJoin(code);
+    setCodeError(null);
+    const r = await tryJoin(code);
     if (r === "notfound") setCodeError("방을 찾을 수 없어요");
   };
 
@@ -384,8 +385,8 @@ function DemoPanel({ game }: { game: GameId }) {
         {game === "roulette" && <MiniRoulette />}
         {game === "ladder" && <MiniLadder />}
         {game === "kingmaker" && <MiniKingmaker />}
-        {game === "timecatch" && <MiniTimeCatch />}
-        {game === "sniper" && <MiniSniper />}
+        {game === "timer" && <MiniTimeCatch />}
+        {game === "snipe" && <MiniSniper />}
         {game === "nunchi" && <MiniNunchi />}
       </div>
 

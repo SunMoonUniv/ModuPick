@@ -85,7 +85,7 @@ export function Sniper() {
       const sorted = [...tally].sort((a, b) => b.v - a.v);
       st.finishGame({
         variant: "winner",
-        game: "sniper",
+        game: "snipe",
         winnerId: sorted[0].m.id,
         purpose: st.settings.snQuestion,
         stats: [

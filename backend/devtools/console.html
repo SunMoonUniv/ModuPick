@@ -1,0 +1,1332 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ModuPick 검증 콘솔</title>
+<!--
+  백엔드 검증 콘솔 겸 프론트 참조 구현.
+
+  이 파일은 제품 화면이 아니다. 시안 이식은 프론트 담당자 몫이고, 여기서는
+  **호출 순서와 타이밍**만 보여준다(plan P-03). 스타일을 최소로 둔 이유도
+  백엔드 문제와 CSS 문제가 섞이지 않게 하기 위해서다.
+
+  같은 오리진에서 열어야 한다.
+
+      uvicorn app.main:app --reload
+      http://127.0.0.1:8000/devtools/console.html
+
+  file://로 열면 Origin이 null이라 CORS에 막힌다. FastAPI가 이 파일을 직접
+  내려주는 것도 그 때문이다(app/main.py).
+
+  통신 순서
+
+      POST /api/rooms                      방장  ─┐
+      POST /api/rooms/{code}/members       참가자 ─┴─ 토큰 발급 (PENDING)
+      GET  /api/rooms/{code}/avatars                 선점 현황
+      PATCH /api/rooms/{code}/members/me             프로필 확정 → ACTIVE
+      ws   /ws/rooms/{code}  ──▶ conn:auth ──▶ room:snapshot ──▶ 부분 갱신
+
+  대기방에 들어선 뒤의 통신은 전부 소켓이다. REST는 여기까지다.
+-->
+<style>
+  :root {
+    --bg: #14161a;  --panel: #1c1f26;  --line: #2b3039;  --line2: #3a4150;
+    --fg: #e6e9ef;  --dim: #9aa3b2;    --faint: #6b7482;
+    --accent: #6ea8fe; --ok: #5ed6a4;  --warn: #f2c14e;  --err: #ff7b72;
+    --host: #d3a4ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 13px/1.55 "Pretendard", -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  }
+  code, .mono, input, textarea, select, button { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line);
+    position: sticky; top: 0; z-index: 10;
+  }
+  header h1 { margin: 0; font-size: 14px; letter-spacing: .2px; }
+  header .sp { flex: 1; }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line2);
+    font-size: 12px; font-family: ui-monospace, Menlo, monospace; color: var(--dim);
+  }
+  .badge b { color: var(--fg); font-weight: 600; }
+  .badge.on   { border-color: #2f6b52; color: var(--ok); }
+  .badge.off  { border-color: var(--line2); color: var(--faint); }
+  .badge.bad  { border-color: #7a3b36; color: var(--err); }
+  .badge.warn { border-color: #7a6428; color: var(--warn); }
+
+  main {
+    display: grid; grid-template-columns: 360px minmax(340px, 1fr) minmax(380px, 520px);
+    gap: 12px; padding: 12px; align-items: start;
+  }
+  @media (max-width: 1200px) { main { grid-template-columns: 1fr; } }
+
+  section.pane { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+  .pane > h2 {
+    margin: 0; padding: 9px 12px; font-size: 12px; font-weight: 600; color: var(--dim);
+    border-bottom: 1px solid var(--line); letter-spacing: .4px;
+  }
+  .pane > .body { padding: 12px; }
+
+  fieldset {
+    border: 1px solid var(--line); border-radius: 6px; margin: 0 0 12px; padding: 10px 11px 12px;
+  }
+  fieldset:last-child { margin-bottom: 0; }
+  fieldset[disabled] { opacity: .42; }
+  legend { padding: 0 6px; font-size: 11px; color: var(--faint); letter-spacing: .4px; }
+
+  label.f { display: block; margin-bottom: 8px; font-size: 11px; color: var(--dim); }
+  label.f > span { display: block; margin-bottom: 3px; }
+  input[type=text], input[type=number], textarea, select {
+    width: 100%; padding: 6px 8px; font-size: 12px;
+    background: #12141a; color: var(--fg); border: 1px solid var(--line2); border-radius: 4px;
+  }
+  input:focus, textarea:focus, select:focus { outline: 1px solid var(--accent); border-color: var(--accent); }
+  textarea { resize: vertical; min-height: 52px; }
+
+  .row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .row > * { flex: 1; }
+
+  button {
+    padding: 6px 10px; font-size: 12px; border-radius: 4px; cursor: pointer;
+    background: #262b34; color: var(--fg); border: 1px solid var(--line2);
+  }
+  button:hover:not(:disabled) { background: #303643; }
+  button:disabled { opacity: .35; cursor: not-allowed; }
+  button.primary { background: #2a4a7c; border-color: #3a6bb0; }
+  button.primary:hover:not(:disabled) { background: #325891; }
+  button.danger  { border-color: #7a3b36; color: var(--err); }
+  button.ghost   { background: transparent; color: var(--dim); }
+
+  .hint { font-size: 11px; color: var(--faint); margin: 6px 0 0; }
+  .hint b { color: var(--dim); font-weight: 600; }
+
+  /* 아바타 */
+  .avatars { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; margin-top: 6px; }
+  .avatars button {
+    padding: 5px 0; font-size: 11px; text-align: center;
+  }
+  .avatars button.sel { background: #2a4a7c; border-color: var(--accent); color: #fff; }
+  .avatars button.taken { color: var(--faint); text-decoration: line-through; cursor: not-allowed; }
+
+  /* 명단 */
+  ul.members { list-style: none; margin: 0; padding: 0; }
+  ul.members li {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 6px;
+    background: #191c22;
+  }
+  ul.members li.me { border-color: var(--accent); }
+  .ord {
+    width: 22px; height: 22px; flex: none; display: grid; place-items: center;
+    border-radius: 50%; background: #262b34; font-size: 11px; color: var(--dim);
+  }
+  .av {
+    width: 30px; height: 30px; flex: none; display: grid; place-items: center;
+    border-radius: 6px; background: #2a3040; font-size: 10px; color: var(--dim);
+  }
+  .who { flex: 1; min-width: 0; }
+  .who .nm { font-weight: 600; }
+  .who .bio { font-size: 11px; color: var(--faint); margin-left: 6px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .tag { font-size: 10px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--line2); color: var(--dim); }
+  .tag.host { border-color: #6b4a91; color: var(--host); }
+  .tag.ready { border-color: #2f6b52; color: var(--ok); }
+  .tag.bad { border-color: #7a3b36; color: var(--err); }
+  .empty { color: var(--faint); font-size: 12px; padding: 10px 2px; }
+
+  /* 게임 */
+  .games { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .games button { padding: 6px 0; font-size: 11px; }
+  .games button.sel { background: #2a4a7c; border-color: var(--accent); color: #fff; }
+  #config { margin-top: 8px; display: grid; gap: 6px; }
+  #config label { display: grid; grid-template-columns: 110px 1fr; gap: 8px; align-items: center;
+                  font-size: 11px; color: var(--dim); }
+
+  /* 채팅 */
+  #chat { max-height: 220px; overflow-y: auto; }
+  .msg { display: flex; gap: 7px; padding: 3px 0; font-size: 12px; align-items: baseline; }
+  .msg .id { flex: none; color: var(--faint); font-family: ui-monospace, Menlo, monospace; font-size: 10px; }
+  .msg .nm { flex: none; color: var(--dim); font-weight: 600; }
+  .msg .tx { flex: 1; word-break: break-all; }
+  .msg.mine .nm { color: var(--accent); }
+  .typing { min-height: 16px; font-size: 11px; color: var(--faint); font-style: italic; }
+
+  dl.kv { display: grid; grid-template-columns: 88px 1fr; gap: 3px 10px; margin: 0 0 10px; font-size: 12px; }
+  dl.kv dt { color: var(--faint); }
+  dl.kv dd { margin: 0; font-family: ui-monospace, Menlo, monospace; word-break: break-all; }
+
+  .banner {
+    padding: 8px 10px; border-radius: 6px; margin-bottom: 10px; font-size: 12px;
+    border: 1px solid var(--line2); background: #191c22;
+  }
+  .banner.bad  { border-color: #7a3b36; color: var(--err); }
+  .banner.warn { border-color: #7a6428; color: var(--warn); }
+  .banner.ok   { border-color: #2f6b52; color: var(--ok); }
+
+  /* 로그 */
+  #log { max-height: calc(100vh - 150px); overflow-y: auto; padding: 6px; }
+  .ent { border-bottom: 1px solid #23262e; padding: 4px 6px; font-size: 11.5px; }
+  .ent:last-child { border-bottom: 0; }
+  .ent > summary { cursor: pointer; list-style: none; display: flex; gap: 8px; align-items: baseline; }
+  .ent > summary::-webkit-details-marker { display: none; }
+  .ent .t { color: var(--faint); font-family: ui-monospace, Menlo, monospace; flex: none; }
+  .ent .m { flex: 1; font-family: ui-monospace, Menlo, monospace; word-break: break-all; }
+  .ent .v { flex: none; color: var(--faint); font-family: ui-monospace, Menlo, monospace; }
+  .ent pre {
+    margin: 5px 0 3px; padding: 7px 8px; background: #12141a; border-radius: 4px;
+    font-size: 11px; color: var(--dim); overflow-x: auto; white-space: pre-wrap; word-break: break-all;
+  }
+  .ent.out .m { color: var(--accent); }
+  .ent.in  .m { color: var(--ok); }
+  .ent.err .m { color: var(--err); }
+  .ent.warn .m { color: var(--warn); }
+  .ent.sys .m { color: var(--dim); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ModuPick 검증 콘솔</h1>
+  <span class="badge" id="b-room">방 <b>—</b></span>
+  <span class="badge" id="b-me">상태 <b>—</b></span>
+  <span class="badge off" id="b-ws">소켓 <b>닫힘</b></span>
+  <span class="badge" id="b-ver">roomVersion <b>0</b></span>
+  <span class="sp"></span>
+  <button class="ghost" id="btn-open2" disabled>두 번째 창 열기</button>
+  <button class="ghost" id="btn-reset">세션 초기화</button>
+</header>
+
+<main>
+
+<!-- ─────────────────────────── 조작 ─────────────────────────── -->
+<section class="pane">
+  <h2>조작</h2>
+  <div class="body">
+
+    <fieldset>
+      <legend>서버</legend>
+      <label class="f"><span>API 베이스</span>
+        <input type="text" id="in-base" />
+      </label>
+      <p class="hint">같은 오리진이면 소켓 URL도 여기서 유도한다. <b>http → ws</b>, <b>https → wss</b>.</p>
+    </fieldset>
+
+    <fieldset id="fs-room">
+      <legend>① 방</legend>
+      <label class="f"><span>방 이름 (선택, 64자)</span>
+        <input type="text" id="in-roomname" placeholder="비우면 서버 기본값" />
+      </label>
+      <label class="f"><span>정원 (2~10, 선택)</span>
+        <input type="number" id="in-max" min="2" max="10" placeholder="비우면 서버 기본값" />
+      </label>
+      <div class="row"><button class="primary" id="btn-create">방 만들기</button></div>
+
+      <label class="f" style="margin-top:12px"><span>초대 코드 (숫자 6자리)</span>
+        <input type="text" id="in-code" maxlength="6" inputmode="numeric" placeholder="427132" />
+      </label>
+      <div class="row">
+        <button id="btn-lookup">코드 조회</button>
+        <button class="primary" id="btn-join">참가</button>
+      </div>
+      <p class="hint">조회는 인증이 필요 없다. 참가하면 슬롯이 <b>PENDING</b>으로 잡히고 토큰이 나온다.</p>
+    </fieldset>
+
+    <fieldset id="fs-profile" disabled>
+      <legend>② 프로필</legend>
+      <label class="f"><span>닉네임 (1~8자 · 중복은 서버가 채번)</span>
+        <input type="text" id="in-nick" placeholder="지호" />
+      </label>
+      <label class="f"><span>한 줄 소개 (선택, 24자)</span>
+        <input type="text" id="in-bio" placeholder="아무거나 잘 먹어요" />
+      </label>
+      <div class="row"><button id="btn-avatars">아바타 현황 불러오기</button></div>
+      <div class="avatars" id="avatars"></div>
+      <p class="hint" id="hint-avatar">선택하지 않으면 서버가 남은 것 중 <b>무작위</b>로 배정한다.</p>
+      <div class="row" style="margin-top:8px">
+        <button class="primary" id="btn-confirm">프로필 확정</button>
+      </div>
+      <p class="hint">확정하면 <b>ACTIVE</b>가 되고 그때 <b>member:joined</b>가 다른 창에 뜬다.</p>
+    </fieldset>
+
+    <fieldset id="fs-socket" disabled>
+      <legend>③ 소켓</legend>
+      <div class="row"><button class="primary" id="btn-connect">연결</button></div>
+      <p class="hint">연결 뒤 <b>3초</b> 안에 conn:auth를 보내지 않으면 서버가 4408로 닫는다.</p>
+      <label class="f" style="margin-top:10px"><span>임의 프레임 — event</span>
+        <input type="text" id="in-ev" placeholder="chat:send" />
+      </label>
+      <label class="f"><span>data (JSON)</span>
+        <textarea id="in-data" placeholder='{"text":"안녕"}'></textarea>
+      </label>
+      <div class="row"><button id="btn-send">보내기</button></div>
+      <p class="hint">아직 붙지 않은 이벤트는 <b>game.invalid_action</b>으로 돌아온다. 연결은 유지된다.</p>
+    </fieldset>
+
+    <fieldset id="fs-exit" disabled>
+      <legend>④ 이탈</legend>
+      <div class="row">
+        <button class="danger" id="btn-disconnect">소켓 닫기 (1000)</button>
+        <button class="danger" id="btn-leave-rest">REST 이탈</button>
+      </div>
+      <div class="row" style="margin-top:6px">
+        <button class="danger" id="btn-drop">비정상 종료 흉내 (1001)</button>
+      </div>
+      <p class="hint"><b>1000만 즉시 확정</b>이다. 그 밖의 종료는 의심(UNSTABLE)을 거쳐
+      유예 만료 시 확정된다 — 참가자 30초 · 방장 60초. 1001은 브라우저가 페이지를 떠난
+      경우이며, 클라이언트가 페이지 숨김·새로고침에 1000을 보내면 안 되는 이유다.
+      <b>방장이 나가면 방이 삭제</b>되고 남은 창은 room:closed 뒤 4410으로 밀려난다.</p>
+    </fieldset>
+
+    <fieldset>
+      <legend>빠른 실행</legend>
+      <div class="row">
+        <button id="btn-quick-host">방장으로 한 번에</button>
+        <button id="btn-quick-guest">코드로 한 번에</button>
+      </div>
+      <p class="hint">방 생성/참가 → 프로필 확정 → 소켓 연결까지 이어서 실행한다.</p>
+    </fieldset>
+
+  </div>
+</section>
+
+<!-- ─────────────────────────── 방 ─────────────────────────── -->
+<section class="pane">
+  <h2>방</h2>
+  <div class="body">
+    <div id="banner"></div>
+    <dl class="kv" id="kv"></dl>
+    <h2 style="border:0;padding:0;margin:14px 0 6px">
+      참가자 <span id="cnt" class="mono"></span>
+      <span class="badge" id="b-ready" style="float:right">준비 <b>0/0</b></span>
+    </h2>
+    <ul class="members" id="members"></ul>
+    <div class="empty" id="members-empty">아직 명단이 없다. 소켓을 연결하면 room:snapshot이 채운다.</div>
+
+    <div class="row" style="margin-top:10px">
+      <button id="btn-ready" disabled>준비 완료</button>
+    </div>
+    <p class="hint" id="hint-ready">방장은 준비 상태를 갖지 않는다. 목표치는 <b>activeCount − 1</b>.</p>
+
+    <h2 style="border:0;padding:0;margin:14px 0 6px">
+      게임 <span class="mono" id="game-id"></span>
+    </h2>
+    <div class="games" id="games"></div>
+    <div class="row" style="margin-top:6px">
+      <button id="btn-random" disabled>랜덤 뽑기 (서버가 고른다)</button>
+    </div>
+    <div id="config"></div>
+    <p class="hint" id="hint-game">방장만 바꾼다. 참여자 화면은 <b>읽기 전용이되 실시간으로 함께 바뀐다</b>.</p>
+
+    <div class="row" style="margin-top:8px">
+      <button class="primary" id="btn-start" disabled>게임 시작</button>
+      <button id="btn-close" disabled>대기방으로</button>
+    </div>
+    <div id="round"></div>
+
+    <h2 style="border:0;padding:0;margin:14px 0 6px">채팅</h2>
+    <div id="chat"></div>
+    <div class="empty" id="chat-empty">서버는 채팅을 저장하지 않는다. 지금 붙어 있는 동안 온 것만 보인다.</div>
+    <div class="typing" id="typing"></div>
+    <div class="row" style="margin-top:6px">
+      <input type="text" id="in-chat" placeholder="1~200자" style="flex:3" />
+      <button id="btn-chat" disabled style="flex:1">보내기</button>
+    </div>
+    <p class="hint">공백만 보내면 <b>아무 응답도 오지 않는다</b>(서버가 조용히 무시). 201자는 common.payload_too_large.</p>
+  </div>
+</section>
+
+<!-- ─────────────────────────── 로그 ─────────────────────────── -->
+<section class="pane">
+  <h2>
+    로그
+    <button class="ghost" id="btn-clear" style="float:right;margin:-3px 0 0">지우기</button>
+  </h2>
+  <div id="log"></div>
+</section>
+
+</main>
+
+<script>
+"use strict";
+
+/* ───────────────────────── 상수 ───────────────────────── */
+
+const PROTOCOL_VERSION = 1;
+const AVATAR_IDS = Array.from({ length: 30 }, (_, i) => "A" + String(i + 1).padStart(2, "0"));
+
+/**
+ * roomVersion 게이트를 거는 이벤트.
+ *
+ * **상태 이벤트에만 건다.** 통지 이벤트(chat·tick·error)에까지 걸면 방 상태를
+ * 바꾸지 않는 이벤트가 직전 상태 이벤트와 같은 번호를 달고 나가 전부 버려진다.
+ */
+const STATE_EVENTS = new Set([
+  "room:snapshot", "room:closed",
+  "member:joined", "member:left", "member:ready_changed", "member:connection",
+  "game:selected", "game:config_changed", "game:started", "game:phase",
+  "game:progress", "game:tie", "game:decision_required", "game:result",
+  "round:closed",
+]);
+
+/** 게이트를 걸지 않는 통지 이벤트. 목록을 함께 적어 두 집합이 어긋나지 않게 한다. */
+const NOTICE_EVENTS = new Set(["chat:message", "chat:typing", "game:tick", "error"]);
+
+/** 방이 사라진 사유. 화면은 사유별로 다른 안내를 띄우고 표지로 보낸다. */
+const ROOM_CLOSED_REASON = {
+  HOST_LEFT: "방장이 나갔다",
+  LAST_MEMBER_LEFT: "마지막 참가자가 나갔다",
+  EXPIRED: "10분 동안 아무 활동이 없었다",
+};
+
+/** 소켓 종료 코드. 어느 코드에서도 자동 재연결하지 않는다 — 재접속 경로가 없다. */
+const CLOSE_MEANING = {
+  1000: "정상 종료 (나가기)",
+  1001: "브라우저가 페이지를 떠남",
+  1005: "코드 없이 닫힘 — 서버는 유예로 보낸다",
+  1006: "비정상 종료 (서버 중단·네트워크)",
+  4002: "규약 위반 · 지원하지 않는 protocolVersion",
+  4401: "인증 실패 · 토큰 무효 · 방 없음",
+  4403: "강퇴됨",
+  4408: "3초 안에 conn:auth가 오지 않음",
+  4409: "같은 토큰의 다른 소켓이 이미 있음 (기존 소켓은 살아 있다)",
+  4410: "방 종료 — 직전에 room:closed가 왔다",
+  4413: "프레임 상한(64KB) 초과",
+};
+
+/** 게임 6종과 최소 인원. 프로토타입의 timecatch·sniper는 계약값이 아니다. */
+const GAMES = [
+  { id: "roulette", label: "룰렛", min: 2 },
+  { id: "ladder", label: "사다리", min: 2 },
+  { id: "kingmaker", label: "킹메이커", min: 3 },
+  { id: "timer", label: "시간초", min: 2 },
+  { id: "snipe", label: "저격", min: 3 },
+  { id: "nunchi", label: "눈치", min: 3 },
+];
+
+/**
+ * 설정 항목 규격. 정본은 07_api/03_socket_events.md의 configSchema 표(16개)다.
+ * 콘솔은 입력 위젯을 그리려고 갖고 있을 뿐이며 **검증은 서버가 한다** —
+ * 여기서 미리 막으면 서버가 정말 거절하는지 확인할 수 없다.
+ */
+const CONFIG_FIELDS = {
+  roulette: [{ name: "topic", kind: "text" }],
+  ladder: [
+    { name: "resultItems", kind: "list" },
+    { name: "speed", kind: "enum", choices: ["FAST", "NORMAL", "SLOW"] },
+  ],
+  kingmaker: [
+    { name: "topic", kind: "text" },
+    { name: "votesPerMember", kind: "enum", choices: [1, 2, 3] },
+    { name: "revealAuthors", kind: "bool" },
+  ],
+  timer: [
+    { name: "topic", kind: "text" },
+    { name: "targetSeconds", kind: "enum", choices: [5, 7, 10] },
+    { name: "criterion", kind: "enum", choices: ["CLOSEST", "FARTHEST"] },
+  ],
+  snipe: [
+    { name: "question", kind: "text" },
+    { name: "voteSeconds", kind: "number" },
+    { name: "multiVote", kind: "bool" },
+    { name: "revealVoters", kind: "bool" },
+  ],
+  nunchi: [
+    { name: "topic", kind: "text" },
+    { name: "windowMs", kind: "enum", choices: [300, 500] },
+    { name: "roundSeconds", kind: "enum", choices: [10, 15, 20] },
+  ],
+};
+
+const SESSION_KEY = "modupick:devconsole";
+
+/* ───────────────────────── 상태 ───────────────────────── */
+
+const state = {
+  apiBase: location.origin,
+  code: null,
+  memberId: null,
+  memberToken: null,
+  memberStatus: null,   // PENDING · ACTIVE
+  isHost: false,
+  roomVersion: 0,
+  versionBroken: false, // 단조 증가가 깨진 적이 있는가
+  room: null,
+  members: [],
+  avatars: [],
+  selectedAvatar: null,
+  ws: null,
+  closed: null,         // { code, reason }
+  ready: false,         // 내 준비 상태
+  readyCount: 0,
+  activeCount: 0,
+  typers: new Map(),    // memberId -> 해제 타이머. 3초간 갱신이 없으면 스스로 내린다
+  typingSentAt: 0,      // chat:typing 스로틀
+  game: null,           // { gameId, config, configSchemaVersion }
+  configTimer: null,    // 설정 디바운스
+  round: null,          // { roundId, gameId, roster, phase, phaseSeq, tieRound, deadlineAt }
+  closedReason: null,   // room:closed의 사유. 종료 코드보다 앞세운다
+  remainMs: null,       // 마지막 틱의 남은 시간
+};
+
+const $ = (id) => document.getElementById(id);
+
+/* ───────────────────────── 로그 ───────────────────────── */
+
+function stamp() {
+  const d = new Date();
+  const p = (n, w = 2) => String(n).padStart(w, "0");
+  return `${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}.${p(d.getMilliseconds(), 3)}`;
+}
+
+/** kind: sys · out · in · err · warn */
+function log(kind, message, payload) {
+  const el = document.createElement("details");
+  el.className = "ent " + kind;
+  const sum = document.createElement("summary");
+  sum.innerHTML =
+    `<span class="t">${stamp()}</span><span class="m"></span>` +
+    (payload && payload.roomVersion !== undefined ? `<span class="v">v${payload.roomVersion}</span>` : "");
+  sum.querySelector(".m").textContent = message;
+  el.appendChild(sum);
+  if (payload !== undefined && payload !== null) {
+    const pre = document.createElement("pre");
+    pre.textContent = typeof payload === "string" ? payload : JSON.stringify(payload, null, 2);
+    el.appendChild(pre);
+  }
+  const box = $("log");
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+}
+
+/* ───────────────────────── REST ───────────────────────── */
+
+class ApiError extends Error {
+  constructor(code, message, status) {
+    super(message);
+    this.code = code;
+    this.status = status;
+  }
+}
+
+/**
+ * 멱등 키는 **동작 하나에 하나**다.
+ *
+ * 호출마다 새로 만들면 재시도가 중복 처리된다. 성공했을 때만 버린다.
+ */
+const idemKeys = new Map();
+const idemFor = (action) => {
+  if (!idemKeys.has(action)) idemKeys.set(action, crypto.randomUUID());
+  return idemKeys.get(action);
+};
+const idemDone = (action) => idemKeys.delete(action);
+
+async function api(method, path, { body, auth, idem } = {}) {
+  const headers = {};
+  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (auth) headers["Authorization"] = "Bearer " + state.memberToken;
+  if (idem) headers["Idempotency-Key"] = idem;
+
+  log("out", `→ ${method} ${path}`, body ?? null);
+
+  const res = await fetch(state.apiBase + path, {
+    method,
+    headers,
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
+
+  // 204는 본문이 없다. 이탈만 이 형태다.
+  if (res.status === 204) {
+    log("in", `← ${res.status} ${method} ${path}`, null);
+    return null;
+  }
+
+  const envelope = await res.json().catch(() => null);
+
+  // **화면 분기는 HTTP 상태가 아니라 code 문자열로 한다.**
+  if (!res.ok || !envelope || envelope.success !== true) {
+    const code = envelope?.code ?? `http.${res.status}`;
+    const message = envelope?.message ?? res.statusText;
+    log("err", `← ${res.status} ${code} — ${message}`, envelope);
+    throw new ApiError(code, message, res.status);
+  }
+
+  log("in", `← ${res.status} ${method} ${path}`, envelope);
+  return envelope.data;
+}
+
+/* ───────────────────────── 소켓 ───────────────────────── */
+
+function socketUrl(code) {
+  const u = new URL(state.apiBase);
+  u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
+  u.pathname = `/ws/rooms/${code}`;
+  u.search = "";
+  // 토큰은 URL에 싣지 않는다. 프록시·접근 로그에 그대로 남는다.
+  return u.toString();
+}
+
+function connect() {
+  if (state.ws) return;
+  state.closed = null;
+  const url = socketUrl(state.code);
+  log("sys", `소켓 여는 중 — ${url}`, null);
+
+  const ws = new WebSocket(url);
+  state.ws = ws;
+  render();
+
+  ws.onopen = () => {
+    // 연 직후 첫 프레임이 conn:auth여야 한다. 다른 이벤트를 먼저 보내면 4002다.
+    send("conn:auth", {
+      protocolVersion: PROTOCOL_VERSION,
+      roomCode: state.code,
+      memberToken: state.memberToken,
+    });
+  };
+  ws.onmessage = (e) => onFrame(e.data);
+  ws.onerror = () => log("warn", "소켓 오류 (자세한 사유는 브라우저가 숨긴다)", null);
+  ws.onclose = (e) => onClose(e);
+}
+
+function send(event, data = {}) {
+  if (!state.ws || state.ws.readyState !== WebSocket.OPEN) {
+    log("warn", "소켓이 열려 있지 않아 보내지 못했다", { event, data });
+    return;
+  }
+  state.ws.send(JSON.stringify({ event, data }));
+  log("out", `↑ ${event}`, data);
+}
+
+function onFrame(raw) {
+  let f;
+  try {
+    f = JSON.parse(raw);
+  } catch {
+    log("err", "프레임 파싱 실패", raw);
+    return;
+  }
+
+  const v = f?.data?.roomVersion;
+
+  if (typeof v === "number" && STATE_EVENTS.has(f.event)) {
+    if (f.event === "room:snapshot") {
+      // **스냅샷은 게이트하지 않는다.** 기준선을 새로 놓는 이벤트라, 아무것도 바뀌지
+      // 않은 방에 다시 붙으면 직전과 같은 번호로 오고 게이트에 걸려 화면이 빈 채로
+      // 남는다.
+      state.roomVersion = v;
+    } else if (v <= state.roomVersion) {
+      // 부분 갱신만 게이트한다. 지난 번호는 버린다.
+      log("warn", `↓ ${f.event} — roomVersion ${v} ≤ ${state.roomVersion} 이라 무시`, f);
+      state.versionBroken = true;
+      render();
+      return;
+    } else {
+      state.roomVersion = v;
+    }
+  }
+
+  if (f.success === false) {
+    log("err", `↓ error · ${f.code} — ${f.message}`, f);
+    banner("bad", `${f.code} — ${f.message}`);
+    render();
+    return;
+  }
+
+  log("in", `↓ ${f.event}`, f);
+  apply(f.event, f.data ?? {});
+  render();
+}
+
+/** 부분 갱신. 스냅샷 하나로 화면을 그리고 이후는 개별 이벤트로 고친다. */
+function apply(event, d) {
+  switch (event) {
+    case "room:snapshot":
+      state.room = d.room;
+      state.members = d.members ?? [];
+      state.memberStatus = d.me?.memberStatus ?? state.memberStatus;
+      state.isHost = d.me?.isHost ?? state.isHost;
+      state.memberId = d.me?.memberId ?? state.memberId;
+      state.activeCount = state.members.length;
+      state.readyCount = state.members.filter((m) => m.ready && !m.isHost).length;
+      state.ready = Boolean(state.members.find((m) => m.memberId === state.memberId)?.ready);
+      state.game = d.game ?? null;
+      state.round = null;
+      banner("ok", `스냅샷 수신 — 참가자 ${state.members.length}명 · 서버시각 ${d.serverTime}`);
+      save();
+      break;
+
+    case "member:joined": {
+      const m = d.member;
+      const i = state.members.findIndex((x) => x.memberId === m.memberId);
+      if (i >= 0) state.members[i] = m;
+      else state.members.push(m);
+      state.members.sort((a, b) => a.joinOrder - b.joinOrder);
+      // **명단이 늘면 준비 모수도 늘어난다.** member:joined에는 집계가 실리지
+      // 않으므로(정본 페이로드에 없다) 명단에서 다시 센다.
+      state.activeCount = state.members.length;
+      break;
+    }
+
+    case "member:left":
+      state.members = state.members.filter((x) => x.memberId !== d.memberId);
+      // 이쪽은 서버가 activeCount를 실어 준다. 준비 수는 나간 사람이 준비 상태였을
+      // 수 있으므로 남은 명단에서 다시 센다.
+      state.activeCount = d.activeCount;
+      state.readyCount = state.members.filter((m) => m.ready && !m.isHost).length;
+      banner("warn", `${d.memberId} 이탈 (${d.reason}) · 남은 인원 ${d.activeCount}`);
+      break;
+
+    case "member:ready_changed": {
+      const m = state.members.find((x) => x.memberId === d.memberId);
+      if (m) m.ready = d.ready;
+      if (d.memberId === state.memberId) state.ready = d.ready;
+      // **집계는 서버 값을 쓴다.** 직접 세면 화면마다 값이 갈린다.
+      state.readyCount = d.readyCount;
+      state.activeCount = d.activeCount;
+      break;
+    }
+
+    case "game:selected":
+    case "game:config_changed":
+      state.game = {
+        gameId: d.gameId,
+        config: d.config,
+        configSchemaVersion: d.configSchemaVersion ?? state.game?.configSchemaVersion,
+      };
+      break;
+
+    case "game:started":
+      // **roster가 명단 스냅샷이다.** 도중 이탈해도 바뀌지 않는다.
+      state.round = { roundId: d.roundId, gameId: d.gameId, roster: d.roster,
+                      phase: null, phaseSeq: 0, tieRound: 0, deadlineAt: null };
+      banner("ok", `게임 시작 — ${d.gameId} · 후보 ${d.roster.length}명`);
+      break;
+
+    case "game:phase":
+      if (!state.round) break;
+      Object.assign(state.round, {
+        phase: d.phase, phaseSeq: d.phaseSeq, tieRound: d.tieRound, deadlineAt: d.deadlineAt,
+      });
+      state.remainMs = null;
+      break;
+
+    case "game:tick":
+      // 표시 전용이다. 판정 근거가 아니며 단계 전환의 트리거도 아니다.
+      if (state.round && d.phaseSeq === state.round.phaseSeq) state.remainMs = d.remainMs;
+      break;
+
+    case "round:closed":
+      state.round = null;
+      state.remainMs = null;
+      banner("warn", `대기방으로 돌아왔다 — ${d.roomStatus}`);
+      break;
+
+    case "chat:message":
+      appendMessage(d);
+      break;
+
+    case "chat:typing":
+      markTyping(d.memberId, d.typing);
+      break;
+
+    case "member:connection": {
+      // **이 이벤트는 이탈이 아니다.** 이탈은 member:left 또는 room:closed로만 확정된다.
+      const m = state.members.find((x) => x.memberId === d.memberId);
+      if (m) {
+        m.connection = d.state;
+        m.graceEndsAt = d.graceEndsAt;
+      }
+      if (d.state === "UNSTABLE") {
+        const who = m ? m.nickname : d.memberId;
+        banner(m?.isHost ? "bad" : "warn",
+          m?.isHost
+            ? `방장 연결이 끊겼다 — ${d.graceEndsAt}까지 돌아오지 않으면 방이 닫힌다`
+            : `${who} 연결 확인 중 — 유예 만료 ${d.graceEndsAt}`);
+      }
+      break;
+    }
+
+    case "room:closed":
+      // **사유를 붙들어 둔다.** 직후에 소켓이 4410으로 닫히는데, 그때 종료 코드만
+      // 띄우면 "왜 사라졌는지"가 화면에서 사라진다. 사유별 안내가 규약이다.
+      state.closedReason = d.reason;
+      banner("bad", `방이 종료됐다 — ${ROOM_CLOSED_REASON[d.reason] ?? d.reason}`);
+      break;
+
+    default:
+      // 아직 붙지 않은 이벤트. 로그에는 남았다.
+      break;
+  }
+}
+
+function onClose(e) {
+  state.ws = null;
+  state.closed = { code: e.code, reason: e.reason };
+  const meaning = CLOSE_MEANING[e.code] ?? "정의되지 않은 코드";
+  log(e.code === 1000 ? "sys" : "err", `소켓 닫힘 — ${e.code} · ${meaning}`, e.reason || null);
+
+  // 방이 사라져서 닫힌 것이면 **사유를 앞세운다.** 종료 코드는 그다음이다.
+  if (state.closedReason) {
+    const why = ROOM_CLOSED_REASON[state.closedReason] ?? state.closedReason;
+    banner("bad", `방이 종료됐다 — ${why} (소켓 ${e.code})`);
+  } else {
+    banner(e.code === 1000 ? "warn" : "bad", `소켓 닫힘 ${e.code} — ${meaning}`);
+  }
+
+  // **재연결하지 않는다.** 재접속 경로가 없어 자리를 되찾지 못하고 4409만 반복된다.
+  if (e.code === 4410 || e.code === 4401 || e.code === 4403) clearSession(false);
+  render();
+}
+
+/* ───────────────────────── 동작 ───────────────────────── */
+
+async function createRoom() {
+  const roomName = $("in-roomname").value.trim();
+  const max = $("in-max").value.trim();
+  const body = {};
+  if (roomName) body.roomName = roomName;
+  if (max) body.maxMembers = Number(max);
+
+  const d = await api("POST", "/api/rooms", { body, idem: idemFor("create") });
+  idemDone("create");
+
+  state.code = d.code;
+  state.memberId = d.memberId;
+  state.memberToken = d.memberToken;
+  state.memberStatus = d.memberStatus;   // PENDING
+  state.isHost = d.isHost;
+  state.room = { code: d.code, displayCode: d.displayCode, roomName: d.roomName,
+                 maxMembers: d.maxMembers, roomStatus: "WAITING", hostMemberId: d.memberId,
+                 expiresAt: d.expiresAt };
+  $("in-code").value = d.code;
+  banner("ok", `방 생성 — ${d.displayCode} · 아직 PENDING이다. 프로필을 확정해야 명단에 뜬다.`);
+  save();
+  render();
+}
+
+async function lookupRoom() {
+  const code = $("in-code").value.trim();
+  const d = await api("GET", `/api/rooms/${code}`);
+  banner("ok", `${d.displayCode} · ${d.roomName} · ${d.currentMembers}/${d.maxMembers} · ${d.roomStatus}` +
+               (d.hostNickname ? ` · 방장 ${d.hostNickname}` : " · 방장 프로필 미확정"));
+}
+
+async function joinRoom() {
+  const code = $("in-code").value.trim();
+  const d = await api("POST", `/api/rooms/${code}/members`, { idem: idemFor("join:" + code) });
+  idemDone("join:" + code);
+
+  state.code = code;
+  state.memberId = d.memberId;
+  state.memberToken = d.memberToken;
+  state.memberStatus = d.memberStatus;
+  state.isHost = d.isHost;
+  banner("ok", `슬롯 확보 — ${d.currentMembers}/${d.maxMembers} · PENDING`);
+  save();
+  render();
+}
+
+async function loadAvatars() {
+  const d = await api("GET", `/api/rooms/${state.code}/avatars`, { auth: true });
+  state.avatars = d.content;
+  renderAvatars();
+}
+
+async function confirmProfile() {
+  const nickname = $("in-nick").value.trim();
+  const bio = $("in-bio").value.trim();
+  const body = { nickname };
+  if (state.selectedAvatar) body.avatarId = state.selectedAvatar;
+  if (bio) body.bio = bio;
+
+  const d = await api("PATCH", `/api/rooms/${state.code}/members/me`, {
+    body, auth: true, idem: idemFor("confirm"),
+  });
+  idemDone("confirm");
+
+  state.memberStatus = d.memberStatus;   // ACTIVE
+  state.isHost = d.isHost;
+  state.selectedAvatar = d.avatarId;
+
+  // **응답의 nickname이 정본이다.** 같은 방에 같은 닉네임이 있으면 서버가 채번한다.
+  if (d.nickname !== nickname) {
+    banner("warn", `닉네임이 중복돼 서버가 «${d.nickname}»으로 확정했다 (요청 «${nickname}»)`);
+  } else {
+    banner("ok", `프로필 확정 — ${d.nickname} · ${d.avatarId} · 입장 순서 ${d.joinOrder}`);
+  }
+  $("in-nick").value = d.nickname;
+  save();
+  render();
+}
+
+async function leaveRest() {
+  await api("DELETE", `/api/rooms/${state.code}/members/me`, { auth: true });
+  banner("warn", state.isHost ? "방장이 나가 방이 삭제됐다" : "이탈 처리됐다");
+  clearSession(false);
+  render();
+}
+
+/* ───────────────────────── 빠른 실행 ───────────────────────── */
+
+const RANDOM_NAMES = ["지호", "서연", "민준", "하윤", "도윤", "채원", "시우", "지아", "예준", "수아"];
+const pickName = () => RANDOM_NAMES[Math.floor(Math.random() * RANDOM_NAMES.length)];
+
+async function quick(kind) {
+  try {
+    if (kind === "host") await createRoom();
+    else await joinRoom();
+
+    if (!$("in-nick").value.trim()) $("in-nick").value = pickName();
+    await confirmProfile();
+    connect();
+  } catch (e) {
+    if (!(e instanceof ApiError)) throw e;
+  }
+}
+
+/* ───────────────────────── 렌더 ───────────────────────── */
+
+function banner(kind, text) {
+  const el = $("banner");
+  el.className = "banner " + kind;
+  el.textContent = text;
+}
+
+function renderAvatars() {
+  const box = $("avatars");
+  box.innerHTML = "";
+  const taken = new Map(state.avatars.map((a) => [a.avatarId, a]));
+
+  for (const id of AVATAR_IDS) {
+    const info = taken.get(id);
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = id;
+    if (info?.taken) {
+      b.className = "taken";
+      b.disabled = true;
+      b.title = `${info.takenBy} 님이 선점`;
+    } else if (state.selectedAvatar === id) {
+      b.className = "sel";
+    }
+    b.onclick = () => {
+      state.selectedAvatar = state.selectedAvatar === id ? null : id;
+      renderAvatars();
+    };
+    box.appendChild(b);
+  }
+  $("hint-avatar").innerHTML = state.selectedAvatar
+    ? `<b>${state.selectedAvatar}</b> 선택. 확정 순간 다른 사람이 먼저 잡았으면 <b>member.avatar_taken</b>이 온다.`
+    : "선택하지 않으면 서버가 남은 것 중 <b>무작위</b>로 배정한다.";
+}
+
+/**
+ * 게임 목록과 설정 위젯.
+ *
+ * **설정 변경은 디바운스해서 보낸다.** 슬라이더·텍스트 입력을 조작할 때마다 보내면
+ * 트래픽이 과하다. 정본은 200~300ms를 권한다.
+ */
+function sendConfig(patch) {
+  if (!state.game) return;
+  const merged = { ...(state.pendingPatch ?? {}), ...patch };
+  state.pendingPatch = merged;
+  clearTimeout(state.configTimer);
+  state.configTimer = setTimeout(() => {
+    send("game:config", { gameId: state.game.gameId, config: merged });
+    state.pendingPatch = null;
+  }, 250);
+}
+
+function renderGames() {
+  const open = state.ws?.readyState === WebSocket.OPEN;
+  const canEdit = open && state.isHost && state.memberStatus === "ACTIVE";
+
+  const box = $("games");
+  box.innerHTML = "";
+  for (const g of GAMES) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = `${g.label} ${g.min}+`;
+    if (state.game?.gameId === g.id) b.className = "sel";
+    // **인원 미달을 콘솔이 막지 않는다.** 서버가 game.not_enough_members를
+    // 돌려주는지 확인해야 하기 때문이다.
+    b.disabled = !canEdit;
+    b.onclick = () => send("game:select", { gameId: g.id });
+    box.appendChild(b);
+  }
+
+  $("game-id").textContent = state.game
+    ? `${state.game.gameId} · schema v${state.game.configSchemaVersion}`
+    : "선택 안 됨";
+  $("btn-random").disabled = !canEdit;
+
+  const cfg = $("config");
+  cfg.innerHTML = "";
+  if (!state.game) return;
+
+  for (const f of CONFIG_FIELDS[state.game.gameId] ?? []) {
+    const value = state.game.config[f.name];
+    const label = document.createElement("label");
+    label.innerHTML = `<span>${f.name}</span>`;
+
+    let input;
+    if (f.kind === "enum") {
+      input = document.createElement("select");
+      for (const c of f.choices) {
+        const opt = document.createElement("option");
+        opt.value = String(c);
+        opt.textContent = String(c);
+        opt.selected = String(c) === String(value);
+        input.appendChild(opt);
+      }
+      input.onchange = () => sendConfig({
+        [f.name]: typeof f.choices[0] === "number" ? Number(input.value) : input.value,
+      });
+    } else if (f.kind === "bool") {
+      input = document.createElement("select");
+      for (const c of [false, true]) {
+        const opt = document.createElement("option");
+        opt.value = String(c);
+        opt.textContent = String(c);
+        opt.selected = c === value;
+        input.appendChild(opt);
+      }
+      input.onchange = () => sendConfig({ [f.name]: input.value === "true" });
+    } else if (f.kind === "list") {
+      input = document.createElement("input");
+      input.type = "text";
+      input.value = (value ?? []).join(", ");
+      input.oninput = () => sendConfig({
+        [f.name]: input.value.split(",").map((s) => s.trim()).filter(Boolean),
+      });
+    } else {
+      input = document.createElement("input");
+      input.type = f.kind === "number" ? "number" : "text";
+      input.value = value ?? "";
+      input.oninput = () => sendConfig({
+        [f.name]: f.kind === "number" ? Number(input.value) : input.value,
+      });
+    }
+    input.disabled = !canEdit;
+    label.appendChild(input);
+    cfg.appendChild(label);
+  }
+
+  $("hint-game").innerHTML = canEdit
+    ? "설정은 <b>부분 갱신</b>이다. 보낸 필드만 덮어쓴다. 250ms 디바운스 후 전송."
+    : "방장만 바꾼다. 참여자 화면은 <b>읽기 전용이되 실시간으로 함께 바뀐다</b>.";
+}
+
+/**
+ * 진행 중인 라운드.
+ *
+ * **남은 시간을 틱마다 다시 그리지 않는다.** 정본은 첫 틱에서 오프셋을 재고 자체
+ * 타이머로 매 프레임 그리라고 한다 — 여기서는 검증이 목적이라 서버 값을 그대로
+ * 보여주되, 화면 전환은 반드시 game:phase로만 한다는 규칙은 그대로 지킨다.
+ */
+function renderRound() {
+  const open = state.ws?.readyState === WebSocket.OPEN;
+  const r = state.round;
+
+  $("btn-start").disabled = !open || !state.isHost || Boolean(r)
+    || !state.game || state.readyCount < Math.max(0, state.activeCount - 1)
+    || state.activeCount < 2;
+  $("btn-close").disabled = !open || !state.isHost || !r;
+
+  const box = $("round");
+  box.innerHTML = "";
+  if (!r) return;
+
+  const rows = [
+    ["roundId", r.roundId],
+    ["phase", `${r.phase ?? "—"} · seq ${r.phaseSeq}${r.tieRound ? ` · 결선 ${r.tieRound}` : ""}`],
+    ["마감", r.deadlineAt ?? "없음 (틱이 흐르지 않는다)"],
+    ["남은 시간", state.remainMs === null ? "—" : `${(state.remainMs / 1000).toFixed(1)}초`],
+    ["명단 스냅샷", r.roster.map((m) => m.nickname).join(" · ")],
+  ];
+  const dl = document.createElement("dl");
+  dl.className = "kv";
+  for (const [k, v] of rows) {
+    dl.insertAdjacentHTML("beforeend", `<dt>${k}</dt><dd></dd>`);
+    dl.lastElementChild.textContent = String(v);
+  }
+  box.appendChild(dl);
+}
+
+/** 채팅은 서버가 보관하지 않는다. 화면에 쌓인 것이 전부다. */
+function appendMessage(d) {
+  const box = $("chat");
+  const el = document.createElement("div");
+  el.className = "msg" + (d.memberId === state.memberId ? " mine" : "");
+  el.innerHTML = `<span class="id"></span><span class="nm"></span><span class="tx"></span>`;
+  const who = state.members.find((m) => m.memberId === d.memberId);
+  el.querySelector(".id").textContent = "#" + d.messageId;
+  el.querySelector(".nm").textContent = who ? who.nickname : d.memberId;
+  el.querySelector(".tx").textContent = d.text;
+  box.appendChild(el);
+  box.scrollTop = box.scrollHeight;
+  $("chat-empty").style.display = "none";
+}
+
+/**
+ * 입력 중 표시.
+ *
+ * **3초간 갱신이 없으면 클라이언트가 스스로 내린다.** 서버는 false를 보장해 주지
+ * 않는다 — 보내던 사람의 소켓이 끊기면 true가 영원히 남기 때문이다.
+ */
+function markTyping(memberId, typing) {
+  const prev = state.typers.get(memberId);
+  if (prev) clearTimeout(prev);
+  if (!typing) {
+    state.typers.delete(memberId);
+  } else {
+    state.typers.set(memberId, setTimeout(() => {
+      state.typers.delete(memberId);
+      renderTyping();
+    }, 3000));
+  }
+  renderTyping();
+}
+
+function renderTyping() {
+  const names = [...state.typers.keys()].map((id) => {
+    const m = state.members.find((x) => x.memberId === id);
+    return m ? m.nickname : id;
+  });
+  $("typing").textContent = names.length ? `${names.join(" · ")} 입력 중…` : "";
+}
+
+function renderMembers() {
+  const ul = $("members");
+  ul.innerHTML = "";
+  for (const m of state.members) {
+    const li = document.createElement("li");
+    if (m.memberId === state.memberId) li.className = "me";
+    li.innerHTML =
+      `<span class="ord">${m.joinOrder}</span>` +
+      `<span class="av">${m.avatarId ?? "—"}</span>` +
+      `<span class="who"><span class="nm"></span><span class="bio"></span></span>`;
+    li.querySelector(".nm").textContent = m.nickname + (m.memberId === state.memberId ? " (나)" : "");
+    li.querySelector(".bio").textContent = m.bio ?? m.memberId;
+    if (m.isHost) li.insertAdjacentHTML("beforeend", `<span class="tag host">방장</span>`);
+    if (m.ready) li.insertAdjacentHTML("beforeend", `<span class="tag ready">준비</span>`);
+    if (m.connection && m.connection !== "ONLINE") {
+      li.insertAdjacentHTML("beforeend", `<span class="tag bad">연결 끊김</span>`);
+    }
+    // 강퇴는 방장만, 자기 자신 말고, 대기 상태에서만.
+    if (state.isHost && m.memberId !== state.memberId && state.ws?.readyState === WebSocket.OPEN) {
+      const b = document.createElement("button");
+      b.className = "ghost";
+      b.textContent = "내보내기";
+      b.onclick = () => send("member:kick", { memberId: m.memberId });
+      li.appendChild(b);
+    }
+    ul.appendChild(li);
+  }
+  $("members-empty").style.display = state.members.length ? "none" : "block";
+  $("cnt").textContent = state.room ? `${state.members.length}/${state.room.maxMembers}` : "";
+}
+
+function render() {
+  const open = state.ws?.readyState === WebSocket.OPEN;
+  const connecting = state.ws?.readyState === WebSocket.CONNECTING;
+
+  $("b-room").innerHTML = "방 <b>" + (state.room?.displayCode ?? state.code ?? "—") + "</b>";
+  $("b-me").innerHTML = "상태 <b>" + (state.memberStatus ?? "—") + (state.isHost ? " · 방장" : "") + "</b>";
+
+  const ws = $("b-ws");
+  ws.className = "badge " + (open ? "on" : connecting ? "warn" : state.closed && state.closed.code !== 1000 ? "bad" : "off");
+  ws.innerHTML = "소켓 <b>" + (open ? "열림" : connecting ? "여는 중" : state.closed ? String(state.closed.code) : "닫힘") + "</b>";
+
+  const ver = $("b-ver");
+  ver.className = "badge " + (state.versionBroken ? "bad" : "");
+  ver.innerHTML = "roomVersion <b>" + state.roomVersion + "</b>" + (state.versionBroken ? " ⚠︎" : "");
+
+  const kv = $("kv");
+  kv.innerHTML = "";
+  const rows = [
+    ["코드", state.room?.displayCode ?? state.code],
+    ["이름", state.room?.roomName],
+    ["상태", state.round ? "PLAYING (라운드 진행 중)" : state.room?.roomStatus],
+    ["정원", state.room?.maxMembers],
+    ["만료", state.room?.expiresAt],
+    ["내 ID", state.memberId],
+    ["토큰", state.memberToken],
+  ];
+  for (const [k, v] of rows) {
+    if (v === undefined || v === null || v === "") continue;
+    kv.insertAdjacentHTML("beforeend", `<dt>${k}</dt><dd></dd>`);
+    kv.lastElementChild.textContent = String(v);
+  }
+
+  const hasToken = Boolean(state.memberToken);
+  const isActive = state.memberStatus === "ACTIVE";
+
+  $("fs-profile").disabled = !hasToken || isActive;
+  // **PENDING도 소켓을 연다.** 프로필 화면에 머무는 동안에도 member:joined를 받아
+  // 아바타 선점 현황을 갱신해야 하기 때문이다(07_api/03 §room:snapshot me).
+  $("fs-socket").disabled = !hasToken;
+  $("fs-exit").disabled = !hasToken;
+
+  // 준비는 방장이 아닌 ACTIVE만. 채팅도 명단에 오른 사람만 보낼 수 있다.
+  $("btn-ready").disabled = !open || !isActive || state.isHost;
+  $("btn-ready").textContent = state.ready ? "준비 해제" : "준비 완료";
+  $("btn-chat").disabled = !open || !isActive;
+  $("in-chat").disabled = !open || !isActive;
+  $("b-ready").innerHTML =
+    `준비 <b>${state.readyCount}/${Math.max(0, state.activeCount - 1)}</b>`;
+  $("hint-ready").innerHTML = state.isHost
+    ? "방장은 준비 상태를 갖지 않는다. 보내면 <b>game.invalid_action</b>이 돌아온다."
+    : "목표치는 <b>activeCount − 1</b> — 방장은 모수에서 빠진다.";
+  $("btn-connect").disabled = Boolean(state.ws);
+  $("btn-disconnect").disabled = !open;
+  $("btn-drop").disabled = !open;
+  $("btn-send").disabled = !open;
+  $("btn-leave-rest").disabled = !hasToken || open;
+  $("btn-create").disabled = hasToken;
+  $("btn-join").disabled = hasToken;
+  $("btn-quick-host").disabled = hasToken;
+  $("btn-quick-guest").disabled = hasToken;
+  $("btn-open2").disabled = !state.code;
+
+  renderMembers();
+  renderGames();
+  renderRound();
+}
+
+/* ───────────────────────── 세션 ───────────────────────── */
+
+/**
+ * 탭 단위로 보관한다. 두 창을 띄우는 검증에서 창끼리 토큰이 섞이면 안 되기 때문이다.
+ * 제품의 토큰 보관 방식은 프론트가 따로 정한다 — 이건 콘솔 편의다.
+ */
+function save() {
+  sessionStorage.setItem(SESSION_KEY, JSON.stringify({
+    apiBase: state.apiBase, code: state.code, memberId: state.memberId,
+    memberToken: state.memberToken, memberStatus: state.memberStatus, isHost: state.isHost,
+  }));
+}
+
+function restore() {
+  const raw = sessionStorage.getItem(SESSION_KEY);
+  if (!raw) return false;
+  try {
+    Object.assign(state, JSON.parse(raw));
+    if (state.code) $("in-code").value = state.code;
+    return Boolean(state.memberToken);
+  } catch {
+    return false;
+  }
+}
+
+function clearSession(reload) {
+  sessionStorage.removeItem(SESSION_KEY);
+  if (reload) { location.href = location.pathname; return; }
+  Object.assign(state, {
+    code: null, memberId: null, memberToken: null, memberStatus: null,
+    isHost: false, roomVersion: 0, versionBroken: false, room: null,
+    members: [], avatars: [], selectedAvatar: null,
+    game: null, round: null, closedReason: null,
+    ready: false, readyCount: 0, activeCount: 0, remainMs: null,
+  });
+}
+
+/* ───────────────────────── 배선 ───────────────────────── */
+
+/** 실패해도 콘솔이 죽지 않게 한다. 도메인 에러는 로그와 배너에 이미 남는다. */
+function guard(fn) {
+  return async () => {
+    try {
+      await fn();
+    } catch (e) {
+      if (e instanceof ApiError) banner("bad", `${e.code} — ${e.message}`);
+      else { log("err", "콘솔 오류 — " + e.message, e.stack); banner("bad", e.message); }
+    }
+  };
+}
+
+$("in-base").value = state.apiBase;
+$("in-base").onchange = (e) => { state.apiBase = e.target.value.trim().replace(/\/$/, ""); save(); };
+
+$("btn-create").onclick = guard(createRoom);
+$("btn-lookup").onclick = guard(lookupRoom);
+$("btn-join").onclick = guard(joinRoom);
+$("btn-avatars").onclick = guard(loadAvatars);
+$("btn-confirm").onclick = guard(confirmProfile);
+$("btn-leave-rest").onclick = guard(leaveRest);
+$("btn-quick-host").onclick = guard(() => quick("host"));
+$("btn-quick-guest").onclick = guard(() => quick("guest"));
+
+$("btn-connect").onclick = () => connect();
+$("btn-disconnect").onclick = () => {
+  // 나가기 버튼에서만 1000을 쓴다. 페이지를 숨기거나 새로고침할 때는 쓰지 않는다.
+  state.ws?.close(1000, "leave");
+};
+$("btn-drop").onclick = () => {
+  // 브라우저 API는 1000·3000~4999만 허용하므로 1001을 직접 보낼 수 없다.
+  // 코드 없이 닫으면 1005로 나가며, 서버에게는 "1000이 아닌 종료"라는 점이 같다.
+  state.ws?.close();
+};
+$("btn-send").onclick = () => {
+  const ev = $("in-ev").value.trim();
+  if (!ev) return;
+  let data = {};
+  const raw = $("in-data").value.trim();
+  if (raw) {
+    try { data = JSON.parse(raw); }
+    catch { banner("bad", "data가 JSON이 아니다"); return; }
+  }
+  send(ev, data);
+};
+
+$("btn-ready").onclick = () => send("member:ready", { ready: !state.ready });
+$("btn-random").onclick = () => send("game:random", {});
+$("btn-start").onclick = () => send("game:start", {});
+$("btn-close").onclick = () => send("round:close", { roundId: state.round?.roundId });
+
+$("btn-chat").onclick = () => {
+  const text = $("in-chat").value;
+  $("in-chat").value = "";
+  // 다듬지 않고 그대로 보낸다 — 공백만 보냈을 때 서버가 무시하는지 확인해야 한다.
+  send("chat:send", { text });
+  send("chat:typing", { typing: false });
+};
+$("in-chat").onkeydown = (e) => { if (e.key === "Enter") $("btn-chat").click(); };
+$("in-chat").oninput = () => {
+  // 매 글자마다 보내지 않는다. 1초에 한 번이면 상대 화면의 표시가 유지된다.
+  const now = performance.now();
+  if (now - state.typingSentAt < 1000) return;
+  state.typingSentAt = now;
+  send("chat:typing", { typing: true });
+};
+
+$("btn-open2").onclick = () => {
+  // 같은 탭의 sessionStorage를 물려받지 않도록 새 창으로 연다.
+  window.open(`${location.pathname}?code=${state.code}`, "_blank", "noopener,width=720,height=980");
+};
+$("btn-reset").onclick = () => clearSession(true);
+$("btn-clear").onclick = () => { $("log").innerHTML = ""; };
+
+/* 시작 */
+const prefill = new URLSearchParams(location.search).get("code");
+const restored = restore();
+if (prefill && !restored) $("in-code").value = prefill;
+if (restored) {
+  log("sys", "탭 세션 복원 — 소켓은 닫혀 있다. 연결을 다시 눌러야 한다.", {
+    code: state.code, memberStatus: state.memberStatus,
+  });
+  banner("warn", "세션을 복원했다. roomVersion은 0부터 다시 세므로 첫 스냅샷을 기준으로 삼는다.");
+  $("in-base").value = state.apiBase;
+}
+render();
+log("sys", "콘솔 준비됨 — ① 방 → ② 프로필 → ③ 소켓 순서로 진행한다", null);
+</script>
+</body>
+</html>
