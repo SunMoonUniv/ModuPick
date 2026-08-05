@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 from app import tasks
-from app.api import rooms
+from app.api import games, rooms
 from app.api.errors import register_exception_handlers
 from app.config import settings
 from app.infra.db.session import dispose, missing_tables
@@ -85,6 +85,7 @@ app.add_middleware(
 
 register_exception_handlers(app)
 app.include_router(rooms.router)
+app.include_router(games.router)
 
 
 @app.get("/health")
