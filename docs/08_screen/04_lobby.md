@@ -2,7 +2,7 @@
 
 > **대상**: LOBBY-MAIN · SETUP-GAME 2본과 그 화면 내 요소 4종
 > **작성일**: 2026-08-02
-> **원천**: [../02_features/02_lobby.md](../02_features/02_lobby.md)(F-LOBBY 13건) · [../02_features/03_game_setup.md](../02_features/03_game_setup.md)(F-SETUP 13건) · frontend/src/screens/Lobby.tsx · frontend/src/components/Modals.tsx · frontend/src/lib/store.ts · types.ts · data.ts · docs_legacy/requirements.md §4.2 US-201~206 · §4.3 US-301~307 · [../02_features/08_permission_matrix.md](../02_features/08_permission_matrix.md) · [../05_game_rules/01_common.md](../05_game_rules/01_common.md)(방장 설정 16항) · [01_standards.md](./01_standards.md)
+> **원천**: [../02_features/02_lobby.md](../02_features/02_lobby.md)(F-LOBBY 13건) · [../02_features/03_game_setup.md](../02_features/03_game_setup.md)(F-SETUP 13건) · frontend/src/screens/Lobby.tsx · frontend/src/components/Modals.tsx · frontend/src/lib/store.ts · types.ts · data.ts · docs_legacy/requirements.md §4.2 US-201~206 · §4.3 US-301~307 · [../02_features/08_permission_matrix.md](../02_features/08_permission_matrix.md) · [../05_game_rules/01_common.md](../05_game_rules/01_common.md)(방장 설정 15항) · [01_standards.md](./01_standards.md)
 
 사람이 모이고 무엇을 어떻게 할지 정하는 화면이다. 두 화면은 데스크톱에서 같은 표면에 병치되지만 다루는 일이 다르다 — **LOBBY-MAIN은 누가 있고 무슨 이야기를 하는가**, **SETUP-GAME은 무슨 게임을 어떤 설정으로 할 것인가**다. 조작 축도 다르다. 대기방은 전원이 쓰고, 게임 선택·설정은 방장만 조작하며 참가자는 읽기 전용으로 본다. 화면 블록 형식은 [01_standards.md](./01_standards.md) §2를 따른다.
 
@@ -192,7 +192,7 @@
 | 사다리 항목 수 자동 맞춤 | 항목이 참가자보다 적으면 채우고 많으면 뒤에서부터 잘라낸 뒤 **어떻게 맞춰졌는지 방장에게 보여 준다** | F-LADDER-02 |
 | 킹메이커 설정 | 주제 · 1인 투표 수 · 결과 실명 공개 여부를 정한다 | F-KING-01 |
 | 시간초 설정 | 주제 · 목표 시간 · 판정 기준을 정한다 | F-TIMER-01 |
-| 저격 설정 | 질문 주제 · 투표 시간 · 중복 투표 허용 · 지목자 공개 여부를 정한다 | F-SNIPE-01 |
+| 저격 설정 | 질문 주제 · 투표 시간 · 중복 투표 허용을 정한다 | F-SNIPE-01 |
 | 눈치 설정 | 주제 · 판정창 폭 · 라운드 제한 시간을 정한다 | F-NUNCHI-01 |
 
 **주요 UI 요소**: 섹션 제목 · 조작 주체 안내 · 게임 카드 6장(아이콘 타일 · 이름 · 부제 · 선택 표시 · 최소 인원 배지) · 설정 패널(게임 이름 · 초기화 안내 · 주제 칩 열 + 직접 입력 · 게임별 설정 칩 열 · 사다리 항목 편집기) · 상태 밴드(LOBBY-MAIN과 공유 — 랜덤 게임 버튼 · 게임 시작 버튼 · 나가기 버튼).
@@ -219,12 +219,11 @@
 
 **비고**
 
-- **설정 항목이 정본 16항 중 13항만 있다.** 빠진 셋은 아래와 같으며 전부 정본에 있는 항목이다.
+- **설정 항목이 정본 15항 중 13항만 있다.** 빠진 둘은 아래와 같으며 전부 정본에 있는 항목이다.
 
 | 게임 | 빠진 설정 | 정본 |
 |------|-----------|------|
 | 익명 저격 | 투표 시간 | 기본 10초 · 5~60초 직접 입력. 현행은 값이 고정되어 컨트롤 자체가 없다 |
-| 익명 저격 | 지목자 공개 | 비공개(기본) · 공개. 현행에 없다 |
 | 눈치게임 | 라운드 제한 시간 | 10 · 15 · 20초. 현행은 15초로 코드에 박혀 있고 설정 항목에도 없다 |
 
 - **킹메이커 1인 투표 수의 범위가 다르다.** 현행은 1회·2회 2단이고 정본은 1·2·3표 3단이다.
@@ -243,5 +242,5 @@
 - 이전 화면(표지·방 만들기·프로필) → [03_entry.md](./03_entry.md)
 - 다음 화면(게임 6종) → [05_game_screens.md](./05_game_screens.md)
 - 권한 매트릭스 → [../02_features/08_permission_matrix.md](../02_features/08_permission_matrix.md)
-- 방장 설정 16항·주제 템플릿 정본 → [../05_game_rules/01_common.md](../05_game_rules/01_common.md)
+- 방장 설정 15항·주제 템플릿 정본 → [../05_game_rules/01_common.md](../05_game_rules/01_common.md)
 - 에러 코드 전수 정본 → [../10_glossary/02_error_codes.md](../10_glossary/02_error_codes.md)

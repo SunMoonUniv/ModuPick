@@ -82,7 +82,7 @@ ModuPick의 통신 표면은 **둘**이다. 대기방에 들어가기 전의 요
 | WebSocket 이벤트 | **C→S 12종 · S→C 19종 · 합 31종** — 본 폴더가 정본 |
 | game:action type | **8종** — 본 폴더가 정본 |
 | 게임 | **6종** · gameId는 roulette · ladder · kingmaker · timer · snipe · nunchi |
-| 방장 설정 항목 | **16개** — 룰렛 1 · 사다리 2 · 킹메이커 3 · 시간초 3 · 저격 4 · 눈치 3. 규칙 정본은 [../05_game_rules](../05_game_rules/README.md) |
+| 방장 설정 항목 | **15개** — 룰렛 1 · 사다리 2 · 킹메이커 3 · 시간초 3 · 저격 3 · 눈치 3. 규칙 정본은 [../05_game_rules](../05_game_rules/README.md) |
 | 방 정원 | **2~10명** · 초대 코드는 숫자 6자리(표시할 때만 MODU- 접두) |
 | 아바타 | **30종** — A01~A30. 근거는 frontend/src/lib/data.ts의 AVATAR_DEFS 30건 |
 | 반복 상한 | 동점 결선·재대결 **최대 3회**. 초과 시 방장이 game:decide로 고른다 |

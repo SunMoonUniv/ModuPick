@@ -23,7 +23,7 @@ from sqlalchemy import select
 from app.domain import errors
 from app.domain.enums import GameId, Role
 from app.domain.games import roulette
-from app.domain.games.contract import JudgeContext, Verdict
+from app.domain.games.contract import JudgeContext, JudgeInput, Verdict
 from app.infra.clock import clock
 from app.infra.db.session import readonly, transaction
 from app.infra.db.tables import game_results, participants
@@ -97,6 +97,7 @@ async def handle_action(
     *,
     participant_pk: int,
     room_pk: int,
+    member_id: str,
     round_id: str,
     phase_seq: int,
     action_type: str,
@@ -129,11 +130,66 @@ async def handle_action(
     if me is None or me.role != Role.HOST.value:
         raise errors.DomainError(errors.MEMBER_NOT_HOST)
 
+    # 판정에 쓰이지 않더라도 남긴다. 「방장이 언제 눌렀는가」는 자동 실행과
+    # 구분되는 유일한 흔적이고, 입력 경로를 게임마다 다르게 두지 않는다.
+    record_input(state, member_id=member_id, kind=action_type)
+
     await _run_judgment(room_pk)
 
 
 #: 게임별로 판정을 여는 game:action type. 07_api/03 「game:action type 8종」.
 _ACTION_OF = {GameId.ROULETTE.value: "roulette.pick"}
+
+
+# ── 입력 수집 ──────────────────────────────────────────────────────────────
+
+
+def record_input(
+    state: RoundState,
+    *,
+    member_id: str,
+    kind: str,
+    payload: object = None,
+) -> JudgeInput:
+    """입력 1건을 이번 단계의 배열에 담고 그 항목을 돌려준다.
+
+    **도착 시각은 서버가 붙인다.** 클라이언트가 보낸 시각을 믿으면 그것이 곧
+    판정 조작 경로가 된다 — 눈치게임과 시간초는 밀리초 차이로 순위가 갈린다.
+    예외는 시간초의 경과 시간뿐이며 그쪽은 별도 검증을 둔다(07_api/03).
+
+    arrived_ms는 **라운드 시작을 원점으로 하는 상대 정수 밀리초**다(계약 문서
+    JudgeInput). 절대 시각을 넘기지 않는 이유는 판정 함수가 시각을 읽지 않아야
+    같은 시드·같은 입력에서 같은 결과가 재현되기 때문이다.
+
+    seq는 **같은 밀리초에 둘 이상이 도착했을 때만** 의미를 갖는 보조 축이다.
+    도착 순서를 결정론적으로 고정해 두지 않으면 같은 입력 집합이 실행할 때마다
+    다른 순서로 정렬될 수 있다.
+    """
+    origin = state.started_at or clock.now()
+    arrived_ms = max(0, int((clock.now() - origin).total_seconds() * 1000))
+
+    item = JudgeInput(
+        participant_id=member_id,
+        kind=kind,
+        payload=payload,
+        arrived_ms=arrived_ms,
+        seq=state.input_seq,
+    )
+    state.input_seq += 1
+    state.inputs.append(item)
+    return item
+
+
+def has_input_from(state: RoundState, member_id: str, *, kind: str | None = None) -> bool:
+    """이번 단계에 이 사람의 입력이 이미 있는가.
+
+    **1인 1회 제한은 게임마다 다르다** — 눈치게임은 라운드마다 1회, 시간초는
+    START와 STOP 각 1회다. 그래서 kind까지 보는 경로를 함께 둔다.
+    """
+    return any(
+        i.participant_id == member_id and (kind is None or i.kind == kind)
+        for i in state.inputs
+    )
 
 
 # ── 판정 ───────────────────────────────────────────────────────────────────
@@ -205,8 +261,9 @@ def _judge(state: RoundState) -> Verdict:
         phase=state.phase,
     )
     # 룰렛은 참가자 입력을 판정에 쓰지 않는다. 방장이 30초간 누르지 않아 서버가
-    # 자동 실행한 경우와 같은 결과가 나와야 하기 때문이다.
-    return roulette.judge(ctx)
+    # 자동 실행한 경우와 같은 결과가 나와야 하기 때문이다. 그래도 배열은 그대로
+    # 넘긴다 — 계약이 그 모양이고, 게임마다 호출부를 다르게 두면 합류 지점이 늘어난다.
+    return roulette.judge(ctx, tuple(state.inputs))
 
 
 async def _enter_reveal(room_pk: int) -> None:

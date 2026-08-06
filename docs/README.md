@@ -48,7 +48,7 @@
 | 방 정원 | **2~10명**. 방장이 방 생성 시 정하며 이후 변경할 수 없다. 게임별 최소 인원은 2 또는 3이다 |
 | 초대 코드 | MODU- 접두어 + **숫자 6자리**. 표시할 때만 접두어를 붙인다 |
 | 기능 | **121건** — ROOM 17 · LOBBY 13 · SETUP 13 · PLAY 12 · CMN 10 · KING 9 · NUNCHI 9 · RESULT 9 · TIMER 9 · SNIPE 8 · LADDER 7 · WHEEL 5 (정본 [02_features/README.md](./02_features/README.md)) |
-| 요구사항 | **194항** — 도메인 154 + 횡단 40(REQ-GLB 24 · REQ-NFR 16) (정본 [03_requirements/README.md](./03_requirements/README.md)) |
+| 요구사항 | **193항** — 도메인 153 + 횡단 40(REQ-GLB 24 · REQ-NFR 16) (정본 [03_requirements/README.md](./03_requirements/README.md)) |
 | 인수 기준 | **120항** — AC-NN (정본 [03_requirements/10_acceptance_criteria.md](./03_requirements/10_acceptance_criteria.md)) |
 | 제품 결정 · 기술 결정 | **D 48건 · ADR 37건** (정본 [01_overview/06_design_decisions.md](./01_overview/06_design_decisions.md) · [04_architecture/08_decision_records.md](./04_architecture/08_decision_records.md)) |
 | 화면 | **12본** — ROOM 3 · LOBBY 1 · SETUP 1 · 게임 6 · RESULT 1. 화면 내 요소 **13종** (정본 [08_screen/README.md](./08_screen/README.md)) |

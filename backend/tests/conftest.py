@@ -4,7 +4,7 @@
 가짜 DB로는 VIRTUAL 생성 컬럼 위의 UNIQUE도 복합 FK도 확인할 수 없다.
 
     docker compose up -d database   먼저 DB를 띄운다(compose는 저장소 루트에 있다)
-    .venv/bin/pytest tests          그다음 돌린다
+    pytest                          그다음 돌린다 (가상환경을 활성화한 상태에서)
 
 백엔드 컨테이너를 띄워 둔 상태라면 먼저 멈춘다 — 같은 DB를 두고 경합해 테스트가
 멈춘 것처럼 보인다(docker compose stop backend).

@@ -316,7 +316,10 @@ else
   source .venv/bin/activate
   set -u
   pip install --quiet --upgrade pip
-  pip install --quiet -r requirements.txt || die "requirements.txt 설치에 실패했습니다."
+  # 호스트 가상환경은 테스트와 devtools를 돌리는 자리다. requirements-dev.txt가
+  # requirements.txt를 포함하므로 이것 하나면 되고, pytest·flake8·playwright가
+  # 함께 들어온다. 컨테이너 이미지에는 운영 의존성만 넣는다(backend/Dockerfile).
+  pip install --quiet -r requirements-dev.txt || die "의존성 설치에 실패했습니다."
   ok "$(pip list 2>/dev/null | wc -l | tr -d ' ')개 패키지 설치됨"
   deactivate
 

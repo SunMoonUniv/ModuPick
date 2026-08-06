@@ -256,6 +256,7 @@ async def _handle_game_action(conn: SocketConn, data: dict) -> None:
     await game_service.handle_action(
         participant_pk=conn.participant_id,
         room_pk=conn.room_id,
+        member_id=conn.member_id,
         round_id=req.roundId,
         phase_seq=req.phaseSeq,
         action_type=req.type,

@@ -17,10 +17,15 @@
 | 제품 결정 | D-NN | D-07 | [../01_overview/06_design_decisions.md](../01_overview/06_design_decisions.md) |
 | 기술 결정 | ADR-NN | ADR-02 | [../04_architecture/08_decision_records.md](../04_architecture/08_decision_records.md) |
 | 인수 기준 | AC-NN | AC-03 | [../03_requirements/10_acceptance_criteria.md](../03_requirements/10_acceptance_criteria.md) |
+| 참가자 외부 ID | mbr_ + base62 16~36자 | mbr_a1B2c3D4e5F6g7H8i9J0k1 | [../06_database/02_rooms_participants.md](../06_database/02_rooms_participants.md) |
+| 판 외부 ID | rnd_ + base62 | rnd_D6e7F8g9H0i1J2k3L4m5N6 | [../06_database/03_game_rounds.md](../06_database/03_game_rounds.md) |
+| 선택지 외부 ID | opt_ + base62 | opt_O7p8Q9r0S1t2U3v4W5x6Y7 | [../06_database/04_options_votes_results.md](../06_database/04_options_votes_results.md) |
 | 테이블·컬럼 | snake_case | game_rounds | [../06_database](../06_database/README.md) |
 | 마이그레이션 | NNNN_{name}.sql(4자리) | 0010_rooms.sql | [../06_database/07_migrations_seed.md](../06_database/07_migrations_seed.md) |
 
 각 ID는 **자기 정본 문서에서만** 채번한다. 타 폴더 문서는 참조만 하며 정본 밖에서 새 번호를 만들지 않는다.
+
+외부 식별자(mbr_ · rnd_ · opt_)는 **base62**(영문 대소문자 + 숫자)로 뽑는다. 파이썬의 secrets.token_urlsafe는 하이픈과 밑줄을 섞어 내보내 participants의 CHECK 제약에 걸린다.
 
 ## 결번을 두지 않는다
 
@@ -41,8 +46,8 @@
 | 05 | 운명의 룰렛 | WHEEL | roulette |
 | 06 | 사다리타기 | LADDER | ladder |
 | 07 | 킹메이커 | KING | kingmaker |
-| 08 | 시간초 잡기 | TIMER | timecatch |
-| 09 | 익명 저격 | SNIPE | sniper |
+| 08 | 시간초 잡기 | TIMER | timer |
+| 09 | 익명 저격 | SNIPE | snipe |
 | 10 | 눈치게임 | NUNCHI | nunchi |
 | 11 | 결과·저장 | RESULT | — |
 | 12 | 공통·오류 | CMN | — |
@@ -81,7 +86,7 @@
 ## 테이블·컬럼
 
 - snake_case를 쓴다. 테이블 6개의 이름 집합 정본은 [../06_database/README.md](../06_database/README.md)다.
-- PK는 BIGINT UNSIGNED AUTO_INCREMENT이며 API·WebSocket에서는 JavaScript 정밀도 문제를 피하려 **10진 문자열**로 직렬화한다. 프론트엔드에서 Number·parseInt로 강제 변환하지 않는다.
+- PK는 BIGINT UNSIGNED AUTO_INCREMENT이며 **API·WebSocket에 노출하지 않는다.** 외부 식별자를 가진 엔티티는 그것으로만 가리키고, 방은 초대 코드가 그 역할을 한다. 노출하면 방을 가로질러 연속 증가하는 값에서 다른 방의 참가자 수·생성 순서를 추정할 수 있고, 킹메이커 후보에서는 제출 순서가 드러나 익명성이 깨진다([../06_database/05_constraints_integrity.md](../06_database/05_constraints_integrity.md)). 외부 식별자는 이미 문자열이므로 JavaScript 정밀도 문제도 함께 사라진다.
 - 시각은 TIMESTAMP(6)에 저장하고 서버·DB 세션 시간대를 UTC로 고정한다.
 - 게임 판정 시간은 부동소수점이 아니라 **정수 밀리초 BIGINT**를 쓴다.
 - 멱등 키(create_request_id · request_id)는 엔티티 ID가 아니므로 VARCHAR ASCII로 분리한다.

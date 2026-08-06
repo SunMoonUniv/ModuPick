@@ -117,6 +117,20 @@ class RoundState:
     #: 판정이 끝난 시각. 「결정까지 걸린 시간」의 끝점이다.
     decided_at: datetime | None = None
 
+    #: 이번 단계에 수용된 입력. 도착 순으로 쌓이며 판정 함수에 그대로 넘어간다.
+    #:
+    #: **DB에 쓰지 않는 입력만 여기 담는다.** 밀리초 판정에 쓰는 입력(눈치 UP ·
+    #: 시간초 START·STOP · 룰렛 PICK · 사다리 START)은 DB 왕복이 끼면 도착 시각이
+    #: 아니라 커밋 시각을 재게 되어 판정 자체가 틀어진다. 초 단위로 마감하는 표
+    #: (킹메이커 의견·투표 · 저격 지목)는 votes·game_options에 남는다
+    #: (06_database/04 「저장 범위」).
+    #:
+    #: **단계가 바뀌면 비운다.** 지난 단계의 입력은 phaseSeq 게이트에서 이미
+    #: 걸러지므로 남겨 둘 이유가 없고, 남기면 다음 단계 판정이 그것까지 본다.
+    inputs: list = field(default_factory=list)
+    #: 같은 밀리초에 도착한 입력들 사이의 결정론적 보조 축. 단계마다 0에서 시작한다.
+    input_seq: int = 0
+
 
 @dataclass(slots=True)
 class IdempotencyEntry:

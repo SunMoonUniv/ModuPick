@@ -1,0 +1,25 @@
+# 개발·검증 전용 의존성.
+#
+#     pip install -r requirements-dev.txt      개발자·CI
+#     pip install -r requirements.txt          배포
+#
+# **운영에 필요한 것과 가른다.** 한 파일에 두면 배포 이미지에 테스트 러너와
+# 브라우저 드라이버가 함께 실려 나간다.
+#
+# 전이 의존성(iniconfig · pluggy · pyee 등)은 적지 않는다. pip이 해결하며,
+# 여기 적으면 도구를 올릴 때마다 손으로 맞춰야 한다.
+
+-r requirements.txt
+
+# 계약 테스트. pytest.ini가 --timeout을 쓰므로 플러그인이 함께 필요하다 —
+# 소켓 receive가 막히면 signal로는 깨지지 않아 thread 방식 타임아웃이 있어야
+# 헬퍼 하나가 잘못됐을 때 테스트가 멈춘 채로 남지 않는다.
+pytest==9.1.1
+pytest-timeout==2.4.0
+
+# CI의 첫 게이트. E9·F63·F7·F82(문법 오류·정의되지 않은 이름)에서 실패하면
+# 그 자리에서 파이프라인이 멈춘다.
+flake8==7.3.0
+
+# devtools/eyeball.py 전용. 시스템 Chrome을 쓰므로 브라우저를 따로 내려받지 않는다.
+playwright==1.62.0

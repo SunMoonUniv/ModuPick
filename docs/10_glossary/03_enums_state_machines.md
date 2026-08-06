@@ -165,7 +165,7 @@
 
 ## 방장 설정 (6종 · 라벨 16)
 
-configSchema 16개 항목 중 **값 집합을 갖는 것은 6개**다. 나머지 10개는 문자열·문자열 배열·불리언·정수 범위라 라벨 집합이 아니다. 규칙의 의미 정본은 [../05_game_rules/01_common.md](../05_game_rules/01_common.md)이고 와이어 규격 정본은 [../07_api/03_socket_events.md](../07_api/03_socket_events.md)다.
+configSchema 15개 항목 중 **값 집합을 갖는 것은 6개**다. 나머지 9개는 문자열·문자열 배열·불리언·정수 범위라 라벨 집합이 아니다. 규칙의 의미 정본은 [../05_game_rules/01_common.md](../05_game_rules/01_common.md)이고 와이어 규격 정본은 [../07_api/03_socket_events.md](../07_api/03_socket_events.md)다.
 
 | # | 축 | 값 수 | 값 | 기본값 |
 |:-:|----|:----:|-----|--------|
@@ -178,7 +178,7 @@ configSchema 16개 항목 중 **값 집합을 갖는 것은 6개**다. 나머지
 
 검산: 3 + 3 + 3 + 2 + 2 + 3 = **16**.
 
-라벨 집합이 아닌 설정 10개 — roulette.topic · ladder.resultItems · kingmaker.topic · kingmaker.revealAuthors · timer.topic · snipe.question · snipe.voteSeconds · snipe.multiVote · snipe.revealVoters · nunchi.topic. 6 + 10 = **16항**이며 이 총수의 정본은 [../07_api/03_socket_events.md](../07_api/03_socket_events.md)다.
+라벨 집합이 아닌 설정 9개 — roulette.topic · ladder.resultItems · kingmaker.topic · kingmaker.revealAuthors · timer.topic · snipe.question · snipe.voteSeconds · snipe.multiVote · nunchi.topic. 6 + 9 = **15항**이며 이 총수의 정본은 [../07_api/03_socket_events.md](../07_api/03_socket_events.md)다.
 
 - **ladder.speed는 결과에 영향을 주지 않는다.** 애니메이션 길이만 바꾼다.
 - **nunchi.windowMs는 화면에 0.3초·0.5초로 보이지만 내부값은 300·500 정수다.** 초 단위 설정을 부동소수점 곱셈으로 환산하지 않는 이유는 [05_units_and_time.md](./05_units_and_time.md)에 있다.

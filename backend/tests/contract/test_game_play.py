@@ -17,7 +17,7 @@ import pytest
 from app.domain.games import roulette
 from app.services import game_service
 from tests.conftest import _dsn
-from tests.contract.test_round import _drain, playing
+from tests.contract.test_round import _drain, _room_pk, playing
 
 
 @pytest.fixture
@@ -365,3 +365,131 @@ class TestAutoRun:
             frame = _drain(host_ws, "game:result", tries=12)
             assert frame["data"]["result"]["winnerMemberId"].startswith("mbr_")
             assert _result_data(started["data"]["roundId"]) is not None
+
+
+# ── 입력 수집 ──────────────────────────────────────────────────────────────
+
+
+class TestInputCollection:
+    """판정 함수에 넘길 입력 배열을 뼈대가 만든다.
+
+    **도착 시각을 서버가 붙이는 것이 핵심이다.** 클라이언트가 보낸 시각을 믿으면
+    그것이 곧 판정 조작 경로가 된다 — 눈치게임과 시간초는 밀리초 차이로 순위가
+    갈린다. 룰렛은 입력을 판정에 쓰지 않지만 수집 경로는 같은 것을 탄다.
+    """
+
+    def test_PICK이_판정_함수까지_전달된다(self, client, fast, monkeypatch):
+        """수집한 입력이 실제로 판정에 닿는지 본다.
+
+        판정이 끝나면 곧바로 SPINNING으로 전이하고 그 전이가 배열을 비우므로,
+        판정 시점을 가로채지 않으면 관찰할 창이 없다.
+        """
+        seen: list = []
+        original = roulette.judge
+
+        def spy(ctx, inputs=()):
+            seen.extend(inputs)
+            return original(ctx, inputs)
+
+        monkeypatch.setattr(roulette, "judge", spy)
+
+        with playing(client, 2) as (_room, _members, host_ws, _guests, started):
+            armed = _to_armed(host_ws)
+            _pick(host_ws, started, armed["data"]["phaseSeq"])
+            _drain(host_ws, "game:phase")  # SPINNING
+
+        picks = [i for i in seen if i.kind == "roulette.pick"]
+        assert len(picks) == 1
+        assert picks[0].participant_id == started["data"]["roster"][0]["memberId"]
+
+    def test_도착_시각은_라운드_시작이_원점이다(self, client, fast, monkeypatch):
+        """**절대 시각을 넘기지 않는다.** 판정 함수가 시각을 읽지 않아야 재현된다."""
+        seen: list = []
+        original = roulette.judge
+
+        def spy(ctx, inputs=()):
+            seen.extend(inputs)
+            return original(ctx, inputs)
+
+        monkeypatch.setattr(roulette, "judge", spy)
+
+        with playing(client, 2) as (_room, _members, host_ws, _guests, started):
+            armed = _to_armed(host_ws)
+            _pick(host_ws, started, armed["data"]["phaseSeq"])
+            _drain(host_ws, "game:phase")
+
+        item = seen[0]
+        assert isinstance(item.arrived_ms, int)
+        # 가이드 40ms를 지나 왔으므로 0 이상이고, 판이 방금 섰으니 상한도 낮다
+        assert 0 <= item.arrived_ms < 30_000
+        assert item.seq == 0
+
+    def test_자동_실행에는_입력이_없다(self, client, monkeypatch):
+        """방장이 누르지 않아도 판정은 돈다. 그때 배열은 비어 있다."""
+        monkeypatch.setattr(game_service, "GUIDE_MS", 40)
+        monkeypatch.setattr(game_service, "ARMED_MS", 60)
+        monkeypatch.setattr(game_service, "REVEAL_MS", 40)
+        monkeypatch.setattr(roulette, "SPIN_MS", 40)
+
+        seen: list = []
+        original = roulette.judge
+
+        def spy(ctx, inputs=()):
+            seen.append(list(inputs))
+            return original(ctx, inputs)
+
+        monkeypatch.setattr(roulette, "judge", spy)
+
+        with playing(client, 2) as (_room, _members, host_ws, _guests, _started):
+            _to_armed(host_ws)
+            _drain(host_ws, "game:phase", tries=12)  # SPINNING
+
+        assert seen == [[]]
+
+    def test_단계가_바뀌면_입력이_비워진다(self, client, fast):
+        """지난 단계의 입력을 다음 판정이 보면 안 된다."""
+        from app.infra.memory.runtime_store import store
+        from app.services import game_service
+
+        with playing(client, 2) as (room, _members, host_ws, _guests, started):
+            armed = _to_armed(host_ws)
+            room_pk = _room_pk(room["code"])
+            _pick(host_ws, started, armed["data"]["phaseSeq"])
+            _drain(host_ws, "game:phase")  # SPINNING — emit_phase가 비운다
+
+            state = store.round_of(room_pk)
+            assert [i for i in state.inputs if i.kind == "roulette.pick"] == []
+            assert state.input_seq == 0
+            del game_service  # import가 살아 있는지만 본다
+
+    def test_같은_사람의_입력을_찾을_수_있다(self, client, fast):
+        """1인 1회 제한이 게임마다 달라 kind까지 보는 경로를 둔다."""
+        from app.infra.memory.runtime_store import store
+        from app.services.game_service import has_input_from, record_input
+
+        with playing(client, 2) as (room, _members, host_ws, _guests, started):
+            _to_armed(host_ws)
+            state = store.round_of(_room_pk(room["code"]))
+            me = started["data"]["roster"][0]["memberId"]
+
+            assert has_input_from(state, me) is False
+            record_input(state, member_id=me, kind="nunchi.up")
+            assert has_input_from(state, me) is True
+            assert has_input_from(state, me, kind="nunchi.up") is True
+            assert has_input_from(state, me, kind="timer.stop") is False
+
+    def test_seq가_도착_순서를_고정한다(self, client, fast):
+        """같은 밀리초에 둘이 도착해도 정렬이 흔들리지 않아야 한다."""
+        from app.infra.memory.runtime_store import store
+        from app.services.game_service import record_input
+
+        with playing(client, 3) as (room, _members, host_ws, _guests, started):
+            _to_armed(host_ws)
+            state = store.round_of(_room_pk(room["code"]))
+            ids = [m["memberId"] for m in started["data"]["roster"]]
+            for mid in ids:
+                record_input(state, member_id=mid, kind="nunchi.up")
+
+            fresh = [i for i in state.inputs if i.kind == "nunchi.up"]
+            assert [i.seq for i in fresh] == [0, 1, 2]
+            assert [i.participant_id for i in fresh] == ids
