@@ -1,139 +1,164 @@
 # 판정 담당(B) 인계 — 백엔드 뼈대 현황
 
-> **작성일**: 2026-08-04 · 브랜치 `dev/iee129` (`06db57a`)
+> **작성일**: 2026-08-06 · 브랜치 `dev/iee129`
 > **보낸 사람**: A(뼈대) · **받는 사람**: B(게임 판정)
+> **개정**: 2026-08-06 — 룰렛 합류 완료. 사다리 요청과 계약 확정분으로 전면 개정
 
-한 줄로 — **뼈대는 라운드 시작까지 끝났고, 판정 함수를 부를 자리만 비어 있습니다.**
-그 자리는 `round_service.emit_phase` 하나입니다.
+한 줄로 — **룰렛은 시작부터 결과까지 붙었습니다. 사다리 판정을 주시면 같은 자리에 얹습니다.**
 
 ---
 
-## 1. 먼저 알아야 할 것: plan.md §5는 무효입니다
+## 1. 룰렛은 이렇게 붙었습니다
 
-plan.md는 "**규칙 자체가 존재하지 않아** 잠정값으로 넘길 수 없는" 미결정 7건을 B가
-닫아야 한다고 적었습니다. **docs/가 전부 닫아 놨습니다.** 규칙을 새로 정하는 일이
-아니라 **문서를 옮겨 적는 일**입니다.
+`game_service.py`가 판정을 부르고 결과를 저장해 내보내기까지 잇습니다.
 
-| plan.md §5가 막힌다고 한 것 | docs/ 현황 |
+```
+GUIDE(3초) → ARMED(30초) → [PICK 또는 자동 실행] → SPINNING(5초) → REVEAL(3초) → RESULT
+```
+
+부르는 자리는 `game_service._judge`입니다.
+
+```python
+ctx = JudgeContext(
+    round_id=state.round_id, game_id=state.game_id, seed=state.seed,
+    roster=tuple(m["memberId"] for m in state.roster),   # memberId만
+    config=state.config, phase=state.phase,
+)
+verdict = roulette.judge(ctx, tuple(state.inputs))
+```
+
+말씀하신 **§3-1(roster)**과 **§3-2(밀리초)**는 제안대로 닫았습니다.
+
+| 항목 | 결과 |
 |---|---|
-| 눈치 종료 조건 | `05_game_rules/07_nunchi.md` — 종료 증명 있음 |
-| 판정창 그룹핑 알고리즘 | 같은 문서 §판정 알고리즘 |
-| 시간초 무한 재대결 | `05_game_rules/05_timer.md` |
-| 킹메이커 시간 상수 | `05_game_rules/04_kingmaker.md` |
-| Q-01 조작 주체 | `02_features/08_permission_matrix.md` |
-| 게임별 연출 길이 상수표 | **항목 자체가 성립하지 않음** — `resultScreenAt`이라는 필드가 docs 계약에 없습니다 |
-
-게임 6종 문서가 전부 **판정 알고리즘(의사코드) · 종료 증명 · 경계값 표 · 인수 기준**을
-갖고 있습니다. 규칙을 고민하지 말고 **문서가 이긴다**는 전제로 그대로 구현하세요.
-
-```
-docs/05_game_rules/
-  01_common.md   02_roulette.md  03_ladder.md
-  04_kingmaker.md 05_timer.md    06_snipe.md   07_nunchi.md
-```
+| roster | 호출부에서 memberId만 뽑아 넘깁니다. `RoundState.roster`는 그대로입니다 |
+| 시간 단위 | `emit_phase`가 **정수 밀리초**를 받습니다. `duration_ms=verdict.next_deadline`을 그대로 넘깁니다 |
+| 연출 값 자리 | `emit_phase(payload=...)`를 열었습니다. **`Verdict.detail`을 없애셔도 됩니다** |
+| 입력 수집층 | 만들었습니다 — 아래 §3 |
 
 ---
 
-## 2. 지금 돌아가는 것 / 안 돌아가는 것
+## 2. `persist`를 그대로 내보내지는 못합니다
+
+인계 문서에 "변환 없이 저장하고 그대로 `game:result`로"라고 적어 주셨는데, **저장은 그대로 맞고 전송은 모양이 다릅니다.** 정본 두 곳이 서로 다른 형태를 규정합니다.
+
+| 어디 | 룰렛의 모양 |
+|---|---|
+| 저장 `06_database/04` | schemaVersion · seed · winnerMemberIds[] · wheelOrder[] |
+| 전송 `07_api/03 §17` | variant · result{ topic · winnerMemberId · detail{seed · sliceOrder} · stats } |
+
+`persist`는 **저장 형식과 정확히 일치**해 변환 없이 들어갑니다. 전송할 때만 이름이 바뀌는 자리가 있고(`wheelOrder` → `sliceOrder`) 판정이 만들지 않는 값도 있습니다(`topic` · `stats`). 변환은 `game_service._wire_result` 한 곳에서만 합니다.
+
+**B가 하실 일은 없습니다.** `persist`를 저장 형식(`06_database/04`)에 맞춰 주시면 나머지는 뼈대가 합니다.
+
+---
+
+## 3. 입력 수집층은 만들었습니다
+
+§4-3에서 확인 요청하신 항목입니다. **A가 만드는 것이 맞아** 넣었습니다.
+
+```python
+JudgeInput(participant_id=<memberId>, kind=<action type>, payload=..., arrived_ms=..., seq=...)
+```
+
+- **도착 시각은 서버가 붙입니다.** 클라이언트가 보낸 시각을 믿으면 그것이 곧 판정 조작 경로가 됩니다
+- `arrived_ms`는 **라운드 시작을 원점으로 하는 상대 정수 밀리초**입니다(계약 문서 그대로)
+- `seq`는 같은 밀리초에 둘 이상 도착했을 때의 결정론적 보조 축입니다
+- **단계가 바뀌면 배열을 비웁니다.** 지난 단계 입력을 다음 판정이 보지 않습니다
+
+`arrived_ms` 원점을 **라운드 시작**으로 잡았습니다. 눈치게임처럼 라운드가 여러 번 도는 게임에서 단계 시작 원점이 편하시면 `ctx.started_ms`와 함께 조정하겠습니다.
+
+---
+
+## 4. 다음은 사다리입니다 — 협의할 것 하나
+
+`03_ladder.md`가 의사코드·종료 증명·경계값까지 정해 뒀으니 그대로 옮기시면 됩니다. **다만 `optionId` 때문에 룰렛과 사정이 다릅니다.**
+
+저장 형식이 이렇습니다.
+
+```
+assignments[{ memberId, optionId, label }]      06_database/04
+```
+
+`optionId`(`opt_...`)는 **DB가 발급하는 값**이고 판정 함수는 DB를 모릅니다. 게다가 `game_options`에 넣을 도착 항목은 **정규화된 뒤의 것**이라(`03_ladder.md:78` — n보다 많으면 자르고 적으면 X로 채운다) 그 정규화 결과를 뼈대가 알아야 행을 만들 수 있습니다.
+
+**A 제안 — 판정은 인덱스로 돌려주시고 optionId는 뼈대가 채웁니다.**
+
+```python
+Verdict(
+    outcome=DECIDED,
+    assignments=({"memberId": "mbr_...", "slotIndex": 2, "label": "발표"}, ...),
+    detail={"slots": ["팀장", "자료 조사", ...],        # 정규화된 하단 항목(순서 그대로)
+            "ladderRungs": [{"row": 0, "leftLane": 1}, ...]},
+    persist={...},          # optionId 자리는 비워 두시거나 아예 빼 주세요
+    next_phase="DRAWING", next_deadline=<밀리초>,
+)
+```
+
+뼈대가 하는 일 — `slots`로 `game_options` 행 n개를 만들고(정본이 사다리를 "도착 항목 · 참가자 참조 없음"으로 규정), `slotIndex`로 `option_id`를 이어 `persist`에 채운 뒤 저장합니다.
+
+| # | 근거 |
+|:-:|------|
+| 1 | **판정이 DB 발급값을 알 수 없습니다.** 계층 규칙상 domain은 값을 받아 값을 돌려줍니다 |
+| 2 | 정규화가 판정 로직의 일부라(난수 소비 전 1단계) 뼈대가 따로 구현하면 **같은 규칙이 두 곳에 생깁니다** |
+| 3 | 룰렛의 `winnerIndex`와 같은 축입니다 — 인덱스로 주고 이름은 뼈대가 붙입니다 |
+
+**다른 모양이 편하시면 말씀해 주세요.** 필요한 것은 둘뿐입니다 — *정규화된 항목 배열*과 *참가자 → 항목 대응*. 담기는 자리는 어디든 맞추겠습니다.
+
+`ladderRungs`는 연출 시작 값이라 `game:phase(DRAWING)`의 payload로 나갑니다(A-01에서 열어 둔 자리). 결과 저장에도 함께 들어갑니다.
+
+---
+
+## 5. 지금 돌아가는 것 / 안 돌아가는 것
 
 | 구간 | 상태 |
 |---|:---:|
-| 방 만들기 · 코드 조회 · 참가 · 아바타 · 프로필 확정 · 이탈 (REST 6종) | 완료 |
-| 소켓 연결 · 인증 · 방 스냅샷 · 명단 이벤트 | 완료 |
-| 채팅 · 준비 · 강퇴 · 이탈 유예(30/60초) · 주기 청소 · 기동 정리 | 완료 |
-| 게임 선택 · 설정 동기화 (configSchema 16항목) | 완료 |
-| `game:start` → 라운드 생성 · 명단 스냅샷 고정 · PLAYING 전이 · `game:phase(READY)` | 완료 |
-| **게임별 단계 진행 · 판정 · 결과 저장 · `game:result`** | **비어 있음 = B 몫** |
-| `game:action` · `game:decide` | 라우터에 없음 (보내면 `game.invalid_action`) |
+| REST 6종 · 소켓 · 대기방 · 채팅 · 준비 · 강퇴 · 이탈 유예 · 청소 | 완료 |
+| 게임 선택 · 설정 동기화 (configSchema **15항목**) | 완료 |
+| 라운드 생성 · 명단 스냅샷 · 단계 전이 · 틱 | 완료 |
+| **룰렛** — 자동 전이 · 판정 · 결과 저장 · `game:result` | **완료** |
+| `game:action` 라우팅 · 입력 수집 | 완료 (현재 type은 `roulette.pick` 하나) |
+| 사다리 · 킹메이커 · 시간초 · 저격 · 눈치 | **비어 있음** |
+| `game:decide` | 라우터에 없음 |
 
-검증 현황 — 계약·도메인·서비스 테스트 **224건**, 실서버 프로토콜 재생 **85건**,
-브라우저 두 창 **9건 + 21건**. 전부 통과 상태입니다.
+검증 — 계약 테스트 **309건**, 브라우저 두 창 **28건**. 전부 통과 상태입니다.
 
-프론트도 **대기방까지는 실서버에 붙어 있습니다**(`frontend/src/lib/`). 게임 화면부터는
-아직 클라이언트 시뮬레이션이라, B의 판정이 붙는 순간 그쪽도 서버 값으로 갈아탑니다.
+판정이 없는 게임을 고르면 라운드는 서지만 READY에 머뭅니다(`game_service.begin`이 로그만 남기고 돌아갑니다). 방장의 `round:close`로 빠져나올 수 있습니다.
 
 ---
 
-## 3. B가 만들 것
-
-plan.md §3.2의 파일 목록 그대로입니다.
-
-```
-app/domain/games/catalog.py            게임 메타 (최소 인원은 이미 domain/enums.py에 있음)
-app/domain/games/roulette.py · ladder.py · kingmaker.py · timer.py · snipe.py · nunchi.py
-app/api/games.py                       GET /api/games · GET /api/games/{gameId}
-tests/domain/                          DB 없이 도는 순수 규칙 테스트
-```
-
-**시그니처는 docs가 정해 뒀습니다** — `04_architecture/03_judgment_engine.md §게임별 판정 호출 규약`.
-
-```
-judge(ctx, inputs) -> Verdict     # 순수 함수. 시각을 읽지 않고 DB·소켓에 접근하지 않는다
-
-ctx      round_id · game_id · config · roster · alive · seed · phase ·
-         repeat · started_ms · deadline_ms · tie_pool
-inputs   participant_id · kind · payload · arrived_ms · seq   (도착 순 정렬)
-Verdict  outcome(DECIDED|TIE|VOID|HOST_CHOICE) · winner · assignments · tally ·
-         survivors · tie_pool · next_phase · next_deadline · persist
-```
-
-**시각을 직접 읽지 마세요.** `arrived_ms`·`started_ms`는 뼈대가 넣어 줍니다. 시드도
-`ctx.seed`로 들어옵니다(라운드마다 64비트, `game_rounds.random_seed`에 저장됨) — 판정에
-난수가 필요하면 그 시드로만 만드세요. 같은 입력이 같은 결과를 내야 재현이 됩니다.
-
----
-
-## 4. 접점은 두 곳뿐입니다
-
-### ① 단계 전이 — `round_service.emit_phase`
-
-```python
-await round_service.emit_phase(room_pk, phase="PLAYING", duration_s=10.0)
-await round_service.emit_phase(room_pk, phase="TIE", tie_round=1)
-```
-
-`phaseSeq` 증가 · `game:phase` 브로드캐스트 · 1초 틱 시작·정지를 이 함수가 다 합니다.
-게임별 상위 서비스(예: `game_service.py`)가 판정 결과를 보고 이걸 부르면 됩니다.
-
-라운드 상태는 `store.round_of(room_pk)`에 있습니다 — `round_id` · `config` · `roster`
-(**명단 스냅샷, 도중 이탈해도 불변**) · `seed` · `phase` · `phase_seq` · `deadline_at`.
-
-### ② 결과 저장 — `game_results.result_data` (JSON)
-
-와이어 형태는 `07_api/03_socket_events.md §17 game:result`, 의미 정본은
-`05_game_rules`입니다. **variant 4종**(WINNER · ASSIGN · TALLY · RECORD)이
-`frontend/src/lib/types.ts`의 `GameResult` 유니언과 1:1 대응합니다.
-
-판정 함수가 돌려준 `persist`를 뼈대가 그대로 저장하고 그대로 내보낼 수 있게 맞춰
-주세요. 이 한 가지만 합의되면 3단계 합류에서 변환 코드가 안 생깁니다.
-
----
-
-## 5. 파일 경계
+## 6. 파일 경계
 
 | 손대세요 | 손대지 마세요 |
 |---|---|
 | `app/domain/games/` · `app/api/games.py` · `tests/domain/` | `app/services/` · `app/ws/` · `app/infra/` · `sql/` · `devtools/` |
 
-겹치는 자리가 하나 있습니다 — **게임 설정 규격**은 이미 `app/domain/game_config.py`에
-있습니다(configSchema 16항목·기본값·부분 갱신 검증, 계약 테스트 43건). 판정 함수는
-`ctx.config`로 검증된 값을 받으므로 다시 검증할 필요가 없습니다. 규격을 바꿔야 하면
-말씀해 주세요.
+게임 설정 규격은 `app/domain/game_config.py`에 있습니다. 판정 함수는 `ctx.config`로 **검증된 값**을 받으므로 다시 검증할 필요가 없습니다.
+
+**저격 설정이 3항으로 줄었습니다** — `revealVoters`(지목자 공개)를 폐기했습니다. 원 기획에 없던 항목이고 익명이 핵심인 게임에 공개 선택지를 붙이는 것이 의도와 어긋납니다. 지목자는 항상 비공개이며, 결과 응답에 지목자 식별 정보를 **어떤 경우에도** 담지 않습니다.
 
 ---
 
-## 6. 바뀐 계약값 — 확인 부탁드립니다
+## 7. 문서 정정은 끝났습니다
 
-프로토타입이 쓰던 **`timecatch` · `sniper`는 계약값이 아닙니다.** 정본은 `timer` ·
-`snipe`이고 DB CHECK도 그 값만 받습니다. 프론트는 이미 교체했습니다.
+`HANDOFF_A.md §5`에 적어 주신 6건을 전부 반영했고, 대조 중 2건을 더 찾아 함께 고쳤습니다.
 
-```
-roulette · ladder · kingmaker · timer · snipe · nunchi
-```
+| # | 무엇 |
+|:-:|------|
+| 1 | 시드 폭 — `crypto_random_bytes(16)` → `(8)` |
+| 2 | 룰렛 회전 상수 고정 — 판정 알고리즘·종료 증명·구현 대조 |
+| 3 | 고정 기준 수치 — C→S 12종 · S→C 19종 |
+| 4 | 외부 식별자 규약 — 84행 정정 + 「ID 형식 요약」에 `mbr_`·`rnd_`·`opt_` 추가 + `07_api` 예시 39건 |
+| 5 | 저격 「지목자 공개」 폐기 — 문서 17개 + 파생 집계 |
+| 6 | gameId 매핑 — `timecatch`·`sniper` → `timer`·`snipe` |
+| 7 | `06_database/04`의 config 열이 **6종 중 5종**에서 정본과 불일치 |
+| 8 | configSchema 총수 16 → 15 |
+
+`docs/check-docs.sh`로 ID 채번 연속성·링크·에러 코드 전수를 검사합니다. 문서를 고치셨으면 이걸 돌려 주세요.
 
 ---
 
-## 7. 로컬에서 띄우는 법
+## 8. 로컬에서 띄우는 법
 
 ```bash
 # DB (MySQL 8.4, 포트 3307 — 로컬 mysqld의 3306을 피했습니다)
@@ -156,31 +181,30 @@ cd backend; docker compose up -d
 python -m venv .venv; .venv\Scripts\Activate.ps1
 pip install -r requirements-dev.txt
 
-# 한글 로그·문서가 cp949로 떨어지지 않게 UTF-8 모드로 띄웁니다
+# 한글 로그가 cp949로 떨어지지 않게 UTF-8 모드로 띄웁니다
 $env:PYTHONUTF8 = "1"
 uvicorn app.main:app --reload --ws-ping-interval 20 --ws-ping-timeout 60
 
 pytest
 ```
 
-uvloop는 윈도우를 지원하지 않아 requirements.txt에서 환경 표지로 걸러 뒀습니다. 없으면 uvicorn이 asyncio 기본 이벤트 루프로 돌며 동작은 같습니다.
+uvloop는 윈도우를 지원하지 않아 환경 표지로 걸러 뒀습니다. 없으면 uvicorn이 asyncio 기본 이벤트 루프로 돌며 동작은 같습니다. 줄바꿈은 `.gitattributes`가 LF로 고정합니다.
 
-확인 수단이 셋 있습니다.
+`pip install -r requirements-dev.txt` 하나면 됩니다 — 그 파일이 `requirements.txt`를 포함하고 pytest·flake8·playwright를 더합니다.
+
+확인 수단이 넷 있습니다.
 
 | 수단 | 무엇을 보나 |
 |---|---|
-| `http://127.0.0.1:8000/devtools/console.html` | 소켓 프레임을 직접 보내고 받는 검증 콘솔. **임의 프레임 입력창**이 있어 `game:action` 같은 미구현 이벤트를 두드려 볼 수 있습니다 |
-| `backend/devtools/eyeball.py` | 콘솔을 진짜 Chrome으로 두 창 띄워 21건 검증 |
-| `frontend/devtools/two-windows.py` | 제품 화면을 두 창 띄워 9건 검증 (`HEADED=1`이면 눈으로 보입니다) |
+| `http://127.0.0.1:8000/devtools/console.html` | 소켓 프레임을 직접 보내고 받는 검증 콘솔. **돌리기(PICK) 버튼**과 결과 표시가 붙어 있어 룰렛을 끝까지 돌려볼 수 있습니다 |
+| `backend/devtools/eyeball.py` | 콘솔을 진짜 Chrome으로 두 창 띄워 28건 검증. `CONSOLE_URL`로 포트를 바꿀 수 있습니다 |
+| `frontend/devtools/two-windows.py` | 제품 화면을 두 창 띄워 검증 (`HEADED=1`이면 눈으로 보입니다) |
 | `/openapi.json` · `backend/devtools/socket-events.ts` | REST·소켓 타입. 소켓 타입은 `gen_socket_types.py`가 스키마에서 생성합니다 |
 
 ---
 
-## 8. 합류할 때 정할 것
+## 9. 남은 협의
 
-지금 당장은 아니고, B의 판정 6종이 테스트로 검증된 뒤에 같이 정하면 되는 것들입니다.
-
-1. `game_service.py`를 누가 만들지 — 판정 호출·결과 저장·브로드캐스트를 잇는 층
-2. `game:action`의 type 8종 라우팅 (`07_api/03_socket_events.md §game:action type 8종`)
-3. 방장 결정(`game:decide`)의 RETRY·ABORT 처리 — 선택지는 **RETRY·ABORT 둘만** 두기로 확정돼 있습니다
-4. 결과 화면 진입 시점(`round:close`는 **RESULT 단계에서만** 받습니다 — 전표 15행)
+1. **사다리의 `optionId` 처리** — §4. 이것만 정하면 사다리는 바로 붙습니다
+2. `game:decide`의 RETRY·ABORT 처리 — 선택지는 **둘만** 두기로 확정돼 있습니다
+3. 킹메이커부터는 입력이 **DB에도** 남습니다(`votes`·`game_options`). 인메모리 배열은 밀리초 판정용이고, 초 단위로 마감하는 표는 행으로 남깁니다(`06_database/04` 「저장 범위」) — 그 경계는 킹메이커 착수 때 같이 보면 됩니다
