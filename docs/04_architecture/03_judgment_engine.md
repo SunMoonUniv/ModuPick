@@ -67,7 +67,7 @@ on_frame(socket, frame):
 
 ```
 create_round(room, game_id, config, roster):
-    seed = crypto_random_bytes(16)            # 암호학적 난수원. 시각·방 코드에서 유도하지 않는다
+    seed = crypto_random_bytes(8)             # 암호학적 난수원. 시각·방 코드에서 유도하지 않는다
     round = Round(id=new_id(), game=game_id, config=config,
                   roster=roster,               # 명단 스냅샷 — 이후 변하지 않는다
                   seed=seed, phase=..., repeat=0)

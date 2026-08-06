@@ -60,7 +60,7 @@
   "displayCode": "MODU-427132",
   "roomName": "4조 · 알고리즘 스터디",
   "maxMembers": 8,
-  "memberId": "1042",
+  "memberId": "mbr_a1B2c3D4e5F6g7H8i9J0k1",
   "memberToken": "b9Qk7x2mF1sV...",
   "memberStatus": "PENDING",
   "isHost": true,
@@ -108,7 +108,7 @@
 ```json
 // 응답 data (201)
 {
-  "memberId": "1047",
+  "memberId": "mbr_L2m3N4o5P6q7R8s9T0u1V2",
   "memberToken": "k3Zp8w5nD2rQ...",
   "memberStatus": "PENDING",
   "isHost": false,
@@ -169,7 +169,7 @@
 ```json
 // 응답 data (200)
 {
-  "memberId": "1047",
+  "memberId": "mbr_L2m3N4o5P6q7R8s9T0u1V2",
   "memberStatus": "ACTIVE",
   "nickname": "지호2",
   "avatarId": "A06",

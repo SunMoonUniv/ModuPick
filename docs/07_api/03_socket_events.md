@@ -285,7 +285,7 @@ REST와 맞물려 있으므로 순서대로 정리한다.
 ### 3. member:kick — 참가자 강퇴
 
 ```json
-{ "memberId": "1051" }
+{ "memberId": "mbr_w3X4y5Z6a7B8c9D0e1F2g3" }
 ```
 
 - 자기 자신을 보내면 member.self_kick.
@@ -363,11 +363,11 @@ REST와 맞물려 있으므로 순서대로 정리한다.
 
 ```json
 {
-  "roundId": "3071",
+  "roundId": "rnd_D6e7F8g9H0i1J2k3L4m5N6",
   "phaseSeq": 2,
   "requestId": "8b1f0c4a-2d6e-4a19-9c33-51e0f2a7b8d4",
   "type": "king.vote",
-  "payload": { "candidateIds": ["4102", "4107"] }
+  "payload": { "candidateIds": ["opt_O7p8Q9r0S1t2U3v4W5x6Y7", "opt_Z8a9B0c1D2e3F4g5H6i7J8"] }
 }
 ```
 
@@ -376,7 +376,7 @@ REST와 맞물려 있으므로 순서대로 정리한다.
 game:decision_required가 나간 뒤에만 받는다.
 
 ```json
-{ "roundId": "3071", "phaseSeq": 7, "requestId": "…", "choice": "PICK", "targetId": "1051" }
+{ "roundId": "rnd_D6e7F8g9H0i1J2k3L4m5N6", "phaseSeq": 7, "requestId": "…", "choice": "PICK", "targetId": "mbr_w3X4y5Z6a7B8c9D0e1F2g3" }
 ```
 
 | choice | 뜻 | targetId |
@@ -394,7 +394,7 @@ game:decision_required가 나간 뒤에만 받는다.
 ### 12. round:close — 대기방 복귀
 
 ```json
-{ "roundId": "3071" }
+{ "roundId": "rnd_D6e7F8g9H0i1J2k3L4m5N6" }
 ```
 
 - 결과 화면에서 방장이 대기방으로를 누를 때 보낸다. game:action에 흡수하지 않는다.
@@ -416,7 +416,7 @@ game:decision_required가 나간 뒤에만 받는다.
 | 9 | **game:selected** | gameId · config · configSchemaVersion | 전원 | game:select · game:random |
 | 10 | **game:config_changed** | gameId · config | 전원 | game:config |
 | 11 | **game:started** | roundId · gameId · config · roster | 전원 | game:start |
-| 12 | **game:phase** | roundId · phaseSeq · phase · tieRound · deadlineAt · serverTime | 전원 | 단계 전이 |
+| 12 | **game:phase** | roundId · phaseSeq · phase · tieRound · deadlineAt · serverTime · payload? | 전원 | 단계 전이 |
 | 13 | **game:tick** | roundId · phaseSeq · remainMs · serverTime | 전원 | 1초 주기 |
 | 14 | **game:progress** | roundId · phaseSeq · payload | 전원 | 입력 도착 · 라운드 판정 |
 | 15 | **game:tie** | roundId · phaseSeq · tieRound · tieRoundMax · candidateKind · candidateIds · deadlineAt | 전원 | 동점 판정 |
@@ -441,13 +441,13 @@ game:decision_required가 나간 뒤에만 받는다.
     "roomName": "4조 · 알고리즘 스터디",
     "maxMembers": 8,
     "roomStatus": "WAITING",
-    "hostMemberId": "1042",
+    "hostMemberId": "mbr_a1B2c3D4e5F6g7H8i9J0k1",
     "expiresAt": "2026-08-02T06:14:05.000Z"
   },
-  "me": { "memberId": "1047", "isHost": false, "memberStatus": "PENDING" },
+  "me": { "memberId": "mbr_L2m3N4o5P6q7R8s9T0u1V2", "isHost": false, "memberStatus": "PENDING" },
   "members": [
     {
-      "memberId": "1042", "nickname": "지호", "avatarId": "A06",
+      "memberId": "mbr_a1B2c3D4e5F6g7H8i9J0k1", "nickname": "지호", "avatarId": "A06",
       "bio": "@jiho_dev", "isHost": true, "ready": false,
       "connection": "ONLINE", "joinOrder": 1
     }
@@ -474,7 +474,7 @@ game:decision_required가 나간 뒤에만 받는다.
 ### 3. member:joined
 
 ```json
-{ "member": { "memberId": "1051", "nickname": "서연", "avatarId": "A02", "bio": "", "isHost": false, "ready": false, "connection": "ONLINE", "joinOrder": 3 }, "roomVersion": 43 }
+{ "member": { "memberId": "mbr_w3X4y5Z6a7B8c9D0e1F2g3", "nickname": "서연", "avatarId": "A02", "bio": "", "isHost": false, "ready": false, "connection": "ONLINE", "joinOrder": 3 }, "roomVersion": 43 }
 ```
 
 - 소켓 연결 시점이 아니라 **프로필 확정으로 ACTIVE가 된 순간** 나간다.
@@ -484,7 +484,7 @@ game:decision_required가 나간 뒤에만 받는다.
 ### 4. member:left
 
 ```json
-{ "memberId": "1051", "reason": "DISCONNECT", "activeCount": 5, "roomVersion": 44 }
+{ "memberId": "mbr_w3X4y5Z6a7B8c9D0e1F2g3", "reason": "DISCONNECT", "activeCount": 5, "roomVersion": 44 }
 ```
 
 - reason은 **LEAVE**(직접 나감) · **KICK**(강퇴) · **DISCONNECT**(이탈 확정) 3값이다.
@@ -494,7 +494,7 @@ game:decision_required가 나간 뒤에만 받는다.
 ### 5. member:ready_changed
 
 ```json
-{ "memberId": "1051", "ready": true, "readyCount": 4, "activeCount": 5, "roomVersion": 45 }
+{ "memberId": "mbr_w3X4y5Z6a7B8c9D0e1F2g3", "ready": true, "readyCount": 4, "activeCount": 5, "roomVersion": 45 }
 ```
 
 - readyCount·activeCount는 화면의 준비 밴드에 그대로 쓴다. 클라이언트가 직접 세지 않고 서버 값을 쓰면 오차가 생기지 않는다.
@@ -504,7 +504,7 @@ game:decision_required가 나간 뒤에만 받는다.
 ### 6. member:connection
 
 ```json
-{ "memberId": "1042", "state": "UNSTABLE", "graceEndsAt": "2026-08-02T06:04:50.000Z", "roomVersion": 46 }
+{ "memberId": "mbr_a1B2c3D4e5F6g7H8i9J0k1", "state": "UNSTABLE", "graceEndsAt": "2026-08-02T06:04:50.000Z", "roomVersion": 46 }
 ```
 
 - state는 **ONLINE**(연결) · **UNSTABLE**(의심) 2값이다. 의심으로 들어갈 때 UNSTABLE이, 같은 소켓에서 프레임이 도착해 연결로 복귀할 때 ONLINE이 나간다.
@@ -516,7 +516,7 @@ game:decision_required가 나간 뒤에만 받는다.
 ### 7. chat:message
 
 ```json
-{ "messageId": "912", "memberId": "1051", "text": "다 모였으면 시작해요", "sentAt": "2026-08-02T06:04:05.123Z", "roomVersion": 46 }
+{ "messageId": "912", "memberId": "mbr_w3X4y5Z6a7B8c9D0e1F2g3", "text": "다 모였으면 시작해요", "sentAt": "2026-08-02T06:04:05.123Z", "roomVersion": 46 }
 ```
 
 - memberId가 본인이면 오른쪽, 아니면 왼쪽 말풍선이다. 시스템 메시지를 서버가 보내는 경로는 없다.
@@ -525,7 +525,7 @@ game:decision_required가 나간 뒤에만 받는다.
 ### 8. chat:typing
 
 ```json
-{ "memberId": "1051", "typing": true, "roomVersion": 46 }
+{ "memberId": "mbr_w3X4y5Z6a7B8c9D0e1F2g3", "typing": true, "roomVersion": 46 }
 ```
 
 보낸 사람 본인에게는 되돌리지 않는다.
@@ -551,11 +551,11 @@ game:decision_required가 나간 뒤에만 받는다.
 
 ```json
 {
-  "roundId": "3071",
+  "roundId": "rnd_D6e7F8g9H0i1J2k3L4m5N6",
   "gameId": "kingmaker",
   "config": { "topic": "팀명", "votesPerMember": 1, "revealAuthors": false },
   "roster": [
-    { "memberId": "1042", "nickname": "지호", "avatarId": "A06", "joinOrder": 1 }
+    { "memberId": "mbr_a1B2c3D4e5F6g7H8i9J0k1", "nickname": "지호", "avatarId": "A06", "joinOrder": 1 }
   ],
   "roomVersion": 49
 }
@@ -567,7 +567,7 @@ game:decision_required가 나간 뒤에만 받는다.
 ### 12. game:phase
 
 ```json
-{ "roundId": "3071", "phaseSeq": 1, "phase": "PLAYING", "tieRound": 0, "deadlineAt": "2026-08-02T06:06:05.000Z", "serverTime": "2026-08-02T06:04:05.123Z", "roomVersion": 50 }
+{ "roundId": "rnd_D6e7F8g9H0i1J2k3L4m5N6", "phaseSeq": 1, "phase": "PLAYING", "tieRound": 0, "deadlineAt": "2026-08-02T06:06:05.000Z", "serverTime": "2026-08-02T06:04:05.123Z", "payload": null, "roomVersion": 50 }
 ```
 
 | 필드 | 값 |
@@ -576,6 +576,16 @@ game:decision_required가 나간 뒤에만 받는다.
 | phaseSeq | 라운드 안에서 0부터 단조 증가한다. C→S 입력이 되싣는 값이다 |
 | tieRound | 결선 회차다. TIE가 아니면 0, 결선이면 1~3 |
 | deadlineAt | 이 단계가 끝나는 시각. 제한 시간이 없으면 null이며 이때 game:tick도 흐르지 않는다 |
+| payload | 이 전이에만 필요한 게임별 부가 값. 해당 없으면 null이다 |
+
+**payload는 연출이 시작되는 순간에 필요한 값을 싣는다.** 결과 이벤트는 연출이 끝난 뒤에 오므로 그때는 이미 늦고, 값이 전원에게 같게 도착하지 않으면 화면이 서로 다른 조각에서 멈춘다. game:progress가 같은 구조를 쓰므로 새 규약이 아니다.
+
+| 게임 · 단계 | payload |
+|------------|---------|
+| 룰렛 SPINNING | winnerIndex |
+| 사다리 DRAWING | assignments · ladderRungs |
+
+값 이름은 [../06_database/04_options_votes_results.md](../06_database/04_options_votes_results.md)의 result_data 규약을 따른다. **전용 이벤트를 신설하지 않는다** — 게임마다 하나씩 늘어나고 S→C 전수가 바뀐다.
 
 - **클라이언트는 이 이벤트만 보고 화면을 전환한다.** 자체 타이머가 0에 닿았다는 이유로 전환하지 않는다.
 - 킹메이커의 제출·투표는 같은 PLAYING 안의 별개 단계가 아니라 **각각 phaseSeq가 다른 PLAYING**이다. 단계의 의미 구분은 진행 중인 게임과 phaseSeq로 클라이언트가 판단한다.
@@ -583,7 +593,7 @@ game:decision_required가 나간 뒤에만 받는다.
 ### 13. game:tick
 
 ```json
-{ "roundId": "3071", "phaseSeq": 1, "remainMs": 92000, "serverTime": "2026-08-02T06:04:33.123Z", "roomVersion": 50 }
+{ "roundId": "rnd_D6e7F8g9H0i1J2k3L4m5N6", "phaseSeq": 1, "remainMs": 92000, "serverTime": "2026-08-02T06:04:33.123Z", "roomVersion": 50 }
 ```
 
 위 「타이머 동기화」 절의 규정을 따른다. **버전 게이트를 적용하지 않는다.**
@@ -591,7 +601,7 @@ game:decision_required가 나간 뒤에만 받는다.
 ### 14. game:progress
 
 ```json
-{ "roundId": "3071", "phaseSeq": 1, "payload": { "submittedCount": 3, "totalCount": 5 }, "roomVersion": 50 }
+{ "roundId": "rnd_D6e7F8g9H0i1J2k3L4m5N6", "phaseSeq": 1, "payload": { "submittedCount": 3, "totalCount": 5 }, "roomVersion": 50 }
 ```
 
 **누가 무엇을 선택했는지는 어떤 경우에도 넣지 않는다.** 익명 저격과 킹메이커는 익명성이 기획 의도라 중간에 새면 안 되고, 다른 게임도 중간 집계를 아무에게도 보여주지 않는다.
@@ -611,13 +621,13 @@ game:decision_required가 나간 뒤에만 받는다.
 {
   "round": 1,
   "verdicts": [
-    { "memberId": "1042", "verdict": "SAFE",     "elapsedMs": 2100 },
-    { "memberId": "1051", "verdict": "OVERLAP",  "elapsedMs": 7000 },
-    { "memberId": "1052", "verdict": "OVERLAP",  "elapsedMs": 7120 },
-    { "memberId": "1053", "verdict": "NO_INPUT", "elapsedMs": null }
+    { "memberId": "mbr_a1B2c3D4e5F6g7H8i9J0k1", "verdict": "SAFE",     "elapsedMs": 2100 },
+    { "memberId": "mbr_w3X4y5Z6a7B8c9D0e1F2g3", "verdict": "OVERLAP",  "elapsedMs": 7000 },
+    { "memberId": "mbr_H4i5J6k7L8m9N0o1P2q3R4", "verdict": "OVERLAP",  "elapsedMs": 7120 },
+    { "memberId": "mbr_S5t6U7v8W9x0Y1z2A3b4C5", "verdict": "NO_INPUT", "elapsedMs": null }
   ],
-  "safeMemberIds": ["1042"],
-  "remainingMemberIds": ["1051", "1052", "1053"],
+  "safeMemberIds": ["mbr_a1B2c3D4e5F6g7H8i9J0k1"],
+  "remainingMemberIds": ["mbr_w3X4y5Z6a7B8c9D0e1F2g3", "mbr_H4i5J6k7L8m9N0o1P2q3R4", "mbr_S5t6U7v8W9x0Y1z2A3b4C5"],
   "nextRoundStartsAt": "2026-08-02T06:05:10.000Z"
 }
 ```
@@ -631,8 +641,8 @@ game:decision_required가 나간 뒤에만 받는다.
 
 ```json
 {
-  "roundId": "3071", "phaseSeq": 4, "tieRound": 1, "tieRoundMax": 3,
-  "candidateKind": "OPTION", "candidateIds": ["4102", "4107"],
+  "roundId": "rnd_D6e7F8g9H0i1J2k3L4m5N6", "phaseSeq": 4, "tieRound": 1, "tieRoundMax": 3,
+  "candidateKind": "OPTION", "candidateIds": ["opt_O7p8Q9r0S1t2U3v4W5x6Y7", "opt_Z8a9B0c1D2e3F4g5H6i7J8"],
   "deadlineAt": "2026-08-02T06:07:35.000Z", "roomVersion": 53
 }
 ```
@@ -646,9 +656,9 @@ game:decision_required가 나간 뒤에만 받는다.
 
 ```json
 {
-  "roundId": "3071", "phaseSeq": 8, "reason": "TIE_EXHAUSTED",
+  "roundId": "rnd_D6e7F8g9H0i1J2k3L4m5N6", "phaseSeq": 8, "reason": "TIE_EXHAUSTED",
   "options": ["PICK", "RANDOM", "ABORT"],
-  "candidateKind": "OPTION", "candidateIds": ["4102", "4107"],
+  "candidateKind": "OPTION", "candidateIds": ["opt_O7p8Q9r0S1t2U3v4W5x6Y7", "opt_Z8a9B0c1D2e3F4g5H6i7J8"],
   "deadlineAt": "2026-08-02T06:09:00.000Z", "roomVersion": 57
 }
 ```
@@ -666,7 +676,7 @@ game:decision_required가 나간 뒤에만 받는다.
 ### 17. game:result
 
 ```json
-{ "roundId": "3071", "gameId": "roulette", "variant": "WINNER", "result": { }, "finishedAt": "2026-08-02T06:05:12.000Z", "roomVersion": 61 }
+{ "roundId": "rnd_D6e7F8g9H0i1J2k3L4m5N6", "gameId": "roulette", "variant": "WINNER", "result": { }, "finishedAt": "2026-08-02T06:05:12.000Z", "roomVersion": 61 }
 ```
 
 variant 4종은 frontend/src/lib/types.ts의 GameResult 유니언과 대응한다. 결과 데이터의 의미 정본은 [../05_game_rules](../05_game_rules/README.md)이며 여기서는 와이어 형태만 확정한다.
@@ -686,7 +696,7 @@ WINNER의 detail은 게임마다 다르다.
 | timer | targetMs · criterion · records[{ memberId, elapsedMs, diffMs, source, status }] |
 | snipe | tally[{ memberId, hits, voterMemberIds? }] · abstainCount · randomFallback |
 
-- **익명 필드는 조건부다.** TALLY의 authorMemberId는 revealAuthors가 true일 때만, snipe의 voterMemberIds는 revealVoters가 true일 때만 실린다. **거짓일 때는 필드를 null로 채우는 것이 아니라 아예 빼서 내려보낸다** — 값이 있는 자리를 남기면 그 자리를 채우는 구현이 언젠가 들어온다.
+- **익명 필드는 조건부다.** TALLY의 authorMemberId는 revealAuthors가 true일 때만 실린다. **거짓일 때는 필드를 null로 채우는 것이 아니라 아예 빼서 내려보낸다** — 값이 있는 자리를 남기면 그 자리를 채우는 구현이 언젠가 들어온다. **익명 저격의 지목자는 조건부가 아니다** — 어떤 설정에서도 담지 않는다.
 - 익명 모드의 식별 정보는 이 이벤트 밖 어떤 경로로도 클라이언트에 내려가지 않는다.
 - stats는 결과 화면 하단의 라벨·값 쌍 배열이다. 서버가 문구까지 확정해 내려보내 기기마다 다른 반올림이 생기지 않게 한다.
 - 결과 연출이 끝난 뒤 3초에 결과 화면으로 전환하는 것은 **클라이언트 타이밍**이다. 서버는 game:phase(RESULT)와 game:result를 함께 보내고 그 뒤를 관여하지 않는다.
@@ -784,7 +794,6 @@ GET /api/games · GET /api/games/{gameId}가 내려보내는 설정 규격이며
 | snipe | question | string | 1~30자 | 발표를 제일 잘할 것 같은 사람은? |
 | snipe | voteSeconds | int | 5~60 | 10 |
 | snipe | multiVote | boolean | false=1인 1표 · true=1인 2표 | false |
-| snipe | revealVoters | boolean | false=비공개 · true=공개 | false |
 | nunchi | topic | string | 1~12자 | 팀장 |
 | nunchi | windowMs | enum | 300 · 500 | 300 |
 | nunchi | roundSeconds | enum | 10 · 15 · 20 | 15 |
