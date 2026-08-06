@@ -29,6 +29,18 @@ def _configure_logging() -> None:
     if logger.handlers:
         return
     handler = logging.StreamHandler()
+
+    # **로그 메시지가 전부 한글이다.** 윈도우에서 표준 오류를 파일이나 파이프로
+    # 넘기면 스트림 인코딩이 콘솔이 아니라 로케일 기본값(cp949)이 되고, 거기 없는
+    # 문자를 만나면 UnicodeEncodeError가 로깅 호출부까지 올라온다. 로그 한 줄
+    # 때문에 요청 처리가 죽는 일은 없어야 하므로 그 자리에서 치환하게 둔다.
+    stream = getattr(handler, "stream", None)
+    if hasattr(stream, "reconfigure"):
+        try:
+            stream.reconfigure(errors="backslashreplace")
+        except (ValueError, OSError):
+            pass
+
     handler.setFormatter(logging.Formatter("%(asctime)s %(levelname)-7s %(name)s — %(message)s"))
     logger.addHandler(handler)
     logger.setLevel(settings.log_level.upper())

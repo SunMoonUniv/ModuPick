@@ -176,11 +176,11 @@ CREATE TABLE game_results (
 | 게임 | config 핵심 값 | result_data 핵심 값 |
 |------|---------------|---------------------|
 | 운명의 룰렛 | schemaVersion · topic | schemaVersion · seed · winnerMemberIds[] · wheelOrder[](조각 배치, 입장 순서) |
-| 사다리타기 | schemaVersion · topic · speed · destinations[] | schemaVersion · seed · assignments[{memberId, optionId, label}] · ladderRungs[{row, leftLane}] |
-| 킹메이커 | schemaVersion · topic · votesPerMember · revealAuthors · submitSec · voteSec | schemaVersion · tally[{optionId, label, voteCount}] · winnerOptionIds[] · ballotRounds · authors[{optionId, memberId}](revealAuthors일 때만) |
-| 시간초 잡기 | schemaVersion · topic · targetMs · judgeMode · limitMs · startGraceMs | schemaVersion · records[{memberId, elapsedMs, diffMs, absDiffMs, rank, status}] · winnerMemberIds[] · rematchRounds |
-| 익명 저격 | schemaVersion · topic · voteSec · allowMultiVote | schemaVersion · tally[{memberId, hitCount}] · winnerMemberIds[] · ballotRounds · abstainCount · decidedByRandom |
-| 눈치게임 | schemaVersion · topic · judgeWindowMs · roundLimitSec | schemaVersion · rounds[{roundNo, presses[{memberId, offsetMs, verdict}], safeMemberIds[], remainingMemberIds[]}] · loserMemberIds[] · voidRound |
+| 사다리타기 | schemaVersion · resultItems[] · speed | schemaVersion · seed · assignments[{memberId, optionId, label}] · ladderRungs[{row, leftLane}] |
+| 킹메이커 | schemaVersion · topic · votesPerMember · revealAuthors | schemaVersion · tally[{optionId, label, voteCount}] · winnerOptionIds[] · ballotRounds · authors[{optionId, memberId}](revealAuthors일 때만) |
+| 시간초 잡기 | schemaVersion · topic · targetSeconds · criterion | schemaVersion · records[{memberId, elapsedMs, diffMs, absDiffMs, rank, status}] · winnerMemberIds[] · rematchRounds |
+| 익명 저격 | schemaVersion · question · voteSeconds · multiVote | schemaVersion · tally[{memberId, hitCount}] · winnerMemberIds[] · ballotRounds · abstainCount · decidedByRandom |
+| 눈치게임 | schemaVersion · topic · windowMs · roundSeconds | schemaVersion · rounds[{roundNo, presses[{memberId, offsetMs, verdict}], safeMemberIds[], remainingMemberIds[]}] · loserMemberIds[] · voidRound |
 
 **값 규약**
 

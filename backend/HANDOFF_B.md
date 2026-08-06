@@ -139,14 +139,31 @@ roulette · ladder · kingmaker · timer · snipe · nunchi
 # DB (MySQL 8.4, 포트 3307 — 로컬 mysqld의 3306을 피했습니다)
 cd backend && docker compose up -d
 
-# 서버
+# 서버 — macOS · Linux
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 uvicorn app.main:app --reload --ws-ping-interval 20 --ws-ping-timeout 60
 
 # 테스트 (실제 MySQL에 붙어 돕니다)
 pytest
 ```
+
+**윈도우는 가상환경 활성화 경로가 다릅니다.**
+
+```powershell
+cd backend; docker compose up -d
+
+python -m venv .venv; .venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+
+# 한글 로그·문서가 cp949로 떨어지지 않게 UTF-8 모드로 띄웁니다
+$env:PYTHONUTF8 = "1"
+uvicorn app.main:app --reload --ws-ping-interval 20 --ws-ping-timeout 60
+
+pytest
+```
+
+uvloop는 윈도우를 지원하지 않아 requirements.txt에서 환경 표지로 걸러 뒀습니다. 없으면 uvicorn이 asyncio 기본 이벤트 루프로 돌며 동작은 같습니다.
 
 확인 수단이 셋 있습니다.
 

@@ -64,9 +64,13 @@ MySQL 자체의 설정·연결 풀·Docker Compose 구성은 [03_database_infra.
 ```
 cd backend
 python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
+pip install -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8000
 ```
+
+윈도우는 활성화 경로가 .venv\Scripts\Activate.ps1이며, 한글 로그가 콘솔 기본 인코딩(cp949)으로 떨어지지 않도록 PYTHONUTF8=1을 함께 준다. uvloop는 윈도우를 지원하지 않아 requirements.txt에서 환경 표지(sys_platform != 'win32')로 걸러 두었고, 없으면 uvicorn이 asyncio 기본 이벤트 루프로 돈다.
+
+requirements-dev.txt는 requirements.txt를 포함하며 테스트·린트·브라우저 도구를 더한다. 배포에는 requirements.txt만 쓴다.
 
 fastapi-cli가 설치되어 있어 fastapi dev app/main.py로도 같은 개발 서버를 띄울 수 있다(자동 리로드는 watchfiles가 담당).
 

@@ -263,6 +263,10 @@ async def emit_phase(
     state.deadline_at = (
         clock.now() + timedelta(milliseconds=duration_ms) if duration_ms is not None else None
     )
+    # 지난 단계의 입력은 다음 판정이 보면 안 된다. phaseSeq 게이트가 늦게 온
+    # 프레임을 막아 주지만, 이미 수용된 것을 지우는 일은 여기서만 할 수 있다.
+    state.inputs.clear()
+    state.input_seq = 0
 
     now = clock.now()
     await registry.broadcast(

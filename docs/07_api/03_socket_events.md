@@ -778,7 +778,7 @@ WINNER의 detail은 게임마다 다르다.
 
 ## configSchema
 
-GET /api/games · GET /api/games/{gameId}가 내려보내는 설정 규격이며 game:config가 이 규격을 따른다. 항목은 **16개**이고 근거는 docs_legacy/requirements.md §3.4다. 규칙의 의미 정본은 [../05_game_rules](../05_game_rules/README.md)다.
+GET /api/games · GET /api/games/{gameId}가 내려보내는 설정 규격이며 game:config가 이 규격을 따른다. 항목은 **15개**이고 근거는 docs_legacy/requirements.md §3.4다. 규칙의 의미 정본은 [../05_game_rules](../05_game_rules/README.md)다.
 
 | gameId | 필드 | 타입 | 범위·값 | 기본값 |
 |--------|------|------|---------|--------|

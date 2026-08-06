@@ -4,7 +4,7 @@
 가짜 DB로는 VIRTUAL 생성 컬럼 위의 UNIQUE도 복합 FK도 확인할 수 없다.
 
     docker compose up -d       먼저 DB를 띄운다
-    .venv/bin/pytest tests     그다음 돌린다
+    pytest                     그다음 돌린다 (가상환경을 활성화한 상태에서)
 
 TestClient는 앱을 직접 호출하므로 uvicorn을 따로 띄우지 않는다. lifespan도 실행되어
 기동 시 테이블 확인이 함께 검증된다.

@@ -1,0 +1,31 @@
+# 줄바꿈을 저장소·작업 디렉터리 양쪽에서 LF로 고정한다.
+#
+# 윈도우 Git의 기본값(core.autocrlf=true)은 체크아웃할 때 CRLF로 바꾼다. 그러면
+# check-docs.sh의 첫 줄이 "#!/usr/bin/env bash\r"가 되어 Git Bash가 인터프리터를
+# 찾지 못하고, 컨테이너에 마운트되는 sql/*.sql도 같은 문제를 안는다.
+#
+# **팀원마다 다른 파일이 되지 않게 하는 것이 목적이다** — autocrlf 설정을 각자
+# 맞추라고 안내하는 대신 저장소가 정한다.
+
+* text=auto eol=lf
+
+# 윈도우 셸이 직접 읽는 것만 CRLF로 남긴다. PowerShell·cmd는 LF도 읽지만
+# 편집기에서 열었을 때 한 줄로 붙어 보이는 일을 피한다.
+*.bat  text eol=crlf
+*.cmd  text eol=crlf
+*.ps1  text eol=crlf
+
+# 바이너리 — 줄바꿈 변환이 파일을 깨뜨린다.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.ico  binary
+*.pdf  binary
+*.woff binary
+*.woff2 binary
+*.ttf  binary
+*.otf  binary
+*.mp4  binary
+*.zip  binary
