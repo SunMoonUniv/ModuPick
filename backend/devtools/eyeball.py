@@ -16,12 +16,16 @@ plan.md §3.0의 완료 기준이 이것이다.
 """
 
 import asyncio
+import os
 import sys
 from pathlib import Path
 
 from playwright.async_api import async_playwright
 
-URL = "http://127.0.0.1:8000/devtools/console.html"
+#: 검사할 서버. 개발 서버를 띄워 둔 채로 다른 포트에서 확인할 수 있게 열어 둔다.
+#:
+#:     CONSOLE_URL=http://127.0.0.1:8001/devtools/console.html python devtools/eyeball.py
+URL = os.environ.get("CONSOLE_URL", "http://127.0.0.1:8000/devtools/console.html")
 #: 스크린샷 저장 위치. 저장소에 넣지 않는다 — 매 실행마다 달라진다.
 SHOTS = Path(__file__).parent / "shots"
 SHOTS.mkdir(exist_ok=True)
@@ -126,17 +130,66 @@ async def main() -> None:
         await b.screenshot(path=str(SHOTS / "3-game-b.png"), full_page=True)
 
         # ── 게임 시작 ────────────────────────────────────────────────────
+        #
+        # **판정이 있는 게임으로 바꿔 시작한다.** 사다리는 아직 판정이 없어 READY에
+        # 머무르고, READY에서는 대기방 복귀도 막혀 있어(상태 전표 15행) 판을 무를 수
+        # 없다. 위의 선택·설정 검증은 시작 전이라 그대로 유효하다.
+        await a.click("#games button:nth-child(1)")  # 룰렛
+        await b.wait_for_function(
+            "() => document.querySelector('#game-id').textContent.includes('roulette')",
+            timeout=2000,
+        )
         check("준비가 차야 시작 버튼이 열린다",
               await a.is_enabled("#btn-start"))
         await a.click("#btn-start")
         await b.wait_for_selector("#round dl", timeout=2000)
         check("라운드가 두 창에 모두 뜬다",
               "rnd_" in await text_of(a, "#round") and "rnd_" in await text_of(b, "#round"))
-        check("READY 단계가 표시된다", "READY" in await text_of(a, "#round"))
         check("방 상태가 PLAYING으로 바뀐다", "PLAYING" in await text_of(a, "#kv"),
               await text_of(a, "#kv"))
         await a.screenshot(path=str(SHOTS / "4-round-a.png"), full_page=True)
         await b.screenshot(path=str(SHOTS / "4-round-b.png"), full_page=True)
+
+        # ── 룰렛 전 구간 ─────────────────────────────────────────────────
+
+        # GUIDE(3초) → ARMED. **화면 전환은 game:phase로만 한다.**
+        await b.wait_for_function(
+            "() => document.querySelector('#round')?.textContent.includes('ARMED')",
+            timeout=8000,
+        )
+        check("가이드를 거쳐 ARMED로 자동 전이한다", "ARMED" in await text_of(b, "#round"))
+        check("ARMED에서만 방장에게 돌리기가 열린다",
+              await a.is_enabled("#btn-pick") and not await b.is_enabled("#btn-pick"))
+        await a.screenshot(path=str(SHOTS / "5-armed-a.png"), full_page=True)
+
+        await a.click("#btn-pick")
+        await b.wait_for_function(
+            "() => document.querySelector('#round')?.textContent.includes('SPINNING')",
+            timeout=3000,
+        )
+        # **연출 시작 값이 전이와 같은 프레임으로 온다** — 회전이 시작되는 순간
+        # 목표 각도를 알아야 하는데 결과 이벤트는 연출이 끝난 뒤에 온다.
+        spin_a, spin_b = await text_of(a, "#round"), await text_of(b, "#round")
+        check("돌리기가 SPINNING을 열고 두 창이 같이 넘어간다",
+              "SPINNING" in spin_a and "SPINNING" in spin_b)
+        check("회전 시작과 함께 연출 값이 실려 온다", "winnerIndex" in spin_b, spin_b[:120])
+        await b.screenshot(path=str(SHOTS / "6-spinning-b.png"), full_page=True)
+
+        # SPINNING(5초) → REVEAL(3초) → RESULT
+        await b.wait_for_function(
+            "() => document.querySelector('#round')?.textContent.includes('RESULT')",
+            timeout=12000,
+        )
+        result_a, result_b = await text_of(a, "#round"), await text_of(b, "#round")
+        check("연출이 끝나면 결과 단계로 넘어간다", "RESULT" in result_b)
+        check("당첨자가 두 창에 표시된다",
+              "당첨" in result_a and "당첨" in result_b)
+        check("요약 수치 3개가 단위까지 붙어 온다",
+              all(k in result_b for k in ("참가자 수", "당첨 확률", "결정까지")),
+              result_b[-160:])
+        check("시드가 함께 와 재현 검증이 된다", "시드" in result_b)
+        await a.screenshot(path=str(SHOTS / "7-result-a.png"), full_page=True)
+        await b.screenshot(path=str(SHOTS / "7-result-b.png"), full_page=True)
 
         # ── 방장 나가기 → 방이 닫힌다 ────────────────────────────────────
         await a.click("#btn-disconnect")

@@ -255,15 +255,22 @@ class TestStart:
 
 
 class TestPhaseAndTick:
+    """emit_phase라는 **원시 연산**의 계약이다.
+
+    게임을 사다리로 잡는 이유는 판정이 아직 없어서다 — 룰렛은 시작과 동시에
+    GUIDE·ARMED로 자동 전이하므로(game_service) phaseSeq가 흘러가고, 그러면 이 파일이
+    보려는 것이 룰렛 진행 규칙과 섞인다. 룰렛의 자동 전이는 test_game_play.py가 본다.
+    """
+
     def test_마감이_있는_단계는_틱이_흐른다(self, client):
-        with playing(client, 2) as (room, _members, host_ws, _guests, started):
+        with playing(client, 2, game="ladder") as (room, _members, host_ws, _guests, started):
             _drain(host_ws, "game:phase")  # READY
             seq = client.portal.call(
                 partial(
                     round_service.emit_phase,
                     _room_pk(room["code"]),
                     phase="PLAYING",
-                    duration_s=4.0,
+                    duration_ms=4000,
                 )
             )
             phase = _drain(host_ws, "game:phase")
@@ -279,32 +286,32 @@ class TestPhaseAndTick:
             assert tick["data"]["roomVersion"] == phase["data"]["roomVersion"]
 
     def test_단계가_바뀌면_이전_틱이_멈춘다(self, client):
-        with playing(client, 2) as (room, _members, host_ws, _guests, _started):
+        with playing(client, 2, game="ladder") as (room, _members, host_ws, _guests, _started):
             _drain(host_ws, "game:phase")
             room_pk = _room_pk(room["code"])
 
             client.portal.call(
-                partial(round_service.emit_phase, room_pk, phase="PLAYING", duration_s=8.0)
+                partial(round_service.emit_phase, room_pk, phase="PLAYING", duration_ms=8000)
             )
             _drain(host_ws, "game:phase")
             _drain(host_ws, "game:tick")
 
             client.portal.call(
-                partial(round_service.emit_phase, room_pk, phase="RESULT", duration_s=8.0)
+                partial(round_service.emit_phase, room_pk, phase="RESULT", duration_ms=8000)
             )
             _drain(host_ws, "game:phase")
             for _ in range(2):
                 assert _drain(host_ws, "game:tick")["data"]["phaseSeq"] == 3
 
     def test_마감이_없으면_틱이_흐르지_않는다(self, client):
-        with playing(client, 2) as (_room, _members, host_ws, _guests, _started):
+        with playing(client, 2, game="ladder") as (_room, _members, host_ws, _guests, _started):
             _drain(host_ws, "game:phase")  # READY — deadlineAt null
             host_ws.send_json({"event": "chat:send", "data": {"text": "틱 없나요"}})
             # 틱이 흐른다면 이 프레임보다 먼저 도착했을 것이다
             assert host_ws.receive_json()["event"] == "chat:message"
 
     def test_TIE_단계는_결선_회차를_싣는다(self, client):
-        with playing(client, 2) as (room, _members, host_ws, _guests, _started):
+        with playing(client, 2, game="ladder") as (room, _members, host_ws, _guests, _started):
             _drain(host_ws, "game:phase")
             client.portal.call(
                 partial(
@@ -319,7 +326,7 @@ class TestPhaseAndTick:
             assert phase["data"]["tieRound"] == 2
 
     def test_전원이_같은_phase를_받는다(self, client):
-        with playing(client, 2) as (_room, _members, host_ws, guests, _started):
+        with playing(client, 2, game="ladder") as (_room, _members, host_ws, guests, _started):
             _drain(guests[0], "game:started")
             mine = _drain(host_ws, "game:phase")
             theirs = _drain(guests[0], "game:phase")

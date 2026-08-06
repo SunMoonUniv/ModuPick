@@ -3,7 +3,7 @@
 **방장만 바꾸고 전원이 같이 본다.** 참여자 화면은 읽기 전용이지만 실시간으로 함께
 바뀌므로, 이 파일의 대부분은 "게스트 소켓에도 같은 프레임이 오는가"를 본다.
 
-설정 규격의 정본은 docs/07_api/03_socket_events.md의 configSchema 표(16개 항목)다.
+설정 규격의 정본은 docs/07_api/03_socket_events.md의 configSchema 표다(저격 revealVoters 폐기로 15개 항목).
 """
 
 import pytest
@@ -37,9 +37,14 @@ def _room_of(client, size: int):
 
 
 class TestSchema:
-    def test_항목은_16개다(self):
+    def test_항목은_15개다(self):
+        # 저격의 revealVoters(지목자 공개)를 없애 16 -> 15가 됐다. 원 기획에 없던
+        # 항목이고 익명이 핵심인 게임에 공개 선택지를 붙이는 것이 의도와 어긋난다.
         total = sum(len(fields) for fields in game_config.SCHEMA.values())
-        assert total == 16
+        assert total == 15
+
+    def test_저격에_지목자_공개_설정이_없다(self):
+        assert "revealVoters" not in {f.name for f in game_config.SCHEMA[GameId.SNIPE]}
 
     def test_6종_전부_규격이_있다(self):
         assert set(game_config.SCHEMA) == set(GameId)

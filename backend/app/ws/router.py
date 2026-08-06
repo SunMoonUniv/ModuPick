@@ -27,6 +27,7 @@ from app.infra.memory.runtime_store import store
 from app.schemas.events import (
     AuthRequest,
     ChatSendRequest,
+    GameActionRequest,
     GameConfigRequest,
     GameSelectRequest,
     KickRequest,
@@ -36,6 +37,7 @@ from app.schemas.events import (
 )
 from app.services import (
     chat_service,
+    game_service,
     game_setup_service,
     leave_service,
     lobby_service,
@@ -249,7 +251,18 @@ async def _handle_round_close(conn: SocketConn, data: dict) -> None:
     )
 
 
-#: 인증 이후에 받는 이벤트. 게임 입력·판정은 판정 담당과 합류한 뒤에 붙는다.
+async def _handle_game_action(conn: SocketConn, data: dict) -> None:
+    req = GameActionRequest(**data)
+    await game_service.handle_action(
+        participant_pk=conn.participant_id,
+        room_pk=conn.room_id,
+        round_id=req.roundId,
+        phase_seq=req.phaseSeq,
+        action_type=req.type,
+    )
+
+
+#: 인증 이후에 받는 이벤트.
 _HANDLERS = {
     "chat:send": _handle_chat_send,
     "chat:typing": _handle_chat_typing,
@@ -259,6 +272,7 @@ _HANDLERS = {
     "game:random": _handle_game_random,
     "game:config": _handle_game_config,
     "game:start": _handle_game_start,
+    "game:action": _handle_game_action,
     "round:close": _handle_round_close,
 }
 
@@ -273,6 +287,7 @@ _ACTIONS = {
     "game:random": state_machine.Action.GAME_SELECT,
     "game:config": state_machine.Action.GAME_CONFIG,
     "game:start": state_machine.Action.GAME_START,
+    "game:action": state_machine.Action.GAME_ACTION,
     "round:close": state_machine.Action.ROUND_CLOSE,
 }
 

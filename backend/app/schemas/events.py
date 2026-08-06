@@ -238,6 +238,41 @@ class GamePhaseData(BaseModel):
     tieRound: int
     deadlineAt: str | None
     serverTime: str
+    payload: dict | None = None
+
+
+class GameActionRequest(BaseModel):
+    """C->S game:action — 게임 중의 모든 플레이어 입력이 이 하나로 들어온다.
+
+    type 8종의 전수는 07_api/03_socket_events.md 「game:action type 8종」이다.
+    현재 게임·현재 단계와 맞지 않는 type이면 game.invalid_action이다.
+
+    **phaseSeq를 되싣는다.** 서버의 현재 값과 다르면 지난 단계의 입력이므로 버린다 —
+    연출이 흐르는 동안 늦게 도착한 프레임이 다음 단계를 건드리지 못하게 하는 축이다.
+    """
+
+    roundId: str
+    phaseSeq: int
+    type: str
+    requestId: str | None = None
+    payload: dict | None = None
+
+
+class GameResultData(BaseModel):
+    """S->C game:result — 확정된 결과.
+
+    variant 4종(WINNER · ASSIGN · TALLY · RECORD)이 결과 화면의 형태를 가른다.
+    **result의 모양은 저장 형식(result_data)과 다르다** — 저장은 재현·감사를 위한
+    형태이고 이쪽은 화면이 그대로 그릴 수 있는 형태다. 06_database/04와
+    07_api/03이 각각 정본이며, 변환은 services가 한 번만 한다.
+    """
+
+    roomVersion: int
+    roundId: str
+    gameId: str
+    variant: str
+    result: dict
+    finishedAt: str
 
 
 class GameTickData(BaseModel):
