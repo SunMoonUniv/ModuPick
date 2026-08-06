@@ -34,6 +34,7 @@ CLIENT_EVENTS = {
     "game:config": "GameConfigRequest",
     "game:random": None,
     "game:start": None,
+    "game:action": "GameActionRequest",
     "round:close": "RoundCloseRequest",
 }
 
@@ -52,6 +53,7 @@ SERVER_EVENTS = {
     "game:started": "GameStartedData",
     "game:phase": "GamePhaseData",
     "game:tick": "GameTickData",
+    "game:result": "GameResultData",
     "round:closed": "RoundClosedData",
 }
 

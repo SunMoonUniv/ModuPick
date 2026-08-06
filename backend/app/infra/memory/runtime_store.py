@@ -107,6 +107,16 @@ class RoundState:
     deadline_at: datetime | None = None
     tick_task: object | None = None
 
+    #: 라운드가 시작된 시각. 결과 화면의 「결정까지 걸린 시간」이 이 값을 기준으로 한다.
+    started_at: datetime | None = None
+    #: 마감에 깨어나 다음 단계로 넘기는 태스크. 틱과 별개다 — 틱은 표시용이고 이쪽이 전이다.
+    deadline_task: object | None = None
+    #: 확정된 result_data. 판정은 ARMED에서 끝나지만 game:result는 RESULT에서 나가므로
+    #: 그 사이를 여기서 들고 있는다. 저장은 판정 직후에 이미 끝나 있다.
+    result_data: dict | None = None
+    #: 판정이 끝난 시각. 「결정까지 걸린 시간」의 끝점이다.
+    decided_at: datetime | None = None
+
 
 @dataclass(slots=True)
 class IdempotencyEntry:
@@ -240,14 +250,16 @@ class RuntimeStore:
         return self._rounds.get(room_id)
 
     def end_round(self, room_id: int) -> "RoundState | None":
-        """라운드를 걷어낸다. **틱 타이머를 반드시 함께 접는다.**
+        """라운드를 걷어낸다. **틱과 마감 타이머를 반드시 함께 접는다.**
 
         남겨 두면 끝난 라운드의 틱이 계속 나가고, 방이 사라진 뒤에도 브로드캐스트를
-        시도한다.
+        시도한다. 마감 태스크는 더 나쁘다 — 이미 닫힌 라운드를 다음 단계로 밀어
+        올린다.
         """
         state = self._rounds.pop(room_id, None)
         if state is not None:
             _cancel(state.tick_task)
+            _cancel(state.deadline_task)
         return state
 
     # ── 핸드셰이크 흔적 ────────────────────────────────────────────────────

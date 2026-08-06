@@ -326,6 +326,7 @@
 
     <div class="row" style="margin-top:8px">
       <button class="primary" id="btn-start" disabled>게임 시작</button>
+      <button id="btn-pick" disabled>돌리기 (PICK)</button>
       <button id="btn-close" disabled>대기방으로</button>
     </div>
     <div id="round"></div>
@@ -705,7 +706,8 @@ function apply(event, d) {
     case "game:started":
       // **roster가 명단 스냅샷이다.** 도중 이탈해도 바뀌지 않는다.
       state.round = { roundId: d.roundId, gameId: d.gameId, roster: d.roster,
-                      phase: null, phaseSeq: 0, tieRound: 0, deadlineAt: null };
+                      phase: null, phaseSeq: 0, tieRound: 0, deadlineAt: null,
+                      payload: null, result: null };
       banner("ok", `게임 시작 — ${d.gameId} · 후보 ${d.roster.length}명`);
       break;
 
@@ -713,8 +715,18 @@ function apply(event, d) {
       if (!state.round) break;
       Object.assign(state.round, {
         phase: d.phase, phaseSeq: d.phaseSeq, tieRound: d.tieRound, deadlineAt: d.deadlineAt,
+        // 연출 시작 값이다. **전이와 같은 프레임으로 온다** — 회전이 시작되는 순간
+        // 목표 각도를 알아야 하는데 game:result는 연출이 끝난 뒤에 오기 때문이다.
+        payload: d.payload ?? null,
       });
       state.remainMs = null;
+      break;
+
+    case "game:result":
+      // **화면 전환은 이 이벤트로 하지 않는다.** 전환은 game:phase(RESULT)가 맡고
+      // 이건 그 화면을 채울 값이다. 둘은 같은 순간에 오지만 역할이 다르다.
+      if (state.round) state.round.result = d;
+      banner("ok", `결과 확정 — ${nickOf(d.result?.winnerMemberId) ?? "?"}`);
       break;
 
     case "game:tick":
@@ -1031,6 +1043,19 @@ function renderGames() {
  * 타이머로 매 프레임 그리라고 한다 — 여기서는 검증이 목적이라 서버 값을 그대로
  * 보여주되, 화면 전환은 반드시 game:phase로만 한다는 규칙은 그대로 지킨다.
  */
+/**
+ * memberId를 사람 이름으로 바꾼다.
+ *
+ * **명단 스냅샷을 먼저 본다.** 판이 도는 동안 이탈한 사람도 후보로 남아 결과에
+ * 나오는데, 현재 참가자 목록에서는 이미 사라져 있다.
+ */
+function nickOf(memberId) {
+  if (!memberId) return null;
+  const inRoster = state.round?.roster?.find((m) => m.memberId === memberId);
+  if (inRoster) return inRoster.nickname;
+  return state.members.find((m) => m.memberId === memberId)?.nickname ?? memberId;
+}
+
 function renderRound() {
   const open = state.ws?.readyState === WebSocket.OPEN;
   const r = state.round;
@@ -1038,6 +1063,9 @@ function renderRound() {
   $("btn-start").disabled = !open || !state.isHost || Boolean(r)
     || !state.game || state.readyCount < Math.max(0, state.activeCount - 1)
     || state.activeCount < 2;
+  // PICK은 ARMED에서만 받는다. 그 뒤의 입력은 서버가 멱등으로 버린다 —
+  // 여기서 막는 것은 편의이고 최종 판단은 서버가 한다.
+  $("btn-pick").disabled = !open || !state.isHost || r?.phase !== "ARMED";
   $("btn-close").disabled = !open || !state.isHost || !r;
 
   const box = $("round");
@@ -1051,6 +1079,23 @@ function renderRound() {
     ["남은 시간", state.remainMs === null ? "—" : `${(state.remainMs / 1000).toFixed(1)}초`],
     ["명단 스냅샷", r.roster.map((m) => m.nickname).join(" · ")],
   ];
+
+  // 연출 시작 값. 룰렛은 winnerIndex 하나이며 조각 배치는 명단 순서다.
+  if (r.payload) {
+    const idx = r.payload.winnerIndex;
+    rows.push(["연출 값 (phase payload)",
+      idx === undefined ? JSON.stringify(r.payload)
+        : `winnerIndex ${idx} → ${r.roster[idx]?.nickname ?? "?"}`]);
+  }
+
+  if (r.result) {
+    const res = r.result.result ?? {};
+    rows.push(["결과 변형", r.result.variant]);
+    rows.push(["당첨", nickOf(res.winnerMemberId) ?? "—"]);
+    rows.push(["요약 수치", (res.stats ?? []).map((s) => `${s.label} ${s.value}`).join(" · ")]);
+    // **저장 형식과 다른 모양이다.** seed·sliceOrder는 재현 검증용으로 함께 본다.
+    rows.push(["시드", String(res.detail?.seed ?? "—")]);
+  }
   const dl = document.createElement("dl");
   dl.className = "kv";
   for (const [k, v] of rows) {
@@ -1289,6 +1334,13 @@ $("btn-send").onclick = () => {
 $("btn-ready").onclick = () => send("member:ready", { ready: !state.ready });
 $("btn-random").onclick = () => send("game:random", {});
 $("btn-start").onclick = () => send("game:start", {});
+// **phaseSeq를 되싣는다.** 서버의 현재 값과 다르면 지난 단계의 입력이라 버려진다.
+$("btn-pick").onclick = () => send("game:action", {
+  roundId: state.round?.roundId,
+  phaseSeq: state.round?.phaseSeq,
+  type: "roulette.pick",
+  requestId: crypto.randomUUID(),
+});
 $("btn-close").onclick = () => send("round:close", { roundId: state.round?.roundId });
 
 $("btn-chat").onclick = () => {

@@ -283,6 +283,7 @@ class TestHandlerFailure:
             assert err["code"] == "common.internal"
             assert err["data"]["event"] == "chat:send"
 
-            # 연결은 살아 있다
+            # 연결은 살아 있다. 대기방에서 온 게임 입력이라 round_not_found다 —
+            # 상태 전표가 WAITING × GAME_ACTION을 그렇게 규정한다(state_machine).
             ws.send_json({"event": "game:action", "data": {}})
-            assert ws.receive_json()["code"] == "game.invalid_action"
+            assert ws.receive_json()["code"] == "game.round_not_found"

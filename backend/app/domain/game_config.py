@@ -79,7 +79,11 @@ SCHEMA: dict[GameId, tuple[FieldSpec, ...]] = {
         _s("question", "발표를 제일 잘할 것 같은 사람은?", 30),
         FieldSpec(name="voteSeconds", kind="int", default=10, minimum=5, maximum=60),
         _bool("multiVote", False),
-        _bool("revealVoters", False),
+        # revealVoters(지목자 공개)는 두지 않는다. 원 기획에 없던 항목이며
+        # (docs_legacy/requirements.md §7.3이 "이 문서에서 새로 정한 항목"으로 열거),
+        # 익명이 핵심인 게임에 공개 선택지를 붙이는 것이 기획 의도와 어긋난다.
+        # **지목자는 항상 비공개다.** 킹메이커의 revealAuthors는 그대로 둔다 —
+        # 안건 제출자 공개와 사람 지목 공개는 성격이 다르고 그쪽은 원 기획에 있었다.
     ),
     GameId.NUNCHI: (
         _s("topic", "팀장", 12),

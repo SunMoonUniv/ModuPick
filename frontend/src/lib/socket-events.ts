@@ -177,6 +177,26 @@ export interface GamePhaseData {
   tieRound: number;
   deadlineAt: string | null;
   serverTime: string;
+  payload?: Record<string, unknown> | null;
+}
+
+/** C->S game:action — 게임 중의 모든 플레이어 입력이 이 하나로 들어온다. */
+export interface GameActionRequest {
+  roundId: string;
+  phaseSeq: number;
+  type: string;
+  requestId?: string | null;
+  payload?: Record<string, unknown> | null;
+}
+
+/** S->C game:result — 확정된 결과. */
+export interface GameResultData {
+  roomVersion: number;
+  roundId: string;
+  gameId: string;
+  variant: string;
+  result: Record<string, unknown>;
+  finishedAt: string;
 }
 
 /** S->C game:tick — 1초 주기. **표시 전용이며 판정 근거가 아니다.** */
@@ -224,6 +244,7 @@ export interface ClientEvents {
   "game:config": GameConfigRequest;
   "game:random": Record<string, never>;
   "game:start": Record<string, never>;
+  "game:action": GameActionRequest;
   "round:close": RoundCloseRequest;
 }
 
@@ -241,6 +262,7 @@ export interface ServerEvents {
   "game:started": GameStartedData;
   "game:phase": GamePhaseData;
   "game:tick": GameTickData;
+  "game:result": GameResultData;
   "round:closed": RoundClosedData;
   "error": ErrorData;
 }

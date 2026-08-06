@@ -36,9 +36,9 @@ from app.domain.enums import (
 )
 from app.infra.clock import clock
 from app.infra.db.session import readonly, transaction
-from app.infra.db.tables import game_rounds, participants, rooms
+from app.infra.db.tables import game_options, game_rounds, participants, rooms
 from app.infra.memory.runtime_store import RoundState, store
-from app.infra.tokens import new_round_id
+from app.infra.tokens import new_option_id, new_round_id
 from app.schemas.rest import iso_z
 
 log = logging.getLogger("modupick.round")
@@ -142,6 +142,26 @@ async def start(*, participant_pk: int, room_pk: int) -> None:
         )
         round_pk = result.inserted_primary_key[0]
 
+        # **룰렛은 참가자 전원이 후보다.** 06_database/04 「저장 범위」가 룰렛의
+        # game_options를 "참가자 후보 1인 1행"으로 규정한다. 명단 스냅샷과 같은
+        # 순서·같은 시점에 박아 둬야 나중에 결과를 다시 읽을 때 후보 목록이 비지 않는다.
+        # 저격도 같은 모양이지만 그 게임을 만들 때 함께 검증한다.
+        if game_id is GameId.ROULETTE:
+            await conn.execute(
+                game_options.insert(),
+                [
+                    {
+                        "option_id": new_option_id(),
+                        "game_round_id": round_pk,
+                        "room_id": room_pk,
+                        "participant_id": r.id,
+                        "label": r.nickname,
+                        "sort_order": i,
+                    }
+                    for i, r in enumerate(rows)
+                ],
+            )
+
         await conn.execute(
             update(rooms)
             .where(rooms.c.id == room_pk)
@@ -167,6 +187,9 @@ async def start(*, participant_pk: int, room_pk: int) -> None:
             config=config,
             roster=roster,
             seed=seed,
+            # 결과 화면의 「결정까지 걸린 시간」이 여기서 시작한다. 방장이 시작을 누른
+            # 순간부터 재며, 가이드 3초와 방장이 망설인 시간이 모두 들어간다.
+            started_at=clock.now(),
         ),
     )
 
@@ -189,6 +212,12 @@ async def start(*, participant_pk: int, room_pk: int) -> None:
     # game:started 직후에 game:phase(READY)가 이어진다.
     await emit_phase(room_pk, phase="READY")
 
+    # 게임별 진행은 game_service가 맡는다. **순환 import를 피해 여기서 늦게 부른다** —
+    # game_service가 emit_phase를 쓰므로 모듈 최상단에서 서로를 참조하게 된다.
+    from app.services import game_service
+
+    await game_service.begin(room_pk)
+
 
 # ── 단계 전이 ──────────────────────────────────────────────────────────────
 
@@ -197,15 +226,25 @@ async def emit_phase(
     room_pk: int,
     *,
     phase: str,
-    duration_s: float | None = None,
+    duration_ms: int | None = None,
     tie_round: int = 0,
+    payload: dict | None = None,
 ) -> int:
     """단계를 전이하고 알린다. 새 phaseSeq를 돌려준다.
 
     **phaseSeq는 라운드 안에서 0부터 단조 증가한다.** C->S 입력이 이 값을 되싣고,
     서버의 현재 값과 다르면 지난 단계의 입력이므로 버린다.
 
-    duration_s가 없으면 마감이 없는 단계이며 **틱도 흐르지 않는다.**
+    duration_ms가 없으면 마감이 없는 단계이며 **틱도 흐르지 않는다.**
+
+    **시간은 정수 밀리초로 받는다.** 10_glossary/05_units_and_time.md가 "설정값은
+    처음부터 밀리초 정수로 보관하고 표시할 때만 초로 나눈다"로 축을 정했고, 와이어의
+    remainMs와 판정 계약의 next_deadline이 이미 밀리초라 여기만 초로 두면 경계마다
+    변환이 생긴다. **변환 지점이 둘이 되는 것이 실제 위험이다.**
+
+    payload는 게임·단계별 부가 값이다. 룰렛 SPINNING의 winnerIndex처럼 **전이 그
+    순간에 필요하지만 game:result로는 늦는 값**이 여기 실린다. game:progress가 이미
+    같은 패턴이라 새 규약이 아니다.
     """
     from app.schemas.events import GamePhaseData
     from app.ws.connection import registry
@@ -215,14 +254,14 @@ async def emit_phase(
     if state is None:
         raise errors.DomainError(errors.GAME_ROUND_NOT_FOUND)
 
-    # 이전 단계의 틱을 먼저 접는다. 두 단계의 틱이 겹쳐 나가지 않게 한다.
-    _stop_tick(state)
+    # 이전 단계의 타이머를 먼저 접는다. 두 단계의 틱·마감이 겹쳐 돌지 않게 한다.
+    stop_timers(state)
 
     state.phase = phase
     state.phase_seq += 1
     state.tie_round = tie_round
     state.deadline_at = (
-        clock.now() + timedelta(seconds=duration_s) if duration_s is not None else None
+        clock.now() + timedelta(milliseconds=duration_ms) if duration_ms is not None else None
     )
 
     now = clock.now()
@@ -238,6 +277,7 @@ async def emit_phase(
                 tieRound=tie_round,
                 deadlineAt=iso_z(state.deadline_at) if state.deadline_at else None,
                 serverTime=iso_z(now),
+                payload=payload,
             ).model_dump(),
         ),
     )
@@ -248,11 +288,22 @@ async def emit_phase(
     return state.phase_seq
 
 
-def _stop_tick(state: RoundState) -> None:
-    task = state.tick_task
-    state.tick_task = None
-    if isinstance(task, asyncio.Task) and not task.done():
-        task.cancel()
+def stop_timers(state: RoundState) -> None:
+    """이 라운드에 걸린 틱과 마감 태스크를 함께 접는다.
+
+    **둘을 따로 접지 않는다.** 마감만 남으면 지난 단계의 전이가 뒤늦게 일어나고,
+    틱만 남으면 끝난 단계의 남은 시간이 계속 흘러 나간다.
+
+    **자기 자신은 접지 않는다.** 다음 단계로 넘기는 주체가 바로 그 마감 태스크라서,
+    이 검사가 없으면 마감이 emit_phase를 부르는 순간 스스로를 취소하고 전이가
+    중간에 끊긴다.
+    """
+    current = asyncio.current_task()
+    for name in ("tick_task", "deadline_task"):
+        task = getattr(state, name)
+        setattr(state, name, None)
+        if isinstance(task, asyncio.Task) and task is not current and not task.done():
+            task.cancel()
 
 
 async def _tick_loop(room_pk: int, phase_seq: int) -> None:
