@@ -3,8 +3,11 @@
 **실제 MySQL 8.4에 붙어 돈다.** 제약이 실제로 걸리는지가 이 제품의 첫 관문이고,
 가짜 DB로는 VIRTUAL 생성 컬럼 위의 UNIQUE도 복합 FK도 확인할 수 없다.
 
-    docker compose up -d       먼저 DB를 띄운다
-    .venv/bin/pytest tests     그다음 돌린다
+    docker compose up -d database   먼저 DB를 띄운다(compose는 저장소 루트에 있다)
+    .venv/bin/pytest tests          그다음 돌린다
+
+백엔드 컨테이너를 띄워 둔 상태라면 먼저 멈춘다 — 같은 DB를 두고 경합해 테스트가
+멈춘 것처럼 보인다(docker compose stop backend).
 
 TestClient는 앱을 직접 호출하므로 uvicorn을 따로 띄우지 않는다. lifespan도 실행되어
 기동 시 테이블 확인이 함께 검증된다.
@@ -112,7 +115,7 @@ def confirm(client, code: str, token: str, **profile):
     )
 
 
-#: 외부 식별자 형식. schema.sql의 CHECK와 같은 정규식이다.
+#: 외부 식별자 형식. db_migration/sql/0020_participants.sql의 CHECK와 같은 정규식이다.
 MEMBER_ID_RE = re.compile(r"^mbr_[0-9A-Za-z]{16,36}$")
 
 

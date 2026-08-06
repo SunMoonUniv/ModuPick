@@ -233,7 +233,7 @@ game_type의 6값은 [../10_glossary/04_id_conventions.md](../10_glossary/04_id_
 | 자기 투표 금지 | 서비스 검증 | 서비스를 거치지 않는 INSERT는 통과한다 |
 | 게임별 표 수 상한 | 인메모리 잔여 표 + 서비스 검증 | 위와 같다 |
 | JSON 스키마 일치 | Pydantic 모델 | 직접 INSERT는 통과한다 |
-| **참가자 개별 물리 삭제 금지** | 애플리케이션에 삭제 메서드를 두지 않음 + modupick_app 계정 권한 회수 | 관리 계정으로 직접 DELETE하면 그 참가자의 표가 CASCADE로 사라진다 |
+| **참가자 개별 물리 삭제 금지** | 애플리케이션에 삭제 메서드를 두지 않음 + modupick 계정 권한 회수 | 관리 계정으로 직접 DELETE하면 그 참가자의 표가 CASCADE로 사라진다 |
 
 **참가자 물리 삭제는 FK 정책으로 막을 수 없다.** votes.voter_participant_id를 RESTRICT로 두면 개별 삭제는 막히지만 방 삭제 CASCADE가 함께 막힐 위험이 있다(다이아몬드 경로). 그래서 **경로 자체를 없애는 방식**으로 닫는다 — 삭제 메서드를 만들지 않고, 운영 계정에서 participants DELETE 권한을 회수하며, "방 삭제 외에는 participants 행이 사라지지 않는다"를 통합 테스트로 고정한다([07_migrations_seed.md](./07_migrations_seed.md)).
 
@@ -252,7 +252,7 @@ DDL 문법이 통과한다고 의도대로 동작하는 것은 아니다. 아래
 | 7 | 공백만 있는 닉네임·label과 음수 sort_order, ballot_no 5가 거부된다 |
 | 8 | 마지막 한 자리에 동시 입장해도 한 명만 성공한다 |
 | 9 | 같은 표를 재전송하면 행이 늘지 않고 기존 결과가 반환된다 |
-| 10 | modupick_app 계정이 rooms를 삭제할 때 하위 CASCADE가 정상 동작한다 |
+| 10 | modupick 계정이 rooms를 삭제할 때 하위 CASCADE가 정상 동작한다 |
 | 11 | 세션 시간대가 +00:00이고 TIMESTAMP(6) 정밀도가 유지된다 |
 
 ## 관련 문서

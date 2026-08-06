@@ -113,7 +113,7 @@ await round_service.emit_phase(room_pk, phase="TIE", tie_round=1)
 
 | 손대세요 | 손대지 마세요 |
 |---|---|
-| `app/domain/games/` · `app/api/games.py` · `tests/domain/` | `app/services/` · `app/ws/` · `app/infra/` · `sql/` · `devtools/` |
+| `app/domain/games/` · `app/api/games.py` · `tests/domain/` | `app/services/` · `app/ws/` · `app/infra/` · `db_migration/sql/`(저장소 루트) · `devtools/` |
 
 겹치는 자리가 하나 있습니다 — **게임 설정 규격**은 이미 `app/domain/game_config.py`에
 있습니다(configSchema 16항목·기본값·부분 갱신 검증, 계약 테스트 43건). 판정 함수는
@@ -135,16 +135,24 @@ roulette · ladder · kingmaker · timer · snipe · nunchi
 
 ## 7. 로컬에서 띄우는 법
 
+> 2026-08-06 갱신 — docker-compose.yml이 저장소 루트로 옮겨졌고 서비스 이름이 database입니다.
+> 스키마 정본도 backend/sql에서 db_migration/sql로 옮겨졌습니다(ADR-28). 전체 배포 절차는
+> 루트의 스크립트_실행방법.md에 있습니다.
+
 ```bash
 # DB (MySQL 8.4, 포트 3307 — 로컬 mysqld의 3306을 피했습니다)
-cd backend && docker compose up -d
+# compose는 저장소 루트에 있고, 첫 기동에 db_migration/sql이 자동 적용됩니다.
+cp .env.example .env          # 최초 1회
+docker compose up -d database
 
 # 서버
+cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --ws-ping-interval 20 --ws-ping-timeout 60
 
 # 테스트 (실제 MySQL에 붙어 돕니다)
+# 백엔드 컨테이너를 띄워 둔 상태라면 먼저 멈춥니다 — 같은 DB를 두고 경합합니다.
 pytest
 ```
 

@@ -27,7 +27,9 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.14.4'  # 사용하시는 파이썬 버전에 맞게 수정하세요
+          # backend/Dockerfile · bootstrap.sh와 같은 버전을 쓴다. 어긋나면
+          # CI가 통과한 코드가 배포에서 다르게 돈다.
+          python-version: '3.14.6'
           cache: 'pip'            # pip 패키지 캐싱으로 빌드 속도 향상
 
       - name: Install dependencies
@@ -51,19 +53,36 @@ jobs:
       # 서비스 컨테이너 대신 개발용 compose를 그대로 쓴다. 서비스 컨테이너에는
       # command를 줄 수 없어 --default-time-zone=+00:00 과 utf8mb4_0900_ai_ci 가
       # 빠지고, 그러면 만료 시각 계산과 닉네임 대소문자 중복 판정이 로컬과 달라진다.
-      # compose를 쓰면 schema.sql -> grants.sql 적용 순서도 함께 재현된다.
+      # compose를 쓰면 db_migration/sql 9개 파일의 적용 순서도 함께 재현된다.
+      #
+      # compose 파일은 저장소 루트에 있으므로 working-directory를 되돌린다.
+      # 그리고 database 서비스만 띄운다 — backend까지 띄우면 이미지 빌드로 CI가
+      # 느려지는 데다, 컨테이너와 pytest가 같은 DB를 두고 경합해 테스트가 멈춘다.
+      #
+      # MYSQL_ROOT_PASSWORD는 compose가 필수로 요구한다(.env가 CI에는 없다).
+      # 이 값은 CI 안에서만 살아 있고 매 실행마다 컨테이너와 함께 버려진다.
       - name: Start MySQL
-        run: docker compose up -d --wait --wait-timeout 180
+        working-directory: .
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-password
+        run: docker compose up -d --wait --wait-timeout 180 database
 
       - name: Run Tests with pytest
         run: |
-          # 작성된 테스트 코드 실행
+          # 작성된 테스트 코드 실행. 접속 정보는 app/config.py 기본값을 쓴다
+          # (modupick/modupick @ 127.0.0.1:3307).
           pytest
 
       - name: Dump MySQL logs on failure
         if: failure()
-        run: docker compose logs db
+        working-directory: .
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-password
+        run: docker compose logs database
 
       - name: Stop MySQL
         if: always()
+        working-directory: .
+        env:
+          MYSQL_ROOT_PASSWORD: ci-root-password
         run: docker compose down -v

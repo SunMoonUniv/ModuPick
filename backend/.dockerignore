@@ -1,0 +1,25 @@
+# 빌드 컨텍스트에서 뺀다. 여기 걸리지 않으면 .venv 수백 MB가 매 빌드마다
+# 데몬으로 전송된다.
+
+.venv/
+# ** 없이 __pycache__/ 라고만 쓰면 컨텍스트 최상위의 것만 걸러진다.
+# app/ 아래 하위 폴더에 흩어진 것까지 잡으려면 ** 가 필요하다.
+**/__pycache__/
+**/*.py[cod]
+
+.env
+*.local
+
+tests/
+shots/
+
+.DS_Store
+.idea/
+.vscode/
+
+# 스키마 정본은 db_migration이며 DB 컨테이너가 initdb.d로 받는다.
+# 백엔드 이미지에 들어갈 이유가 없다.
+sql/
+
+HANDOFF_A.md
+HANDOFF_B.md

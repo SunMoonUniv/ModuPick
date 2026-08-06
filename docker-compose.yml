@@ -1,0 +1,141 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# ModuPick — database + backend 한 묶음
+#
+# 컨테이너 둘이 한 프로젝트로 묶인다.
+#   modupick-db        MySQL 8.4. 첫 기동에 db_migration/sql을 자동 적용한다
+#   modupick-backend   FastAPI + WebSocket. DB가 healthy가 된 뒤에 뜬다
+#
+#   docker compose up -d              둘 다 기동
+#   docker compose up -d database     DB만 기동 (로컬에서 uvicorn --reload를 쓸 때)
+#   docker compose ps                 상태
+#   docker compose logs -f backend    백엔드 로그
+#   docker compose down               정지 (데이터 유지)
+#   docker compose down -v            정지 + 데이터 삭제 (스키마를 바꿨을 때)
+#
+# 설정은 같은 폴더의 .env에서 읽는다. .env.example을 복사해 만든다.
+# EC2에서는 bootstrap.sh가 자동으로 만든다.
+# ═══════════════════════════════════════════════════════════════════════════
+
+# Compose는 프로젝트 이름에 대문자를 허용하지 않는다. ModuPick이라고 적어도
+# 조용히 modupick으로 바뀌므로 처음부터 소문자로 적어 둔다.
+name: modupick
+
+services:
+  # ── 데이터베이스 ─────────────────────────────────────────────────────────
+  database:
+    image: mysql:8.4
+    container_name: modupick-db
+    restart: unless-stopped
+
+    environment:
+      # 기본값을 두지 않는다. .env가 없는 채로 뜨면 개발용 비밀번호가 그대로
+      # 운영에 올라가고, 그 사실을 아무도 모르게 된다.
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?.env에 MYSQL_ROOT_PASSWORD가 필요하다. .env.example을 복사하거나 ./bootstrap.sh를 실행한다}
+      MYSQL_DATABASE: modupick
+
+    # 세션 시간대 +00:00은 서버 전역으로 박는다. 저장은 UTC이고 판정 시각은
+    # 정수 밀리초라, 시간대가 어긋나면 만료·감사 시각이 통째로 밀린다.
+    command:
+      - --default-time-zone=+00:00
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+
+    # 127.0.0.1에만 바인딩한다. 백엔드는 같은 도커 네트워크에서 database:3306으로
+    # 붙으므로 호스트 포트가 필요 없고, 0.0.0.0으로 열면 EC2 보안 그룹 설정
+    # 하나만 어긋나도 MySQL이 인터넷에 노출된다. 이 포트는 사람이 mysql 클라이언트로
+    # 들여다볼 때만 쓴다.
+    ports:
+      - "127.0.0.1:${DB_PORT:-3307}:3306"
+
+    volumes:
+      - db-data:/var/lib/mysql
+      # 스키마 정본은 db_migration이다(ADR-28). 엔트리포인트가 파일명 알파벳
+      # 순으로 실행하므로 0000 → 0010~0060 → 0090 → verify 순서가 성립한다.
+      # sql만 마운트한다 — 엔트리포인트는 .sh도 실행하므로 폴더를 통째로 걸면
+      # apply.sh가 컨테이너 초기화 중에 돌아간다.
+      - ./db_migration/sql:/docker-entrypoint-initdb.d:ro
+
+    healthcheck:
+      # mysqladmin ping은 **비밀번호가 틀려도 성공을 돌려준다** — 서버가 응답하는지만
+      # 본다. 실제 질의를 던져야 자격증명까지 확인된다. 볼륨에 남은 예전 root
+      # 비밀번호와 .env의 새 값이 어긋난 상태를 healthy로 통과시키면, 백엔드가 뜬
+      # 뒤에야 access denied로 죽어 원인을 찾기 어려워진다.
+      test:
+        - CMD-SHELL
+        - mysql -h 127.0.0.1 -uroot -p"$$MYSQL_ROOT_PASSWORD" -e 'SELECT 1' >/dev/null 2>&1
+      interval: 5s
+      timeout: 5s
+      # 첫 기동은 initdb.d 9개 파일을 적용하느라 오래 걸린다. 작은 인스턴스에서도
+      # 넉넉하도록 잡는다 — 여기서 unhealthy가 확정되면 depends_on에 걸린 백엔드가
+      # 영영 뜨지 않고, restart 정책은 unhealthy를 되살리지 않는다.
+      retries: 40
+      start_period: 60s
+
+  # ── 백엔드 ───────────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: modupick-backend:local
+    container_name: modupick-backend
+    restart: unless-stopped
+
+    # healthy를 기다린다. started로 두면 MySQL이 초기화를 끝내기 전에 백엔드가
+    # 붙어 "스키마가 적용되지 않았습니다"로 죽고 재시작 루프에 들어간다.
+    depends_on:
+      database:
+        condition: service_healthy
+
+    environment:
+      # 호스트는 서비스 이름 database다. 컨테이너 사이는 도커 내부 DNS로 찾으며
+      # 포트는 컨테이너 안의 3306이다(호스트에 매핑한 3307이 아니다).
+      DATABASE_URL: mysql+aiomysql://modupick:${MODUPICK_APP_PASSWORD:-modupick}@database:3306/modupick
+      # 프론트엔드 주소다. 쉼표로 여러 개를 줄 수 있다.
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # 검증 콘솔은 배포에서 끈다. 임의 소켓 프레임을 보낼 수 있는 화면이다.
+      DEVTOOLS_ENABLED: ${DEVTOOLS_ENABLED:-false}
+      # 리버스 프록시를 앞에 둘 때만 켠다. 프록시 없이 켜면 X-Forwarded-For를
+      # 위조해 조회 상한을 우회할 수 있다.
+      TRUST_PROXY: ${TRUST_PROXY:-false}
+
+    ports:
+      - "${BACKEND_PORT:-8000}:8000"
+
+    # 이미지에 curl·wget이 없다. 파이썬은 있으므로 그걸로 확인한다.
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+
+volumes:
+  db-data:      # 실제 이름은 프로젝트 접두어가 붙어 modupick_db-data 가 된다
+
+# ═══════════════════════════════════════════════════════════════════════════
+# 스키마를 바꿨을 때
+#
+# initdb.d는 데이터 디렉터리가 비어 있을 때만 실행된다. 둘 중 하나를 쓴다.
+#
+#   1) 통째로 다시          docker compose down -v && docker compose up -d
+#   2) 컨테이너를 살린 채     MYSQL_PASSWORD=<root 비밀번호> \
+#      스키마만 다시            ./db_migration/apply.sh --container modupick-db --fresh
+#
+# 2번도 데이터는 남지 않는다 — --fresh는 DROP DATABASE로 시작한다. 컨테이너와
+# 볼륨을 그대로 두고 스키마만 다시 만든다는 뜻이다.
+#
+# ModuPick은 서버를 재기동할 때마다 모든 방을 삭제하므로 보존할 데이터가
+# 구조적으로 없다. 어느 쪽을 써도 잃을 것이 없다.
+#
+#
+# 코드를 바꿨을 때
+#
+#   docker compose up -d --build backend
+#
+# requirements.txt가 그대로면 의존성 레이어가 캐시에서 나와 몇 초로 끝난다.
+# ═══════════════════════════════════════════════════════════════════════════

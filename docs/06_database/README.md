@@ -27,12 +27,12 @@ rooms · participants · game_rounds · game_options · votes · game_results
 
 | 항목 | 값 | 정본 |
 |------|-----|------|
-| 테이블 | **6개**(+ 마이그레이션 도구가 관리하는 alembic_version 1개는 업무 테이블이 아니라 이 수에 넣지 않는다) | 본 문서의 이름 집합 |
+| 테이블 | **6개**. 마이그레이션 도구를 두지 않으므로(ADR-28) alembic_version 같은 관리 테이블이 없고, 스키마의 테이블은 이 6개가 전부다 | 본 문서의 이름 집합 |
 | 컬럼 | **57개** — 저장 53 + VIRTUAL 생성 4 | 위 표의 컬럼 열 합산(9 + 15 + 14 + 7 + 8 + 4) |
 | 제약 | **54개** — PK 6 · UNIQUE 15 · CHECK 24 · FK 9 | [05_constraints_integrity.md](./05_constraints_integrity.md) |
 | 인덱스 | **31개** — 제약 부수 21(PK 6 + UNIQUE 15) + 독립 10 | [05_constraints_integrity.md](./05_constraints_integrity.md) |
 | VIRTUAL 생성 컬럼 | **4개** — active_nickname · active_avatar_id · active_host_guard · active_round_guard | [02_rooms_participants.md](./02_rooms_participants.md) · [03_game_rounds.md](./03_game_rounds.md) |
-| 마이그레이션 | **6파일** — 0010~0060 | [07_migrations_seed.md](./07_migrations_seed.md) |
+| 마이그레이션 | **테이블 6파일** — 0010~0060. db_migration/sql에는 데이터베이스 생성(0000) · 계정(0090) · 검증(verify)이 더 있어 파일은 모두 9개다 | [07_migrations_seed.md](./07_migrations_seed.md) |
 | 시드 데이터 | **없다** | [07_migrations_seed.md](./07_migrations_seed.md) |
 | 외부 식별자 접두어 | **3종** — mbr_ · rnd_ · opt_ | [05_constraints_integrity.md](./05_constraints_integrity.md) |
 
@@ -70,12 +70,12 @@ rooms · participants · game_rounds · game_options · votes · game_results
 | 항목 | 기준 | 근거 |
 |------|------|------|
 | DB | **MySQL 8.4** LTS · InnoDB · utf8mb4 · utf8mb4_0900_ai_ci | git 529e312 docs/db.md §3 |
-| 드라이버 | mysql+aiomysql — SQLAlchemy 2.0 · Alembic | backend/requirements.txt · backend/app/config.py |
+| 드라이버 | mysql+aiomysql — SQLAlchemy 2.0. 마이그레이션 도구를 두지 않는다(ADR-28). caching_sha2_password 인증에 cryptography가 필요하다 | backend/requirements.txt · backend/app/config.py |
 | 시간대 | 서버·DB 세션 모두 +00:00 고정. 저장은 UTC, 표시는 사용자 시간대 | [../README.md](../README.md) 전역 불변식 |
 | SQL mode | ONLY_FULL_GROUP_BY · STRICT_TRANS_TABLES · ERROR_FOR_DIVISION_BY_ZERO · NO_ENGINE_SUBSTITUTION | git 529e312 docs/db.md §19 |
 | 시각 컬럼 | TIMESTAMP(6) | [../10_glossary/04_id_conventions.md](../10_glossary/04_id_conventions.md) |
 | 판정 시간 | 부동소수점이 아니라 정수 밀리초 BIGINT. 결과 JSON 안에서만 쓴다 | [../README.md](../README.md) 전역 불변식 |
-| DB 계정 | modupick_app(DML) · modupick_migrator(DDL) 분리. 애플리케이션은 root를 쓰지 않는다 | [07_migrations_seed.md](./07_migrations_seed.md) |
+| DB 계정 | modupick(DML) · modupick_migrator(DDL) 분리. 애플리케이션은 root를 쓰지 않는다 | [07_migrations_seed.md](./07_migrations_seed.md) |
 
 ## 폴더 목차
 

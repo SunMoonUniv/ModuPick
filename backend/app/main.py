@@ -54,7 +54,7 @@ async def lifespan(app: FastAPI):
     if missing:
         raise RuntimeError(
             f"스키마가 적용되지 않았습니다. 없는 테이블: {', '.join(missing)} "
-            "— backend/sql/schema.sql을 적용한 뒤 다시 기동하세요."
+            "— db_migration/apply.sh를 실행한 뒤 다시 기동하세요."
         )
     log.info("업무 테이블 6개 확인됨")
 

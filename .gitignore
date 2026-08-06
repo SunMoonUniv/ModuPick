@@ -1,6 +1,9 @@
 # macOS
 .DS_Store
 
+# 배포 설정 (비밀번호가 들어간다. .env.example만 올린다)
+.env
+
 # 도구 상태 (로컬 전용)
 .omc/
 

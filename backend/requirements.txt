@@ -5,6 +5,11 @@ annotated-types==0.8.0
 anyio==4.14.2
 certifi==2026.7.22
 click==8.4.2
+# MySQL 8.4의 기본 인증(caching_sha2_password) 전용. 서버가 계정 해시를 캐시하고
+# 있으면 없어도 붙지만, 캐시가 빈 상태(새 DB·서버 재기동·비밀번호 변경 직후)에서는
+# 평문 TCP로 붙을 때 RSA 공개키로 비밀번호를 암호화해야 하고 그 구현이 여기 있다.
+# 없으면 백엔드가 새 DB에 첫 접속을 하는 배포에서 반드시 실패한다.
+cryptography==50.0.0
 detect-installer==0.1.0
 dnspython==2.8.0
 email-validator==2.3.0

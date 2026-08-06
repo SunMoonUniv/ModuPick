@@ -115,7 +115,7 @@ DELETE FROM rooms WHERE id = ?
 ```
 
 - **game_options·votes·game_rounds는 삭제 경로가 둘 이상인 다이아몬드 구조다.** 참가자를 거치는 경로와 방·회차를 직접 거치는 경로가 같은 행에 도달한다. InnoDB의 CASCADE는 이미 지워진 행을 다시 지우려 하지 않으므로 결과는 같지만, **경로 중복은 실제 MySQL 8.4에서 실행해 확인해야 하는 항목**이다([07_migrations_seed.md](./07_migrations_seed.md)의 배포 전 검증 목록).
-- **개별 참가자를 물리 삭제하는 경로를 두지 않는다.** 퇴장·강퇴·연결 종료는 participants.left_at 갱신이며, 물리 삭제는 위 방 삭제 CASCADE 하나뿐이다. 참가자 한 명을 직접 DELETE하면 그 사람의 표가 함께 사라지므로, 애플리케이션에 삭제 메서드를 두지 않고 modupick_app 계정에서 participants DELETE 권한을 회수한다([07_migrations_seed.md](./07_migrations_seed.md)).
+- **개별 참가자를 물리 삭제하는 경로를 두지 않는다.** 퇴장·강퇴·연결 종료는 participants.left_at 갱신이며, 물리 삭제는 위 방 삭제 CASCADE 하나뿐이다. 참가자 한 명을 직접 DELETE하면 그 사람의 표가 함께 사라지므로, 애플리케이션에 삭제 메서드를 두지 않고 modupick 계정에서 participants DELETE 권한을 회수한다([07_migrations_seed.md](./07_migrations_seed.md)).
 - **삭제 사유를 기록하는 묘비 테이블을 두지 않는다.** 방장 이탈·마지막 참가자 이탈·10분 무활동을 구분해야 하는 대상은 그 순간 접속해 있는 참가자뿐이며, 그들에게는 인메모리가 아는 사유를 소켓 이벤트로 알린다. 나중에 코드로 접근하는 사람에게는 세 경우가 모두 "없는 방"이라 구분할 실익이 없다.
 
 ## 방 밖으로 나가는 참조가 없다는 것

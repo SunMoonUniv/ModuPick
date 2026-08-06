@@ -1,6 +1,6 @@
 """SQLAlchemy Core 테이블 참조.
 
-**제약을 여기에 다시 적지 않는다.** 스키마 정본은 backend/sql/schema.sql이며
+**제약을 여기에 다시 적지 않는다.** 스키마 정본은 db_migration/sql이며
 CHECK 24 · UNIQUE 15 · FK 9 · VIRTUAL 생성 컬럼 4는 전부 거기 있다. 파이썬으로
 옮겨 적으면 옮기다 빠뜨린 것이 조용히 사라지고, 두 곳이 갈라져도 드러나지 않는다.
 

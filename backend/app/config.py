@@ -5,8 +5,9 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     # 포트 3307 — docker-compose.yml 참고. 로컬 mysqld가 3306을 쓰는 환경을 피했다.
-    # 계정은 modupick_app이며 participants DELETE 권한이 없다(sql/grants.sql).
-    database_url: str = "mysql+aiomysql://modupick_app:apppass@127.0.0.1:3307/modupick"
+    # 계정은 modupick이며 participants DELETE 권한이 없다
+    # (db_migration/sql/0090_grants.sql).
+    database_url: str = "mysql+aiomysql://modupick:modupick@127.0.0.1:3307/modupick"
     cors_origins: str = "http://localhost:5173"
 
     # 이탈 유예 — 소켓이 끊긴 것과 사람이 방을 떠난 것은 다르다. 그 사이의 창이다.
