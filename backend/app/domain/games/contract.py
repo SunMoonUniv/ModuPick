@@ -57,6 +57,7 @@ class JudgeContext:
     config: Mapping[str, Any] = field(default_factory=dict)   # 방장 설정
     alive: tuple[str, ...] | None = None         # 생존자 명단 — 눈치게임에서만 쓴다
     candidates: tuple[Candidate, ...] = ()       # 후보 목록 — 킹메이커에서만 쓴다
+    history: tuple[Mapping[str, Any], ...] = ()  # 지난 라운드 기록 — 눈치게임에서만 쓴다
     phase: str = ""
     repeat: int = 0                              # 결선·재대결·무효 재시작마다 1 증가
     started_ms: int = 0                          # 단계 시작 시각
