@@ -32,6 +32,21 @@ class JudgeInput:
 
 
 @dataclass(frozen=True, slots=True)
+class Candidate:
+    """후보 1건 — 킹메이커의 안건이다.
+
+    id는 game_options 행의 외부 식별자다. **투표는 참가자 ID가 아니라 이 ID로
+    접수한다** — 참가자 ID로 받으면 후보와 제출자의 연결이 클라이언트에 드러난다.
+    author_id는 자기 안건 투표 금지를 판정하려고 들고 있으며 서버 밖으로 나가지
+    않는다(방장이 실명 공개를 켠 경우의 개표 후 공개만 예외다).
+    """
+
+    id: str
+    text: str
+    author_id: str
+
+
+@dataclass(frozen=True, slots=True)
 class JudgeContext:
     """판정 문맥. 게임이 쓰지 않는 축은 기본값으로 둔다."""
 
@@ -41,6 +56,7 @@ class JudgeContext:
     roster: tuple[str, ...]                      # 명단 스냅샷. 시작 이후 변하지 않는다
     config: Mapping[str, Any] = field(default_factory=dict)   # 방장 설정
     alive: tuple[str, ...] | None = None         # 생존자 명단 — 눈치게임에서만 쓴다
+    candidates: tuple[Candidate, ...] = ()       # 후보 목록 — 킹메이커에서만 쓴다
     phase: str = ""
     repeat: int = 0                              # 결선·재대결·무효 재시작마다 1 증가
     started_ms: int = 0                          # 단계 시작 시각
