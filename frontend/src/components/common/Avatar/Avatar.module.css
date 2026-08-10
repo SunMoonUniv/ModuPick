@@ -1,0 +1,61 @@
+/* 아바타 — ⌀42~72가 기본 범위. 다른 요소와 같은 잉크 테두리를 둘러 브루탈리즘 톤을 맞춘다. */
+
+.avatar {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-thin) solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  background: var(--color-lavender);
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.xs {
+  width: var(--avatar-sm);
+  height: var(--avatar-sm);
+}
+
+.sm {
+  width: var(--avatar-md);
+  height: var(--avatar-md);
+}
+
+.md {
+  width: var(--avatar-lg);
+  height: var(--avatar-lg);
+}
+
+.lg {
+  width: 104px;
+  height: 104px;
+}
+
+.xl {
+  width: var(--avatar-xl);
+  height: var(--avatar-xl);
+}
+
+/* 프로필 화면에서 지금 고른 아바타 — 옐로 링으로 표시 */
+.selected {
+  box-shadow: 0 0 0 5px var(--color-yellow);
+}
+
+/* 다른 사람이 이미 선점한 아바타 — 흑백으로 죽여서 고를 수 없음을 보인다 */
+.taken {
+  filter: grayscale(1);
+  opacity: 0.35;
+}
+
+/* 게임 중 탈락했거나 방을 떠난 사람 */
+.dimmed {
+  filter: grayscale(1);
+  opacity: 0.5;
+}

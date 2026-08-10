@@ -1,0 +1,109 @@
+/* 참가자 타일 — 카드 규격(b5 · r20 · shadow6)에 아바타·이름·상태 뱃지를 세로로 쌓는다. */
+
+.tile {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 200px;
+  padding: var(--space-5) var(--space-3);
+  background: var(--color-white);
+  border: var(--border-card) solid var(--color-ink);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-hard);
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+/* 나 자신의 타일 — 명단에서 바로 찾을 수 있게 시안으로 칠한다 */
+.isMe {
+  background: var(--color-cyan);
+}
+
+/* 준비완료한 참가자 */
+.isReady {
+  background: var(--color-green);
+}
+
+/* 게임 중 탈락했거나 방을 나간 사람 */
+.isOut {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+/* 지금 이 사람이 지목/선택된 상태 (저격 투표 대상 등) */
+.isPicked {
+  background: var(--color-pink);
+}
+
+.selectable {
+  cursor: pointer;
+}
+
+.selectable:hover:not(.isOut) {
+  transform: translate(-2px, -2px);
+}
+
+.nickname {
+  font-family: var(--font-title);
+  font-size: var(--font-size-name);
+  line-height: 1.2;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bio {
+  font-size: var(--font-size-meta);
+  color: var(--color-muted);
+  text-align: center;
+  min-height: 24px;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badges {
+  display: flex;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* 방장만 보이는 강퇴 버튼 — 타일 우상단에 겹쳐 놓는다 */
+.kick {
+  position: absolute;
+  top: calc(var(--space-2) * -1);
+  right: calc(var(--space-2) * -1);
+  width: 36px;
+  height: 36px;
+  border: var(--border-thin) solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  background: var(--color-pink);
+  color: var(--color-ink);
+  font-size: var(--font-size-meta);
+  line-height: 1;
+}
+
+/* 좌상단 순위/득표 같은 숫자 뱃지 */
+.corner {
+  position: absolute;
+  top: calc(var(--space-2) * -1);
+  left: calc(var(--space-2) * -1);
+  min-width: 40px;
+  height: 40px;
+  padding: 0 var(--space-2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-thin) solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  background: var(--color-yellow);
+  color: var(--color-ink);
+  font-family: var(--font-title);
+  font-size: var(--font-size-sub);
+}

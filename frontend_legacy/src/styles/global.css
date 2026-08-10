@@ -1,0 +1,503 @@
+/* ============================================================
+   ModuPick 디자인 토큰 — Figma 「몰입 디자인」 레이어 정본
+   (fileKey IIqIz0uigrSQJnyTDKDsg6 · 542:xxx 프레임 기준)
+   ============================================================ */
+:root {
+  /* 색 · Figma 레이어 실측 */
+  --bg-purple: #5b2de7;
+  --ink: #0e0d14;
+  --pink: #ff4fd4;
+  --yellow: #ffe23e;
+  --cyan: #57ebfa;
+  --green: #29db78; /* 접속·READY (레이어 실측) */
+  --green-cta: #18ce4e; /* 게임 시작 버튼 */
+  --lavender: #b899ff;
+  --input: #f7f7fa;
+  --track: #e5e5eb;
+  --white: #ffffff;
+  --orange: #ff6b3e; /* 룰렛 아이콘 틴트 */
+  --amber: #ffb041; /* 저격 아이콘 틴트 */
+  --red: #fa5c57; /* 나가기·STOP */
+
+  /* 타입 · Black Han(제목·이름) / Gothic A1(본문) / NanumGothicCoding(메타·모노) */
+  --font-black: "Black Han Sans", sans-serif;
+  --font-gothic: "Gothic A1", sans-serif;
+  --font-mono: "Nanum Gothic Coding", monospace;
+
+  --r-btn: 12.7px;
+  --r-card: 16.9px;
+  --r-pill: 999px;
+  --shadow-hard: 5px 6px 0 var(--ink);
+  --shadow-btn: 4.2px 4.2px 0 var(--ink);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  /* Black Han Sans·Do Hyeon은 400만 존재 — 가짜 볼드 합성 시 대형 글리프가 깨져 보임 */
+  font-synthesis: none;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--ink);
+}
+
+body {
+  font-family: var(--font-gothic);
+  font-weight: 700;
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font-family: inherit;
+  border: none;
+  background: none;
+  cursor: pointer;
+  color: inherit;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+input,
+textarea {
+  font-family: var(--font-gothic);
+  font-weight: 700;
+  color: var(--ink);
+  outline: none;
+}
+
+/* ============ 스테이지 1920×1080 → 뷰포트 스케일 ============ */
+.stage-viewport {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--ink);
+}
+.stage {
+  width: 1920px;
+  height: 1080px;
+  background: var(--bg-purple);
+  position: relative;
+  overflow: hidden;
+  flex: none;
+  transform-origin: center center;
+}
+
+/* 배경 그리드 (레이어: 106.67px × 84.38px · white 5~9%) */
+.bg-grid {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(
+      to right,
+      rgba(255, 255, 255, 0.06) 1.3px,
+      transparent 1.3px
+    ),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 106.67px 84.38px;
+}
+
+/* ============ 타입 레더 (Figma 실측) ============ */
+.f-hero {
+  font-family: var(--font-black);
+  font-weight: 400;
+  line-height: 1.05;
+}
+.f-title {
+  font-family: var(--font-black);
+  font-weight: 400;
+  font-size: 40px;
+}
+.f-head {
+  font-family: var(--font-black);
+  font-weight: 400;
+  font-size: 34px;
+}
+.f-headline {
+  font-family: var(--font-black);
+  font-weight: 400;
+  font-size: 28px;
+}
+.f-name {
+  font-family: var(--font-black);
+  font-weight: 400;
+  font-size: 28px;
+}
+.f-btn {
+  font-family: var(--font-black);
+  font-weight: 400;
+  font-size: 20px;
+}
+.f-body {
+  font-family: var(--font-gothic);
+  font-weight: 700;
+  font-size: 18px;
+}
+.f-sub {
+  font-family: var(--font-gothic);
+  font-weight: 700;
+  font-size: 18px;
+}
+/* 모노 폰트의 normal 행간은 1.0 — 두 줄이 되면 한글 글리프가 맞닿아 겹쳐 보임 */
+.f-meta {
+  font-family: var(--font-mono);
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 1.35;
+}
+.txt-shadow {
+  text-shadow: 4.2px 4.2px 0 var(--ink);
+}
+
+/* ============ 공용 컴포넌트 ============ */
+.card {
+  background: var(--white);
+  border: 3.16px solid var(--ink);
+  border-radius: var(--r-card);
+  box-shadow: 4.2px 5.3px 0 var(--ink);
+}
+.card-flat {
+  background: var(--white);
+  border: 3.16px solid var(--ink);
+  border-radius: var(--r-card);
+}
+
+.pill {
+  line-height: 1.1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 2.64px solid var(--ink);
+  border-radius: var(--r-pill);
+  padding: 9px 16px;
+  background: var(--white);
+  white-space: nowrap;
+}
+.pill-thin {
+  border-width: 2.1px;
+}
+
+.btn {
+  line-height: 1.1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 3.16px solid var(--ink);
+  border-radius: var(--r-btn);
+  box-shadow: var(--shadow-btn);
+  font-family: var(--font-black);
+  font-size: 20px;
+  background: var(--white);
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
+  user-select: none;
+}
+.btn:not(:disabled):hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 6px 6px 0 var(--ink);
+}
+.btn:not(:disabled):active {
+  transform: translate(3px, 3px);
+  box-shadow: 1px 1px 0 var(--ink);
+}
+.btn:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+}
+.btn-ink {
+  background: var(--ink);
+  color: var(--yellow);
+  border-color: var(--ink);
+}
+.btn-yellow {
+  background: var(--yellow);
+}
+.btn-pink {
+  background: var(--pink);
+}
+.btn-green {
+  background: var(--green-cta);
+  color: var(--yellow);
+}
+.btn-red {
+  background: var(--red);
+  color: var(--white);
+}
+.btn-cyan {
+  background: var(--cyan);
+}
+
+.field {
+  background: var(--input);
+  border: 3.16px solid var(--ink);
+  border-radius: 10.5px;
+  padding: 14px 20px;
+  font-size: 20px;
+  width: 100%;
+}
+.field::placeholder {
+  color: #9d9aa8;
+}
+.field.error {
+  border-color: var(--pink);
+  background: #fff0fb;
+}
+
+/* ============ 화면 셸 — 보더 6.33 · r4.2 · 코너칩 핑크 (레이어 실측) ============ */
+.shell {
+  position: absolute;
+  left: 21.33px;
+  top: 16.88px;
+  width: 1877.33px;
+  height: 1046.25px;
+  border: 6.33px solid var(--ink);
+  border-radius: 4.2px;
+}
+.shell-corner {
+  position: absolute;
+  width: 16.88px;
+  height: 16.88px;
+  background: var(--pink);
+  border: 2.64px solid var(--ink);
+  z-index: 5;
+}
+
+.content {
+  position: absolute;
+  left: 59px;
+  top: 40px;
+  width: 1803px;
+  height: 1000px;
+}
+
+.screen-header {
+  height: 93px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+/* 상태 밴드 = HUD — 흰 카드 1803×108 (레이어: S-05/S-04 HUD) */
+.status-band {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 1803px;
+  height: 108px;
+  background: var(--white);
+  border: 3.16px solid var(--ink);
+  border-radius: 19px;
+  box-shadow: 5.3px 6.3px 0 var(--ink);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+}
+
+/* ============ 상태 뱃지 ============ */
+.badge {
+  line-height: 1.1;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 2.1px solid var(--ink);
+  border-radius: var(--r-pill);
+  padding: 4px 14px;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.badge-host {
+  background: var(--yellow);
+}
+.badge-ready {
+  background: var(--green);
+}
+.badge-wait {
+  background: var(--white);
+  color: #6b6878;
+}
+
+/* ============ 스크롤바 ============ */
+.scroll-y {
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink) transparent;
+}
+.scroll-y::-webkit-scrollbar {
+  width: 8px;
+}
+.scroll-y::-webkit-scrollbar-thumb {
+  background: var(--ink);
+  border-radius: 4px;
+}
+
+/* ============ 애니메이션 ============ */
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+@keyframes marquee-ltr {
+  0% {
+    transform: translateX(-50%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+.marquee-rail {
+  display: flex;
+  width: max-content;
+  animation: marquee-ltr 36s linear infinite;
+}
+.marquee-rail:hover {
+  animation-play-state: paused;
+}
+@keyframes band-flash {
+  0%,
+  100% {
+    background: #fff;
+  }
+  50% {
+    background: #ffe9f9;
+  }
+}
+@keyframes float-pop {
+  0% {
+    transform: translateY(8px) scale(0.9);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+@keyframes blink-dots {
+  0%,
+  100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+@keyframes pulse-soft {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+}
+/* 사다리 매칭 현황 — 역할 슬롯머신 릴 (목록을 2배 복제해 seamless) */
+@keyframes reel-spin {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(-50%);
+  }
+}
+@keyframes shake {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  25% {
+    transform: translateX(-3px);
+  }
+  75% {
+    transform: translateX(3px);
+  }
+}
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(-40px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(180px) rotate(320deg);
+    opacity: 0;
+  }
+}
+@keyframes modal-in {
+  0% {
+    transform: translateY(24px) scale(0.96);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+@keyframes toast-in {
+  0% {
+    transform: translate(-50%, -16px);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+.anim-pop {
+  animation: float-pop 0.25s ease-out both;
+}
+.anim-modal {
+  animation: modal-in 0.22s cubic-bezier(0.2, 1.4, 0.5, 1) both;
+}
+
+/* 딤 레이어 — ink 62% (레이어: Overlay Dim) */
+.dim {
+  position: absolute;
+  inset: 0;
+  background: rgba(14, 13, 20, 0.62);
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.toast-block {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 600px;
+  background: var(--ink);
+  color: var(--white);
+  border-radius: 16px;
+  padding: 18px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  z-index: 60;
+  animation: toast-in 0.25s ease-out both;
+  font-family: var(--font-gothic);
+  font-weight: 700;
+}

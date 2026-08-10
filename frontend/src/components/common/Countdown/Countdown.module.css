@@ -1,0 +1,46 @@
+/* 카운트다운 — 숫자는 Do Hyeon으로 고정폭 표시하고, 남은 시간이 적어지면 핑크로 바뀐다. */
+
+.countdown {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-title);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+
+.lg {
+  font-size: var(--font-size-hero);
+}
+
+.md {
+  font-size: var(--font-size-head);
+}
+
+.sm {
+  font-size: var(--font-size-btn);
+}
+
+/* 남은 시간이 얼마 없을 때 */
+.urgent {
+  color: var(--color-pink);
+}
+
+.track {
+  height: 20px;
+  border: var(--border-thin) solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  background: var(--color-track);
+  overflow: hidden;
+}
+
+.fill {
+  height: 100%;
+  background: var(--color-green);
+  /* 1초 tick마다 값이 갱신되므로 그 사이를 선형 보간해 끊겨 보이지 않게 한다 */
+  transition: width 1s linear;
+}
+
+.fillUrgent {
+  background: var(--color-pink);
+}

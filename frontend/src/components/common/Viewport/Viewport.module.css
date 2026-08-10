@@ -1,0 +1,19 @@
+/* 1920×1080 무대를 창 크기에 맞춰 통째로 확대·축소하는 바깥 껍데기.
+   화면 CSS는 전부 1920×1080 좌표 그대로 두고, 반응형 대응은 여기 배율 하나로 끝낸다. */
+
+.viewport {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--color-bg-purple);
+}
+
+/* 배율을 먹여도 레이아웃 상자는 1920×1080 그대로라, 가운데 정렬은 translate로 직접 잡는다 */
+.stage {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--layout-width);
+  height: var(--layout-height);
+  transform: translate(-50%, -50%) scale(var(--app-scale, 1));
+}

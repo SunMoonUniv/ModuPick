@@ -1,0 +1,126 @@
+/* 인게임 상태 밴드 — Figma의 게임 화면들이 공통으로 쓰는 1803×108 흰 밴드 (예: 542:1381). */
+
+.hud {
+  position: absolute;
+  left: 59px;
+  top: 938px;
+  box-sizing: border-box;
+  width: 1803px;
+  height: 108px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 3.164px solid var(--color-ink);
+  border-radius: 18.984px;
+  box-shadow: 5.273px 6.328px 0 var(--color-ink);
+}
+
+/* 남은 초·회차가 들어가는 노란 원 */
+.badge {
+  position: absolute;
+  left: 23.84px;
+  top: 23.41px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54.844px;
+  height: 54.844px;
+  background: var(--color-yellow);
+  border: 3.164px solid var(--color-ink);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: var(--font-size-head);
+  line-height: 1;
+  color: var(--color-ink);
+}
+
+.title {
+  position: absolute;
+  left: 106.84px;
+  top: 15.84px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-headline);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* 보충 설명만 고정폭이 아니라 채팅용 글꼴을 쓴다 (프레임 기준) */
+.note {
+  position: absolute;
+  left: 106.84px;
+  top: 62.84px;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  color: var(--color-band-meta);
+  white-space: nowrap;
+}
+
+/* 노란 원 없이 그림 아이콘만 놓는 배지 (킹메이커 878:1750) */
+.badgePlain {
+  left: 26.84px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 42.188px;
+  height: 42.188px;
+  background: none;
+  border: none;
+}
+
+/* 배지가 없는 게임은 글이 밴드 왼쪽 끝에서 시작한다 */
+.flush {
+  left: 33.84px;
+}
+
+/* 원 없는 배지는 폭이 좁아 글도 그만큼 왼쪽에서 시작한다 */
+.bare {
+  left: 91.03px;
+}
+
+/* 킹메이커 프레임들은 보충 설명을 한 단계 큰 20px로 쓴다 */
+.noteLarge {
+  font-size: var(--font-size-sub);
+}
+
+.right {
+  position: absolute;
+  right: 24px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.pill {
+  padding: 10.547px 16.875px;
+  border: 2.109px solid var(--color-ink);
+  border-radius: 42.188px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.yellow {
+  background: var(--color-yellow);
+}
+
+.cyan {
+  background: var(--color-cyan);
+}
+
+/* 경고 톤 — 익명 저격처럼 밴드 오른쪽에서 규칙을 못 박아야 하는 화면이 쓴다 */
+.red {
+  background: var(--color-alert);
+  color: var(--color-white);
+}
+
+/* 여백·테두리를 키우고 하드 그림자를 붙인 판 (킹메이커 프레임 기준) */
+.raised {
+  padding: 12.656px 18.984px;
+  border-width: 3.164px;
+  box-shadow: 4.219px 4.219px 0 var(--color-ink);
+}

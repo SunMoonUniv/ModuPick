@@ -1,0 +1,112 @@
+/* 6개 게임 화면이 공통으로 쓰는 레이아웃 조각. 게임 고유 연출만 각자의 module.css에 둔다. */
+
+.wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+}
+
+.topic {
+  color: var(--color-white);
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  text-align: center;
+  line-height: var(--line-height-tight);
+}
+
+.hint {
+  font-size: var(--font-size-btn);
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+}
+
+/* 참가자를 가로로 늘어놓는 줄 (제출 현황·지목 대상 등) */
+.playerRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+  justify-content: center;
+}
+
+/* 어두운 배경 위에 올리는 참가자 칩 */
+.player {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  width: 132px;
+  padding: var(--space-4) var(--space-2);
+  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid transparent;
+  transition: border-color var(--duration-fast) var(--ease-out);
+}
+
+.playerName {
+  color: var(--color-white);
+  font-size: var(--font-size-sub);
+  font-weight: 700;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.playerState {
+  font-size: var(--font-size-meta);
+  color: rgba(255, 255, 255, 0.55);
+}
+
+/* 제출을 마친 참가자 */
+.playerDone {
+  border-color: var(--color-green);
+}
+
+/* 지목/선택한 대상 */
+.playerPicked {
+  border-color: var(--color-yellow);
+  background: rgba(255, 138, 61, 0.16);
+}
+
+/* 고를 수 있는 대상 */
+.playerSelectable {
+  cursor: pointer;
+}
+
+/* 탈락하거나 방을 나간 사람 */
+.playerOut {
+  opacity: 0.35;
+}
+
+/* 하단 조작 버튼 줄 */
+.actions {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+}
+
+/* 방장이 아닐 때 보여주는 대기 안내 */
+.waiting {
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* 결과가 확정돼 연출이 재생되는 동안 띄우는 문구 */
+.reveal {
+  font-family: var(--font-display);
+  font-size: var(--font-size-head);
+  color: var(--color-yellow);
+  text-align: center;
+}
+
+.panel {
+  width: 100%;
+  max-width: 1100px;
+  padding: var(--space-8);
+  border-radius: var(--radius-card);
+  background: rgba(255, 255, 255, 0.06);
+}

@@ -1,0 +1,6 @@
+/* 결과 화면 색종이 — 조각마다 위치·크기·기울기·색이 달라 그 값들은 인라인 스타일로 들어온다 */
+
+.confetti {
+  position: absolute;
+  border: 1.582px solid var(--color-ink);
+}

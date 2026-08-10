@@ -1,0 +1,106 @@
+/* 팝업 — 보라 배경을 잉크로 덮고 그 위에 카드 규격(b5 · r20 · shadow6) 판을 띄운다. */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(14, 13, 20, 0.7);
+  z-index: var(--z-modal);
+  animation: fade var(--duration-normal) var(--ease-out);
+}
+
+.panel {
+  width: 720px;
+  /* 무대가 배율로 축소돼도 팝업 비율이 그대로여야 해서 vh 대신 무대 높이(1080)의 80%로 잡는다 */
+  max-height: 864px;
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  background: var(--color-white);
+  border: var(--border-card) solid var(--color-ink);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-hard);
+  animation: rise var(--duration-normal) var(--ease-out);
+  overflow-y: auto;
+}
+
+/* 게임 시작 가이드처럼 더 넓게 보여줘야 하는 팝업 */
+.wide {
+  width: 980px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-head);
+  line-height: var(--line-height-tight);
+  margin-bottom: var(--space-3);
+}
+
+.description {
+  font-size: var(--font-size-sub);
+  margin-bottom: var(--space-6);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  justify-content: flex-end;
+  margin-top: var(--space-8);
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+
+/* 가이드 팝업 — 제목 줄이 옐로 바로 분리되고 우측에 닫기 버튼이 붙는다 (S-05a 프레임) */
+.headerBar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin: calc(var(--space-8) * -1) calc(var(--space-8) * -1) 0;
+  padding: var(--space-5) var(--space-6);
+  background: var(--color-yellow);
+  border-bottom: var(--border-thin) solid var(--color-ink);
+}
+
+.headerTexts {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
+/* 헤더 바 안에서는 제목 아래 여백을 없앤다 */
+.headerBar .title,
+.headerBar .description {
+  margin: 0;
+}
+
+/* 우측 닫기 버튼 — 흰 사각 버튼 */
+.close {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--border-thin) solid var(--color-ink);
+  border-radius: var(--space-2);
+  background: var(--color-white);
+  box-shadow: var(--shadow-btn-pressed);
+  font-size: var(--font-size-sub);
+  line-height: 1;
+}

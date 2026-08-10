@@ -1,0 +1,49 @@
+/* 상태 뱃지 — 알약 모양 + 잉크 테두리 3px, 라벨은 Do Hyeon 20px. 상태별 색은 파운데이션 시트 고정값이다. */
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-2) var(--space-4);
+  border: var(--border-thin) solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-title);
+  font-size: var(--font-size-sub);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.neutral {
+  background: var(--color-white);
+  color: var(--color-ink);
+}
+
+/* 방장 */
+.host {
+  background: var(--color-yellow);
+  color: var(--color-ink);
+}
+
+/* 준비완료 */
+.ready {
+  background: var(--color-green);
+  color: var(--color-ink);
+}
+
+/* 아직 준비 안 함 — 회색 트랙 배경에 흐린 글자 */
+.waiting {
+  background: var(--color-track);
+  color: var(--color-muted);
+}
+
+/* 탈락·이탈 */
+.out {
+  background: var(--color-pink);
+  color: var(--color-ink);
+}
+
+/* 나 자신 표시 */
+.me {
+  background: var(--color-cyan);
+  color: var(--color-ink);
+}

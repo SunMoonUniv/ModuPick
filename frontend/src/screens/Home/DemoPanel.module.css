@@ -1,0 +1,1502 @@
+/* 표지 미리보기 패널 — Figma 542:245 기준. 좌표는 전부 프레임 값 그대로이고 반응형이 없다.
+   패널 안 요소는 패널의 패딩 박스를, 룰렛 무대 안 요소는 무대의 패딩 박스를 원점으로 삼는다. */
+
+.panel {
+  position: absolute;
+  left: 915px;
+  top: 100px;
+  box-sizing: border-box;
+  width: 953.316px;
+  height: 642.807px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 6.809px solid var(--color-ink);
+  border-radius: 13.619px;
+  box-shadow: 13.619px 13.619px 0 var(--color-ink);
+}
+
+.title {
+  position: absolute;
+  left: 28.6px;
+  top: 25.88px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 31.323px;
+  color: var(--color-ink);
+}
+
+/* 지금 재생 중이라는 뜻의 핑크 알약 */
+.tag {
+  position: absolute;
+  left: 787.17px;
+  top: 23.15px;
+  padding: 9.533px 17.704px;
+  background: var(--color-pink);
+  border: 3.405px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 16.343px;
+  color: var(--color-white);
+  white-space: nowrap;
+}
+
+/* 제목과 본문을 가르는 굵은 잉크 선 */
+.rule {
+  position: absolute;
+  left: 28.6px;
+  top: 83.08px;
+  width: 882.498px;
+  height: 4.086px;
+  background: var(--color-ink);
+}
+
+/* ── 룰렛 무대 ── */
+
+.stage {
+  position: absolute;
+  left: 28.6px;
+  top: 113.04px;
+  box-sizing: border-box;
+  width: 596.503px;
+  height: 408.564px;
+  overflow: hidden;
+  background: var(--color-bg-purple);
+  border: 4.086px solid var(--color-ink);
+  border-radius: 13.619px;
+}
+
+/* ── 게임별 무대 공통 ── */
+/* 무대는 모두 한 판 길이를 `--demo-loop`(패널이 인라인으로 넣는다)으로 받아 쓰고,
+   0~70% 구간에서 진행하고 70~100%는 결과를 붙잡고 있다가 처음부터 반복한다.
+   치수·색·테두리는 실제 게임 화면(`src/screens/Game/games/`)의 값을 약 0.43배로 줄여 옮긴 것이다.
+   테두리와 하드 그림자는 그만큼 줄이면 너무 얇아져 신 브루탈리즘 톤이 죽으므로 3px 안팎으로 남겨둔다. */
+
+/* 룰렛 말고 나머지 게임이 쓰는 기본 무대 — 내용물을 무대 한가운데 세로로 쌓는다 */
+.stageCenter {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  box-sizing: border-box;
+  /* 왼쪽 위 상태 알약(.stagePill)에 내용이 가리지 않도록 그만큼 비워둔다 */
+  padding-top: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+
+/* 실제 화면에서 게임판이 올라앉는 흰 보드(`.range`·`.stage`·`.hero`)를 줄인 것.
+   룰렛만 보라 무대에 바로 그려서 이 보드를 쓰지 않는다. */
+.board {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 536px;
+  padding: 14px;
+  background: var(--color-white);
+  border: 4px solid var(--color-ink);
+  border-radius: 16px;
+  box-shadow: 7px 7px 0 var(--color-ink);
+}
+
+/* ── 사다리 무대 ── */
+/* 사다리는 실제 화면에서도 흰 보드 없이 배경 위에 바로 그려서 여기서도 보라 무대에 직접 얹는다 */
+
+/* 판과 주자가 겹쳐 앉는 상자. SVG를 viewBox와 1:1 px로 그려야 주자의 offset-path 좌표가 어긋나지 않는다 */
+.ladderBoard {
+  position: relative;
+  width: 470px;
+  height: 236px;
+}
+
+.ladder {
+  position: absolute;
+  inset: 0;
+  overflow: visible;
+}
+
+/* 참가자 한 명이 기둥 하나 — 실제 화면의 `.pole`처럼 레인 색을 채우고 잉크 테두리를 두른다 */
+.ladderLane {
+  stroke: var(--color-ink);
+  stroke-width: 1.8;
+}
+
+/* 기둥을 잇는 가로줄 — 실제 화면과 같이 흰 막대다 */
+.ladderRung {
+  fill: var(--color-white);
+  stroke: var(--color-ink);
+  stroke-width: 1.4;
+}
+
+/* 경로를 타고 내려가는 주자.
+   offset-path는 요소 상자의 한가운데를 경로에 올리므로, 이 상자는 아바타 원 크기와 같아야
+   아바타가 사다리 줄 위에 정확히 앉는다. 이름 알약은 흐름에서 빼 상자 위로 띄운다
+   (알약까지 상자에 넣으면 상자 중심이 둘 사이로 가서 아바타가 줄보다 아래로 처진다).
+   offset-rotate를 0으로 묶지 않으면 꺾일 때마다 통째로 돌아간다. */
+.runner {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 26px;
+  height: 26px;
+  offset-rotate: 0deg;
+  animation: ladderRun var(--demo-loop) linear infinite;
+}
+
+/* 이름 알약 — 실제 화면의 `.runnerChip`과 같은 규격(레인 색 바탕·잉크 테두리·둥근 알약) */
+.runner b {
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 3px);
+  transform: translateX(-50%);
+  padding: 1px 6px;
+  border: 1.8px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 11px;
+  line-height: 1.3;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* 아바타 원 — 실제 화면의 `.runnerRing`(61.17px)을 같은 비율로 줄인 값 */
+.runner i {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 100%;
+  height: 100%;
+  border: 2.2px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+.runner img {
+  width: 16px;
+  height: 16px;
+  object-fit: contain;
+}
+
+@keyframes ladderRun {
+  0% { offset-distance: 0%; }
+  70%, 100% { offset-distance: 100%; }
+}
+
+/* 세로줄 아래 도착 칸 — 실제 화면의 goal 칩과 같은 문법(색 바탕·잉크 테두리·하드 그림자)이다 */
+.ladderGoals {
+  position: relative;
+  width: 470px;
+  height: 40px;
+}
+
+/* 실제 화면의 `.goal` 칩(높이 70·테두리 3.164·라디우스 12.656·하드 그림자 4.219)을 같은 비율로 줄인 값.
+   실제 화면은 역할만 적고 누가 받았는지는 오른쪽 패널에 따로 있는데, 여기는 패널이 없어 이름을 한 줄 붙였다. */
+.ladderGoals .goal {
+  position: absolute;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 68px;
+  height: 40px;
+  border: 2.4px solid var(--color-ink);
+  border-radius: 10px;
+  box-shadow: 3.2px 3.2px 0 var(--color-ink);
+}
+
+/* 경로 추적이 끝나 배분이 확정된 상태 */
+.goalDone b {
+  color: var(--color-ink);
+}
+
+.goal b {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.265;
+  color: var(--color-ink);
+}
+
+.goal em {
+  font-family: var(--font-meta);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1;
+  color: rgba(14, 13, 20, 0.55);
+}
+
+/* ── 킹메이커 무대 ── */
+/* 실제 화면(`KingmakerGame`의 투표 단계)과 같은 구성이다 — 1위만 흰 스포트라이트 카드로 띄우고,
+   2위 아래 순위표는 흰 카드 없이 무대 위에 흰 글씨로 바로 얹는다. 치수는 1221px 판을 536px로 줄인 값(약 0.44배)이다. */
+
+.kmSpot {
+  position: relative;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 500px;
+  padding: 10px 16px;
+  background: var(--color-white);
+  border: 3.2px solid var(--color-ink);
+  border-radius: 14px;
+  box-shadow: 5px 5px 0 var(--color-ink);
+  line-height: 1;
+}
+
+.kmSpotMain {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  flex: 1;
+}
+
+.kmChips {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 두 칩이 공유하는 알약 규격 */
+.kmChipTop,
+.kmChipRule {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  border: 2.2px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  box-shadow: 2.2px 2.2px 0 var(--color-ink);
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.kmChipTop {
+  background: var(--color-pink);
+  font-family: var(--font-chat);
+  font-weight: 700;
+}
+
+.kmChipTop img {
+  width: 13px;
+  height: 13px;
+}
+
+.kmChipRule {
+  background: var(--color-cyan);
+  font-family: var(--font-meta);
+  font-weight: 700;
+}
+
+/* 지금 1위인 안건 이름 — 길면 한 줄 말줄임 */
+.kmTopText {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 25px;
+  line-height: 1.265;
+  color: var(--color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kmTopBar {
+  box-sizing: border-box;
+  display: block;
+  width: 100%;
+  height: 13px;
+  overflow: hidden;
+  background: #ece9f7;
+  border: 2.2px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+}
+
+.kmTopBar i {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: var(--color-online);
+  border-radius: var(--radius-pill);
+  transform-origin: left center;
+  animation: voteGrow var(--demo-loop) cubic-bezier(0.34, 1.4, 0.64, 1) infinite backwards;
+}
+
+.kmTopNote {
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: 11px;
+  line-height: 1.25;
+  color: var(--color-ink-45);
+}
+
+/* 1위 득표수가 들어가는 노란 원 */
+.kmCount {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: 58px;
+  height: 58px;
+  background: var(--color-track-soft);
+  border: 3.2px solid var(--color-ink);
+  border-radius: 50%;
+  box-shadow: 3px 3.5px 0 var(--color-ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 25px;
+  color: var(--color-ink);
+}
+
+/* 최다 득표가 확정된 순간 노랗게 물든다 */
+.kmTopDone {
+  background: var(--color-yellow);
+}
+
+/* 스포트라이트 오른쪽 위에 삐뚜름하게 걸치는 VOTE! 배지 */
+.kmVoteBadge {
+  position: absolute;
+  right: -14px;
+  top: -13px;
+  padding: 4px 9px;
+  transform: rotate(12.25deg);
+  background: var(--color-pink);
+  border: 3.2px solid var(--color-ink);
+  border-radius: 8px;
+  box-shadow: 3.2px 3.2px 0 var(--color-ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.265;
+  color: var(--color-white);
+  white-space: nowrap;
+}
+
+/* ── 2위 아래 순위표 ── */
+
+.kmRanks {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  width: 500px;
+  margin-top: 4px;
+}
+
+.kmRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 22px;
+}
+
+/* 아직 한 표도 못 받은 항목 */
+.kmRowDim {
+  opacity: 0.68;
+}
+
+.kmRank {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+  background: var(--color-white);
+  border: 2.2px solid var(--color-ink);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--color-ink);
+}
+
+.kmRow b {
+  width: 118px;
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 15px;
+  line-height: 1.265;
+  color: var(--color-white);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kmBar {
+  position: relative;
+  flex: 1;
+  box-sizing: border-box;
+  height: 17px;
+  background: rgba(255, 255, 255, 0.18);
+  border: 2.2px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+}
+
+/* 표가 하나씩 들어오는 것처럼 폭 0에서 제 길이까지 늘어난다 (시작 시각은 항목마다 다르다) */
+.kmBar i {
+  position: absolute;
+  left: -2.2px;
+  top: -2.2px;
+  box-sizing: border-box;
+  height: 17px;
+  min-width: 8px;
+  background: var(--color-yellow);
+  border: 2.2px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  transform-origin: left center;
+  animation: voteGrow var(--demo-loop) cubic-bezier(0.34, 1.4, 0.64, 1) infinite backwards;
+}
+
+@keyframes voteGrow {
+  0% { transform: scaleX(0); }
+  20%, 100% { transform: scaleX(1); }
+}
+
+.kmRow em {
+  width: 30px;
+  flex-shrink: 0;
+  text-align: right;
+  font-family: var(--font-display);
+  font-style: normal;
+  font-weight: 400;
+  font-size: 14px;
+  color: var(--color-white);
+}
+
+/* 득표한 항목과 아직 0표인 항목을 가르는 컷오프 선 */
+.kmCutoff {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 22px;
+  margin-bottom: 9px;
+}
+
+.kmCutoff i {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2.4px;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.4);
+}
+
+.kmCutoff b {
+  position: relative;
+  padding: 3px 10px;
+  background: var(--color-salmon);
+  border: 2.2px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  box-shadow: 2.2px 2.2px 0 var(--color-ink);
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 10px;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.kmLock {
+  margin-top: 6px;
+  padding: 4px 12px;
+  background: var(--color-ink);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--color-white);
+}
+
+/* ── 시간초 잡기 무대 ── */
+
+.tmHero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 100%;
+}
+
+.tmCaption {
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--color-ink-45);
+}
+
+.tmRow {
+  display: flex;
+  align-items: baseline;
+  gap: 9px;
+}
+
+/* 흐르는 숫자 — 자릿수가 바뀌어도 폭이 흔들리지 않게 고정폭 숫자를 쓴다 */
+.tmValue {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 68px;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+/* 멈춘 순간 경고 빨강으로 굳으며 한 번 튄다 */
+.tmValueStop {
+  color: var(--color-alert);
+  animation: timerPunch 320ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes timerPunch {
+  0% { transform: scale(1.16); }
+  100% { transform: scale(1); }
+}
+
+.tmUnit {
+  font-family: var(--font-meta);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-ink-45);
+}
+
+.tmDivider {
+  align-self: stretch;
+  width: 3px;
+  margin: 8px 2px;
+  background: var(--color-ink-12);
+}
+
+.tmRight {
+  display: flex;
+  align-items: baseline;
+  gap: 5px;
+}
+
+.tmRight em {
+  font-family: var(--font-meta);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--color-ink-45);
+}
+
+.tmRight b {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 26px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-ink);
+}
+
+/* 정지 타임라인 — 왼쪽 끝이 0초, 오른쪽 끝이 눈금 최댓값이다 */
+.tmLine {
+  position: relative;
+  width: 100%;
+  height: 46px;
+  margin-top: 4px;
+}
+
+.tmTrack,
+.tmHazard,
+.tmFill {
+  position: absolute;
+  left: 0;
+  top: 15px;
+  height: 20px;
+}
+
+.tmTrack {
+  right: 0;
+  box-sizing: border-box;
+  border: 3px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  background: var(--color-track-soft);
+}
+
+/* 목표를 넘긴 구간 — 실제 화면과 같은 빗금으로 위험을 표시한다 */
+.tmHazard {
+  background:
+    repeating-linear-gradient(
+      55deg,
+      rgba(255, 71, 77, 0.55) 0 4px,
+      transparent 4px 17px
+    ),
+    rgba(255, 71, 77, 0.16);
+}
+
+.tmFill {
+  background: var(--color-yellow);
+  border-radius: var(--radius-pill);
+}
+
+/* 목표 지점과 내가 멈춘 지점을 가르는 세로선 */
+.tmTargetLine,
+.tmMeLine {
+  position: absolute;
+  top: 10px;
+  width: 3px;
+  height: 30px;
+  margin-left: -1.5px;
+}
+
+.tmTargetLine {
+  background: var(--color-ink);
+}
+
+.tmMeLine {
+  background: var(--color-alert);
+}
+
+.tmTargetTag {
+  position: absolute;
+  top: -4px;
+  transform: translateX(-100%);
+  padding: 2px 8px;
+  background: var(--color-yellow);
+  border: 2.4px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 10px;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.tmMeBadge {
+  position: absolute;
+  bottom: -3px;
+  transform: translateX(-50%);
+  padding: 1px 8px;
+  background: var(--color-alert);
+  border: 2.4px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 10px;
+  color: var(--color-white);
+}
+
+.tmScaleLeft,
+.tmScaleRight {
+  position: absolute;
+  bottom: -1px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 10px;
+  color: var(--color-ink-45);
+}
+
+.tmScaleLeft { left: 0; }
+.tmScaleRight { right: 0; }
+
+/* 참가자 정지 현황 — 실제 화면의 흰 카드 줄을 줄인 것이라 보드 밖(보라 위)에 놓인다 */
+.tmPlayers {
+  display: flex;
+  gap: 8px;
+}
+
+.tmPlayer {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  width: 78px;
+  padding: 5px 0;
+  background: var(--color-white);
+  border: 3px solid var(--color-ink);
+  border-radius: 12px;
+  box-shadow: 3.5px 3.5px 0 var(--color-ink);
+  animation: tmStop var(--demo-loop) steps(1, end) infinite backwards;
+}
+
+.tmPlayer img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.tmPlayer b {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 12px;
+  color: var(--color-ink);
+}
+
+.tmPlayer em {
+  padding: 1px 7px;
+  background: var(--color-online);
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-meta);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 9px;
+  line-height: 1.2;
+  color: var(--color-ink);
+}
+
+/* 자기 차례 전에는 아직 멈추지 않은 상태 */
+@keyframes tmStop {
+  0% { opacity: 0.35; }
+  1%, 100% { opacity: 1; }
+}
+
+/* ── 익명 저격 무대 ── */
+
+.snipeGrid {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(3, 152px);
+  grid-auto-rows: 126px;
+}
+
+/* 참가자 한 명이 조준경 하나 — 실제 화면처럼 링 세 겹과 십자 눈금 위에 아바타 원판이 앉는다 */
+.scopeCell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 152px;
+  height: 126px;
+}
+
+.scopeRing1,
+.scopeRing2,
+.scopeRing3 {
+  position: absolute;
+  top: 0;
+  box-sizing: border-box;
+  border: 2.6px solid var(--color-scope);
+  border-radius: 50%;
+}
+
+.scopeRing1 {
+  width: 69px;
+  height: 69px;
+  box-shadow: 0 0 8px rgba(255, 71, 77, 0.35);
+}
+
+.scopeRing2 {
+  width: 51px;
+  height: 51px;
+  margin-top: 9px;
+}
+
+.scopeRing3 {
+  width: 33px;
+  height: 33px;
+  margin-top: 18px;
+}
+
+/* 링 밖으로 뻗는 십자 조준선 */
+.scopeTickV,
+.scopeTickH {
+  position: absolute;
+  top: 34px;
+  background: var(--color-scope);
+}
+
+.scopeTickV {
+  width: 2.6px;
+  height: 87px;
+  margin-top: -43px;
+}
+
+.scopeTickH {
+  width: 87px;
+  height: 2.6px;
+  margin-top: -1.3px;
+}
+
+/* 아바타 원판 — 바탕은 캐릭터 타일 색이고 하드 그림자가 붙는다 */
+.scopeDisc {
+  position: absolute;
+  top: 21px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 27px;
+  height: 27px;
+  border: 2.4px solid var(--color-ink);
+  border-radius: 50%;
+  box-shadow: 2.4px 2.4px 0 var(--color-ink);
+}
+
+.scopeDisc img {
+  width: 17px;
+  height: 17px;
+  object-fit: contain;
+}
+
+.scopeCell b {
+  margin-top: 74px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.265;
+  color: var(--color-ink);
+}
+
+.scopeCell em {
+  margin-top: 3px;
+  padding: 2px 9px;
+  background: var(--color-white);
+  border: 2.4px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  box-shadow: 2px 2px 0 var(--color-ink);
+  font-family: var(--font-meta);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 10px;
+  line-height: 1.2;
+  color: var(--color-ink);
+}
+
+/* 실제로 맞은 사람 */
+.scopeCellHit em {
+  background: var(--color-alert);
+  color: var(--color-white);
+}
+
+.scopeCellHit .scopeRing1 {
+  background: rgba(255, 71, 77, 0.18);
+}
+
+/* 격자 위를 옮겨 다니는 조준선.
+   가로 한 칸은 152px, 세로 한 칸은 126px다 — 멈추는 칸을 바꾸면 TSX의 SNIPE_TARGET도 같이 고칠 것 */
+.scopeLock {
+  position: absolute;
+  left: 0;
+  top: -4px;
+  box-sizing: border-box;
+  width: 152px;
+  height: 122px;
+  border: 3px dashed var(--color-ink);
+  border-radius: 14px;
+  animation: scopeHunt var(--demo-loop) steps(1, end) infinite;
+}
+
+@keyframes scopeHunt {
+  0% { transform: translate(0, 0); }
+  14% { transform: translate(152px, 126px); }
+  28% { transform: translate(0, 126px); }
+  42% { transform: translate(304px, 126px); }
+  56% { transform: translate(152px, 0); }
+  70%, 100% { transform: translate(304px, 0); }
+}
+
+.snipeHush {
+  margin-top: 8px;
+  padding: 4px 12px;
+  background: var(--color-ink);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 11px;
+  color: var(--color-white);
+}
+
+/* ── 눈치게임 무대 ── */
+
+.nunchiRow {
+  display: flex;
+  gap: 8px;
+}
+
+/* 참가자 카드 — 실제 화면과 같이 아직 안 누른 동안은 노랑, 누르면 흰색으로 굳는다 */
+.nunchiCell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  box-sizing: border-box;
+  width: 80px;
+  padding: 8px 0 7px;
+  background: var(--color-yellow);
+  border: 3.2px solid var(--color-ink);
+  border-radius: 13px;
+  box-shadow: 4px 4px 0 var(--color-ink);
+  animation: nunchiPress var(--demo-loop) ease-out infinite backwards;
+}
+
+/* 누른 순간만 위로 튀어 오르고 흰 바탕으로 굳는다 */
+@keyframes nunchiPress {
+  0% { background: var(--color-yellow); transform: none; }
+  1% { background: var(--color-white); transform: translateY(-8px); }
+  5%, 100% { background: var(--color-white); transform: none; }
+}
+
+/* 순번 배지와 상태 알약은 누르기 전에는 아직 정해지지 않은 값이라 눌린 뒤에야 나타난다.
+   backwards가 없으면 지연 동안 0% 키프레임이 아니라 평소 모습이 나와서, 누르기도 전에 순번이 먼저 보인다. */
+.nunchiBadge,
+.nunchiCell em {
+  animation: nunchiReveal var(--demo-loop) steps(1, end) infinite backwards;
+  animation-delay: inherit;
+}
+
+@keyframes nunchiReveal {
+  0% { opacity: 0; }
+  1%, 100% { opacity: 1; }
+}
+
+/* 순번 배지 — 카드 왼쪽 위 모서리에 걸친다 */
+.nunchiBadge {
+  position: absolute;
+  left: -7px;
+  top: -8px;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 24px;
+  height: 24px;
+  background: var(--color-ink);
+  border: 2.4px solid var(--color-ink);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-style: normal;
+  font-size: 12px;
+  color: var(--color-yellow);
+}
+
+/* animation-delay는 상속되는 속성이 아니라 여기서 한 번 이어주지 않으면
+   안쪽 아바타가 카드의 순서 지연을 못 받고 곧바로 색이 돌아온다 */
+.nunchiDisc {
+  animation-delay: inherit;
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 42px;
+  height: 42px;
+  border: 2.6px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+.nunchiDisc img {
+  width: 27px;
+  height: 27px;
+  object-fit: contain;
+  animation: nunchiWake var(--demo-loop) ease-out infinite backwards;
+  animation-delay: inherit;
+}
+
+/* 자기 차례 전에는 흑백이다가 누르는 순간 색이 돌아온다 */
+@keyframes nunchiWake {
+  0% { filter: grayscale(1) opacity(0.55); }
+  1%, 100% { filter: none; }
+}
+
+.nunchiCell b {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 13px;
+  line-height: 1.265;
+  color: var(--color-ink);
+}
+
+.nunchiCell em {
+  padding: 2px 8px;
+  background: var(--color-online);
+  border: 2px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-meta);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 9px;
+  line-height: 1.2;
+  color: var(--color-ink);
+}
+
+/* 같은 순간에 눌러 함께 탈락한 두 명 */
+.nunchiCellOut {
+  background: var(--color-track);
+  animation: none;
+}
+
+.nunchiCellOut .nunchiBadge,
+.nunchiCellOut em {
+  animation: none;
+  opacity: 1;
+}
+
+.nunchiCellOut .nunchiBadge {
+  background: var(--color-white);
+  color: var(--color-ink-45);
+}
+
+.nunchiCellOut em {
+  background: var(--color-leave);
+}
+
+.nunchiCellOut img {
+  animation: none;
+  filter: grayscale(1) brightness(0.85);
+}
+
+/* 라운드 바 — 실제 화면처럼 잉크 띠 위에 제목·게이지·순번 눈금이 한 줄로 늘어선다 */
+.nunchiBar {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 8px 14px;
+  background: var(--color-ink);
+  border-radius: 13px;
+}
+
+.nunchiBarTitle {
+  width: 132px;
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 14px;
+  line-height: 1.265;
+  color: var(--color-yellow);
+}
+
+.nunchiGauge {
+  flex: 1;
+  box-sizing: border-box;
+  height: 16px;
+  overflow: hidden;
+  border: 2.4px solid var(--color-white);
+  border-radius: var(--radius-pill);
+  background: var(--color-ink-12);
+}
+
+/* 제한 시간이 줄어드는 게이지 */
+.nunchiGauge i {
+  display: block;
+  height: 100%;
+  background: var(--color-yellow);
+  transform-origin: left center;
+  animation: nunchiDrain var(--demo-loop) linear infinite;
+}
+
+@keyframes nunchiDrain {
+  0% { transform: scaleX(1); }
+  70%, 100% { transform: scaleX(0.06); }
+}
+
+/* 생존자 수만큼 깔리는 순번 눈금 — 누른 사람 자리부터 하나씩 켜진다 */
+.nunchiDots {
+  display: flex;
+  gap: 4px;
+}
+
+.nunchiDots b {
+  display: grid;
+  place-items: center;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  border: 2.4px solid var(--color-white-45);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 11px;
+  animation: nunchiDotOn var(--demo-loop) steps(1, end) infinite backwards;
+}
+
+@keyframes nunchiDotOn {
+  0% { background: var(--color-white-12); border-color: var(--color-white-45); color: var(--color-white-45); }
+  1%, 100% { background: var(--color-yellow); border-color: var(--color-ink); color: var(--color-ink); }
+}
+
+/* 실제 화면의 UP 버튼을 그대로 옮긴 표시 (누를 수는 없다) */
+.nunchiUp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  margin-top: 12px;
+  padding: 8px 26px;
+  background: var(--color-alert);
+  border: 4px solid var(--color-ink);
+  border-radius: 18px;
+  box-shadow:
+    0 0 14px var(--color-alert),
+    5px 5px 0 var(--color-ink);
+}
+
+.nunchiUp b {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.265;
+  color: var(--color-white);
+}
+
+.nunchiUp em {
+  font-family: var(--font-meta);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.nunchiUpOut {
+  background: var(--color-muted);
+  box-shadow: 5px 5px 0 var(--color-ink);
+}
+
+/* ── 룰렛 무대 ── */
+
+/* 원판·아바타·이름표를 한 덩어리로 돌리는 상자. 회전 중심은 원판 한가운데(294.17, 202.92)다 */
+.wheelSpin {
+  position: absolute;
+  inset: 0;
+  transform-origin: 294.17px 202.92px;
+  animation: wheelSpin var(--demo-loop) cubic-bezier(0.16, 0.82, 0.24, 1) infinite;
+}
+
+/* 세 바퀴 + 조각 한 칸(60°) — 시작할 때 바늘 아래 있던 사람 바로 옆에서 멈춘다 */
+@keyframes wheelSpin {
+  0% { rotate: 0deg; }
+  70%, 100% { rotate: 1140deg; }
+}
+
+/* 룰렛 뒤에서 번지는 흰 빛 */
+.glow {
+  position: absolute;
+  left: 87.16px;
+  top: -4.09px;
+  width: 414.012px;
+  height: 414.012px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.16);
+  filter: blur(22.471px);
+}
+
+.sunburstB {
+  position: absolute;
+  left: 51.75px;
+  top: -39.49px;
+  width: 484.829px;
+  height: 484.829px;
+}
+
+.sunburstA {
+  position: absolute;
+  left: 75.55px;
+  top: -19.07px;
+  width: 437.228px;
+  height: 443.973px;
+}
+
+/* 파이 조각 6개가 놓이는 원 크기의 빈 상자 */
+.wheel {
+  position: absolute;
+  left: 157.98px;
+  top: 66.73px;
+  width: 272.376px;
+  height: 272.376px;
+}
+
+.slice {
+  position: absolute;
+}
+
+/* 조각 위에 얹는 잉크 테두리 원 */
+.ring {
+  position: absolute;
+  left: 154.57px;
+  top: 63.33px;
+  box-sizing: border-box;
+  width: 279.185px;
+  height: 279.185px;
+  border: 4.767px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+/* 테두리를 따라 도는 전구 — 흰색이 기본이고 한 칸 건너 노란 전구가 섞인다 */
+.bulb {
+  position: absolute;
+  box-sizing: border-box;
+  width: 9.533px;
+  height: 9.533px;
+  border: 1.634px solid var(--color-ink);
+  border-radius: 50%;
+  background: var(--color-white);
+}
+
+.bulbLit {
+  background: var(--color-yellow);
+}
+
+/* 조각 위에 앉은 참가자 — 아바타 원과 이름표가 룰렛 중심에서 바깥으로 뻗는 한 줄이다.
+   회전 기준을 아바타 원의 한가운데로 잡아야 원은 제자리에 있고 이름만 바깥쪽으로 따라 돈다. */
+.seat {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 59.923px;
+  transform-origin: 50% 14.98px;
+}
+
+.seat i {
+  box-sizing: border-box;
+  display: grid;
+  place-items: center;
+  width: 29.961px;
+  height: 29.961px;
+  flex-shrink: 0;
+  border: 2.043px solid var(--color-ink);
+  border-radius: 50%;
+  background: var(--color-white);
+}
+
+.seat img {
+  width: 22.471px;
+  height: 22.471px;
+  object-fit: cover;
+}
+
+/* 아바타 바로 바깥에 붙는 이름표. 아바타와 한 줄이라 원판이 돌면 같이 돈다 */
+.seat b {
+  width: 59.923px;
+  height: 16.343px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 12.257px;
+  line-height: 16.343px;
+  text-align: center;
+  color: var(--color-ink);
+}
+
+/* 룰렛 한가운데 흰 원 */
+.hub {
+  position: absolute;
+  left: 254.67px;
+  top: 163.43px;
+  box-sizing: border-box;
+  width: 78.989px;
+  height: 78.989px;
+  border: 3.405px solid var(--color-ink);
+  border-radius: 50%;
+  background: var(--color-white);
+}
+
+.hubText {
+  position: absolute;
+  left: 254.67px;
+  top: 189.3px;
+  width: 78.989px;
+  height: 27.238px;
+  font-family: var(--font-display);
+  font-size: 20.428px;
+  line-height: 27.238px;
+  text-align: center;
+  color: var(--color-ink);
+}
+
+.pointer {
+  position: absolute;
+  left: 264.56px;
+  top: 27.24px;
+  width: 59.217px;
+  height: 53.092px;
+}
+
+/* 바늘 위에 얹히는 반투명 흰 점 */
+.pointerDot {
+  position: absolute;
+  left: 288.72px;
+  top: 42.22px;
+  width: 10.895px;
+  height: 10.895px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.6);
+}
+
+.bubble {
+  position: absolute;
+  left: 243.1px;
+  top: 2.72px;
+  padding: 5.448px 10.895px;
+  background: var(--color-ink);
+  border: 2.043px solid var(--color-ink);
+  border-radius: 9.533px;
+  box-shadow: 2.043px 2.043px 0 var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 12.257px;
+  color: var(--color-white);
+  white-space: nowrap;
+}
+
+/* 무대 왼쪽 위, 지금 진행 상황을 알리는 노란 알약 */
+.stagePill {
+  position: absolute;
+  left: 17.7px;
+  top: 17.7px;
+  padding: 6.809px 14.981px;
+  background: var(--color-yellow);
+  border: 2.724px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 14.981px;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* ── 오른쪽 참가자 명단 ── */
+
+.listTitle {
+  position: absolute;
+  left: 655.06px;
+  top: 118.48px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 17.704px;
+  color: rgba(14, 13, 20, 0.7);
+  white-space: nowrap;
+}
+
+.list {
+  position: absolute;
+  left: 650.98px;
+  top: 149.81px;
+  display: flex;
+  flex-direction: column;
+  gap: 8.171px;
+  width: 261.481px;
+}
+
+.row {
+  position: relative;
+  box-sizing: border-box;
+  width: 256.033px;
+  height: 54.475px;
+  background: var(--color-white);
+  border: 2.724px solid var(--color-ink);
+  border-radius: 12.257px;
+  box-shadow: 3.405px 3.405px 0 var(--color-ink);
+}
+
+.rowAvatar {
+  position: absolute;
+  left: 6.81px;
+  top: 5.45px;
+  box-sizing: border-box;
+  width: 38.133px;
+  height: 38.133px;
+  border: 2.451px solid var(--color-ink);
+  border-radius: 50%;
+  background: var(--color-white);
+}
+
+.rowAvatar img {
+  width: 28.599px;
+  height: 28.599px;
+  margin: 2.3px;
+  object-fit: cover;
+}
+
+.rowName {
+  position: absolute;
+  left: 57.2px;
+  top: 4.09px;
+  font-family: var(--font-display);
+  font-size: 19.066px;
+  color: var(--color-ink);
+}
+
+/* 방장 줄과 접속 줄은 위치가 같고 색만 다르다 */
+.rowHost,
+.rowOnline {
+  position: absolute;
+  left: 57.2px;
+  top: 28.6px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 12.257px;
+  letter-spacing: 0.68px;
+  white-space: nowrap;
+}
+
+.rowHost {
+  color: var(--color-ink);
+}
+
+.rowOnline {
+  color: var(--color-online);
+}
+
+/* ── 아래쪽 재생 바 ── */
+
+.playButton {
+  position: absolute;
+  left: 28.6px;
+  top: 540.67px;
+  width: 59.923px;
+  height: 59.923px;
+  background: var(--color-ink);
+  border-radius: 13.619px;
+  box-shadow: 4.086px 4.086px 0 var(--color-ink);
+  font-family: var(--font-display);
+  font-size: 24.514px;
+  line-height: 59.923px;
+  text-align: center;
+  color: var(--color-yellow);
+}
+
+.track,
+.trackFill {
+  position: absolute;
+  left: 113.04px;
+  top: 558.37px;
+  box-sizing: border-box;
+  height: 24.514px;
+  border: 3.405px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+}
+
+.track {
+  width: 571.99px;
+  background: rgba(14, 13, 20, 0.1);
+}
+
+/* 진행된 만큼만 핑크로 덮는다 */
+.trackFill {
+  width: 340.47px;
+  background: var(--color-pink);
+}
+
+.knob {
+  position: absolute;
+  left: 437.16px;
+  top: 554.29px;
+  box-sizing: border-box;
+  width: 32.685px;
+  height: 32.685px;
+  border: 3.405px solid var(--color-ink);
+  border-radius: 50%;
+  background: var(--color-white);
+}
+
+.elapsed {
+  position: absolute;
+  left: 706.82px;
+  top: 562.46px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 17.704px;
+  color: rgba(14, 13, 20, 0.6);
+  white-space: nowrap;
+}

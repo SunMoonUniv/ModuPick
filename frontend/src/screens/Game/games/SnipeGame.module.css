@@ -1,0 +1,507 @@
+/* 익명 저격 인게임 화면 — Figma 프레임 542:1432을 1920×1080 좌표 그대로 옮겼다.
+   질문 띠(y144) · 사격장 카드(좌) · 내 저격 패널(우) · 상태 밴드(GameHud)로 나뉜다. */
+
+/* ── 질문 띠 ── */
+
+.question {
+  position: absolute;
+  left: 59px;
+  top: 144px;
+  box-sizing: border-box;
+  width: 1803px;
+  height: 96px;
+  overflow: hidden;
+  background: var(--color-yellow);
+  border: 4.219px solid var(--color-ink);
+  border-radius: 16.875px;
+  box-shadow: 6.328px 6.328px 0 var(--color-ink);
+}
+
+.questionIcon {
+  position: absolute;
+  left: 27.78px;
+  top: 23.78px;
+  font-size: var(--font-size-head);
+  line-height: 1.265;
+}
+
+.questionText {
+  position: absolute;
+  left: 97.11px;
+  top: 22.28px;
+  max-width: 1420px;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-headline);
+  line-height: 1.265;
+  color: var(--color-ink);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 남은 시간과 발사 인원을 함께 알리는 오른쪽 경고 알약 */
+.questionPill {
+  position: absolute;
+  left: 1572.14px;
+  top: 25.29px;
+  padding: 9.492px 15.82px;
+  background: var(--color-alert);
+  border: 2.637px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  box-shadow: 3.164px 3.164px 0 var(--color-ink);
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  line-height: 1;
+  color: var(--color-white);
+  white-space: nowrap;
+}
+
+/* ── 사격장 카드 ── */
+
+.range {
+  position: absolute;
+  left: 59px;
+  top: 264px;
+  box-sizing: border-box;
+  width: 1221px;
+  height: 650px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 4.219px solid var(--color-ink);
+  border-radius: 16.875px;
+  box-shadow: 8.438px 8.438px 0 var(--color-ink);
+}
+
+/* 사격장 바닥의 방안지 격자 — 세로 101.33px, 가로 80.16px 간격으로 카드 위쪽 599px에만 깔린다 */
+.rangeGrid {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 599px;
+  background-image:
+    repeating-linear-gradient(
+      90deg,
+      var(--color-grid-soft) 0 1.055px,
+      transparent 1.055px 101.33px
+    ),
+    repeating-linear-gradient(
+      180deg,
+      var(--color-grid-soft) 0 1.055px,
+      transparent 1.055px 80.16px
+    );
+  background-position:
+    97.11px 0,
+    0 75.94px;
+}
+
+.rangeLabel,
+.tension {
+  position: absolute;
+  top: 16.87px;
+  box-sizing: border-box;
+  height: 33.75px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2.637px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  box-shadow: 3.164px 3.164px 0 var(--color-ink);
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  white-space: nowrap;
+}
+
+.rangeLabel {
+  left: 38.45px;
+  width: 245.333px;
+  background: var(--color-cyan-mid);
+  color: var(--color-ink);
+}
+
+/* 긴장감을 붙이는 검정 띠 — 상태와 무관한 고정 문구다 */
+.tension {
+  left: 475.78px;
+  width: 261.333px;
+  background: var(--color-ink);
+  color: var(--color-white);
+}
+
+/* ── 조준경 한 칸 ── */
+
+/* 링 상자(160.313)를 기준으로 자식을 배치한다. 인원이 6명을 넘으면 scale로 통째로 줄인다 */
+.target {
+  position: absolute;
+  width: 160.313px;
+  height: 160.313px;
+  transform-origin: 0 0;
+}
+
+.targetOut {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+.ring1,
+.ring2,
+.ring3 {
+  position: absolute;
+  box-sizing: border-box;
+  border: 3.691px solid var(--color-scope);
+  border-radius: 50%;
+}
+
+/* 바깥 링만 붉은 번짐이 있어 조준경이 켜져 있는 느낌을 준다 */
+.ring1 {
+  left: 0;
+  top: 0;
+  width: 160.313px;
+  height: 160.313px;
+  box-shadow: 0 0 10px rgba(255, 71, 77, 0.35);
+}
+
+.ring2 {
+  left: 21.09px;
+  top: 21.09px;
+  width: 118.125px;
+  height: 118.125px;
+}
+
+.ring3 {
+  left: 42.19px;
+  top: 42.19px;
+  width: 75.938px;
+  height: 75.938px;
+}
+
+/* 링 바깥으로 살짝 튀어나오는 십자 조준선 4개 */
+.tick {
+  position: absolute;
+  background: var(--color-scope);
+}
+
+.tickTop,
+.tickBottom {
+  left: 78.05px;
+  width: 4.219px;
+  height: 14.766px;
+}
+
+.tickTop {
+  top: -15.83px;
+}
+
+.tickBottom {
+  top: 161.37px;
+}
+
+.tickLeft,
+.tickRight {
+  top: 78.05px;
+  width: 18.667px;
+  height: 4.219px;
+}
+
+.tickLeft {
+  left: -19.73px;
+}
+
+.tickRight {
+  left: 161.37px;
+}
+
+/* 아바타를 받치는 원판 — 배경색은 avatarTiles.ts의 캐릭터별 타일 색을 인라인으로 받는다 */
+.disc {
+  position: absolute;
+  left: 49.57px;
+  top: 49.57px;
+  box-sizing: border-box;
+  width: 61.172px;
+  height: 61.172px;
+  border: 3.164px solid var(--color-ink);
+  border-radius: 50%;
+  box-shadow: 3.164px 3.164px 0 var(--color-ink);
+}
+
+.face {
+  position: absolute;
+  left: 61.7px;
+  top: 61.7px;
+  width: 36.914px;
+  height: 36.914px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.targetName {
+  position: absolute;
+  left: -22px;
+  top: 168.75px;
+  width: 204.667px;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-sub);
+  line-height: 1.265;
+  color: var(--color-ink);
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 조준 중에는 흰 알약, 발사하면 그 사람 아바타 타일 색으로 바뀐다 */
+.targetState {
+  position: absolute;
+  left: 21.49px;
+  top: 196.17px;
+  box-sizing: border-box;
+  width: 117.333px;
+  height: 25.313px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-white);
+  border: 2.637px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  box-shadow: 2.109px 2.109px 0 var(--color-ink);
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+}
+
+/* ── 총알 궤적 장식 ── */
+
+.tracer {
+  position: absolute;
+  background: var(--color-tracer);
+  border-radius: 50%;
+}
+
+.bullet {
+  position: absolute;
+  box-sizing: border-box;
+  width: 13.711px;
+  height: 13.711px;
+  background: var(--color-alert);
+  border: 2.637px solid var(--color-ink);
+  border-radius: 50%;
+  box-shadow: 2.637px 2.637px 0 var(--color-ink);
+}
+
+/* 익명이라는 걸 못 박는 기울어진 스티커 */
+.hush {
+  position: absolute;
+  left: 86.91px;
+  top: 554.1px;
+  box-sizing: border-box;
+  width: 130.667px;
+  height: 54.844px;
+  overflow: hidden;
+  background: var(--color-alert);
+  border: 4.219px solid var(--color-ink);
+  border-radius: 14.766px;
+  box-shadow: 5.273px 5.273px 0 var(--color-ink);
+  transform: rotate(9deg);
+}
+
+.hushLock {
+  position: absolute;
+  left: 15.23px;
+  top: 14.34px;
+  font-size: var(--font-size-name);
+  line-height: 1;
+}
+
+.hushText {
+  position: absolute;
+  left: 56.63px;
+  top: -1.38px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-headline);
+  line-height: 1.265;
+  color: var(--color-white);
+}
+
+/* ── 내 저격 패널 ── */
+
+.panel {
+  position: absolute;
+  left: 1312px;
+  top: 264px;
+  box-sizing: border-box;
+  width: 550px;
+  height: 650px;
+  background: var(--color-white);
+  border: 4.219px solid var(--color-ink);
+  border-radius: 16.875px;
+  box-shadow: 8.438px 8.438px 0 var(--color-ink);
+}
+
+.panelTitle {
+  position: absolute;
+  left: 27.78px;
+  top: 16.87px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-name);
+  line-height: 1.265;
+  color: var(--color-ink);
+}
+
+.panelSub {
+  position: absolute;
+  left: 27.78px;
+  top: 52.73px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink-45);
+}
+
+/* 대상이 5명을 넘으면(정원 10명) 이 안에서만 스크롤되고 아래 버튼 자리는 그대로 남는다 */
+.panelList {
+  position: absolute;
+  left: 27.78px;
+  top: 92.81px;
+  width: 485.333px;
+  height: 386.25px;
+  display: flex;
+  flex-direction: column;
+  gap: 16.88px;
+  overflow-y: auto;
+}
+
+.pick {
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 100%;
+  height: 59.063px;
+  background: var(--color-white);
+  border: 2.637px solid var(--color-ink);
+  border-radius: 12.656px;
+  text-align: left;
+  cursor: pointer;
+}
+
+/* 지금 지목한 대상 — 붉게 채우고 테두리·그림자를 키워 앞으로 튀어나오게 한다 */
+.pickOn {
+  background: var(--color-alert);
+  border-width: 4.219px;
+  box-shadow: 4.219px 4.219px 0 var(--color-ink);
+}
+
+.pick:disabled {
+  cursor: default;
+}
+
+.pickDisc {
+  position: absolute;
+  left: 8.03px;
+  top: 8.96px;
+  box-sizing: border-box;
+  width: 35.859px;
+  height: 35.859px;
+  border: 2.637px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+.pickFace {
+  position: absolute;
+  left: 12.03px;
+  top: 12.13px;
+  width: 29.531px;
+  height: 29.531px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.pickName {
+  position: absolute;
+  left: 77.36px;
+  top: 14.39px;
+  max-width: 320px;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-sub);
+  line-height: 1.265;
+  color: var(--color-ink);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.pickOn .pickName {
+  color: var(--color-white);
+}
+
+/* 오른쪽 끝 표식 — 안 고른 줄은 흐린 ○, 고른 줄은 과녁 */
+.pickMark {
+  position: absolute;
+  left: 419.54px;
+  top: 14.39px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-sub);
+  line-height: 1.265;
+  color: var(--color-ink);
+  opacity: 0.4;
+}
+
+.pickOn .pickMark {
+  opacity: 1;
+}
+
+.panelNote {
+  position: absolute;
+  left: 27.78px;
+  top: 479.05px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink-45);
+}
+
+.fire {
+  position: absolute;
+  left: 27.78px;
+  top: 510.47px;
+  box-sizing: border-box;
+  width: 485.333px;
+  height: 65.391px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-alert);
+  border: 3.164px solid var(--color-ink);
+  border-radius: 12.656px;
+  box-shadow: 5.273px 5.273px 0 var(--color-ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-btn);
+  color: var(--color-white);
+  cursor: pointer;
+}
+
+.fire:active {
+  transform: translate(3px, 3px);
+  box-shadow: 2.109px 2.109px 0 var(--color-ink);
+}
+
+/* 아무도 안 고른 상태의 같은 자리 — 프레임엔 버튼이 하나뿐이라 기권을 여기서 받는다 */
+.fireAbstain {
+  background: var(--color-ink);
+  color: var(--color-yellow);
+}
+
+/* 이미 보냈거나 집계가 끝난 상태 — 누를 수 없다 */
+.fireDone {
+  background: var(--color-green);
+  color: var(--color-ink);
+  cursor: default;
+}

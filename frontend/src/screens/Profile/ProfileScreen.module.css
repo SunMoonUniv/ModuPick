@@ -1,0 +1,321 @@
+/* 프로필 설정 (S-03) — Figma 542:642 기준.
+   디자인이 FHD 1920×1080 고정이라 요소를 프레임 좌표 그대로 절대 배치한다.
+   좌측은 지금 고른 조합을 보여주는 주인공 카드, 우측은 입력 두 칸 + 아바타 그리드다. */
+
+.screen {
+  position: relative;
+  width: var(--layout-width);
+  height: var(--layout-height);
+}
+
+/* ── 화면 헤더 ── */
+
+/* 제목 위에 붙는 시안 알약 */
+.eyebrow {
+  position: absolute;
+  left: 59px;
+  top: 44px;
+  letter-spacing: 0.06em;
+}
+
+.title {
+  position: absolute;
+  left: 59px;
+  top: 96px;
+  font-family: var(--font-display);
+  font-size: var(--font-size-display);
+  font-weight: 400;
+  line-height: 1;
+  color: var(--color-white);
+  /* 보라 배경 위 흰 글자에 잉크 그림자를 깔아 두께감을 준다 */
+  text-shadow: var(--shadow-text);
+}
+
+.subtitle {
+  position: absolute;
+  left: 59px;
+  top: 168px;
+  font-family: var(--font-chat);
+  font-size: var(--font-size-sub);
+  color: var(--color-white-90);
+}
+
+.back {
+  position: absolute;
+  right: 59px;
+  top: 53px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  border-width: var(--border-hair);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ── 좌측: 주인공 카드 ── */
+
+.card {
+  position: absolute;
+  left: 59px;
+  top: 214px;
+  width: 700px;
+  height: 480px;
+  background: var(--color-white);
+  border: var(--border-card) solid var(--color-ink);
+  border-radius: var(--radius-card-lg);
+  box-shadow: var(--shadow-xl);
+  overflow: hidden;
+}
+
+/* 카드 안 요소들도 Figma 좌표를 그대로 쓴다.
+   Figma의 자식 좌표는 카드 테두리 안쪽(padding box) 기준이고 CSS 절대배치의 기준도 같아서 값이 그대로 맞는다. */
+
+/* 카드 상단 옐로 밴드 — 카드가 overflow:hidden이라 테두리 안쪽만 채우면 된다 */
+.cardHead {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 54px;
+  background: var(--color-yellow);
+  border-bottom: var(--border-control) solid var(--color-ink);
+}
+
+/* 밴드 안 두 요소는 프레임 좌표로 못박는다 — flex로 밀면 뱃지가 없을 때 제목이 오른쪽으로 튄다 */
+.cardHeadTitle {
+  position: absolute;
+  left: 24px;
+  top: 50%;
+  translate: 0 -50%;
+  font-family: var(--font-display);
+  font-size: var(--font-size-btn);
+  font-weight: 400;
+  color: var(--color-ink);
+}
+
+.cardBadge {
+  position: absolute;
+  left: 570px;
+  top: 50%;
+  translate: 0 -50%;
+}
+
+/* 아바타 뒤에 은은하게 퍼지는 옐로 글로우 */
+.glow {
+  position: absolute;
+  left: 187px;
+  top: 90px;
+  width: 316px;
+  height: 316px;
+  border-radius: var(--radius-pill);
+  background: var(--color-yellow);
+  opacity: 0.55;
+  filter: blur(21px);
+}
+
+/* 아바타가 올라앉는 흰 원판 */
+.disc {
+  position: absolute;
+  left: 241px;
+  top: 98px;
+  width: 207px;
+  height: 207px;
+  border-radius: var(--radius-pill);
+  background: var(--color-white);
+  border: var(--border-card) solid var(--color-ink);
+}
+
+.hero {
+  position: absolute;
+  left: 252px;
+  top: 109px;
+  width: 186px;
+  height: 186px;
+}
+
+/* 아바타 주변에 흩뿌려지는 반짝임 — 위치·크기는 화면 컴포넌트가 인라인 style로 넘긴다 */
+.sparkle {
+  position: absolute;
+  pointer-events: none;
+}
+
+/* 이름·소개·순번은 카드 폭 전체를 차지하게 두고 가운데 정렬한다 */
+.cardName,
+.cardBio,
+.cardOrder {
+  position: absolute;
+  left: 0;
+  right: 0;
+  line-height: 1;
+  text-align: center;
+}
+
+.cardName {
+  top: 313px;
+  font-family: var(--font-display);
+  font-size: var(--font-size-display);
+  font-weight: 400;
+  color: var(--color-ink);
+  /* 긴 닉네임이 카드를 밀고 나가지 않게 자른다 */
+  padding: 0 var(--space-6);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.cardBio {
+  top: 384px;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  color: var(--color-ink-55);
+}
+
+.cardDivider {
+  position: absolute;
+  left: 145px;
+  top: 432px;
+  width: 400px;
+  height: 3px;
+  background: var(--color-ink-12);
+}
+
+.cardOrder {
+  top: 443px;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-sub);
+  color: var(--color-ink);
+}
+
+/* ── 좌측 하단: 입장 CTA ── */
+
+.enter {
+  position: absolute;
+  left: 59px;
+  top: 718px;
+  width: 700px;
+  height: 96px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-headline);
+  /* primary(잉크 배경)의 기본 시안 글자 대신, 이 화면에서는 옐로로 강조한다 */
+  color: var(--color-yellow);
+  border-radius: var(--radius-btn);
+  box-shadow: var(--shadow-lg);
+}
+
+/* 이미 와 있는 사람 수 안내 — 입장 버튼 아래 */
+.waitingNote {
+  position: absolute;
+  left: 59px;
+  top: 838px;
+  padding: var(--space-3) var(--space-5);
+  border-width: var(--border-thin);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-sub);
+  box-shadow: var(--shadow-btn);
+}
+
+/* ── 우측: 입력 두 칸 ── */
+
+.nicknameField {
+  position: absolute;
+  left: 791px;
+  top: 160px;
+  width: 523px;
+}
+
+.bioField {
+  position: absolute;
+  left: 1339px;
+  top: 160px;
+  width: 523px;
+}
+
+/* ── 우측: 아바타 그리드 ── */
+
+.gridTitle {
+  position: absolute;
+  left: 791px;
+  top: 292px;
+  font-family: var(--font-display);
+  font-size: var(--font-size-headline);
+  font-weight: 400;
+  line-height: 1;
+  color: var(--color-white);
+}
+
+.gridNote {
+  position: absolute;
+  left: 791px;
+  top: 341px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-white-80);
+}
+
+.random {
+  position: absolute;
+  right: 59px;
+  top: 289px;
+  border-width: var(--border-thin);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-sub);
+}
+
+/* 핑크 알약 위에서 이모지는 잉크, 글자는 흰색으로 갈라 놓는 것이 프레임 스펙이다 */
+.randomLabel {
+  color: var(--color-white);
+}
+
+.grid {
+  position: absolute;
+  left: 899px;
+  top: 410px;
+  display: grid;
+  grid-template-columns: repeat(5, 140px);
+  column-gap: 39px;
+  row-gap: 33px;
+}
+
+/* 페이지 넘김 화살표 — 그리드 좌우 바깥에 놓인다 */
+.pager {
+  position: absolute;
+  top: 634px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 39px;
+  height: 56px;
+  transition: opacity var(--duration-fast) var(--ease-out);
+}
+
+.pager:disabled {
+  opacity: 0.3;
+}
+
+/* 원본 SVG가 위를 향한 삼각형이라 90도 돌려 좌우 화살표로 쓴다 */
+.pager img {
+  width: 56px;
+  height: 39px;
+  flex-shrink: 0;
+}
+
+.pagerPrev {
+  left: 823px;
+}
+
+.pagerPrev img {
+  rotate: -90deg;
+}
+
+.pagerNext {
+  left: 1775px;
+}
+
+.pagerNext img {
+  rotate: 90deg;
+}

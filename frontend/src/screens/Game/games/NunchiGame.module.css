@@ -1,0 +1,701 @@
+/* 눈치게임 인게임 화면 — Figma 프레임 542:3142을 1920×1080 좌표 그대로 옮겼다.
+   오른쪽 위 상태 알약 · 규칙 띠(y144) · 참가자 카드 줄(y226) · 무대(좌) · 눌린 순서(우) · 상태 밴드로 나뉜다. */
+
+/* ── 오른쪽 위 상태 알약 ── */
+
+/* 알약 내용 길이가 제각각이라 왼쪽이 아니라 화면 오른쪽 여백(59)에 붙여 늘어난다 */
+.hudChips {
+  position: absolute;
+  right: 59px;
+  top: 49.06px;
+  display: flex;
+  align-items: center;
+  gap: 16.875px;
+}
+
+.chipAlive {
+  padding: 9.492px 16.875px;
+  background: var(--color-yellow);
+  border: 2.637px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  box-shadow: 3.164px 3.164px 0 var(--color-ink);
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  line-height: 1;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.chipTopic {
+  padding: 8.438px 16.875px;
+  background: var(--color-white);
+  border: 3.164px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  box-shadow: 4.219px 4.219px 0 var(--color-ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-sub);
+  line-height: 1.265;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* ── 규칙 띠 ── */
+
+.howto {
+  position: absolute;
+  left: 59px;
+  top: 144px;
+  box-sizing: border-box;
+  width: 1803px;
+  height: 64px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 4.219px solid var(--color-ink);
+  border-radius: 14.766px;
+  box-shadow: 6.328px 6.328px 0 var(--color-ink);
+}
+
+.howtoLabel {
+  position: absolute;
+  left: 16.78px;
+  top: 5.47px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 167.75px;
+  height: 43.984px;
+  background: var(--color-ink);
+  border-radius: 10.547px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-sub);
+  color: var(--color-yellow);
+}
+
+/* 판정 시간이 설정값에 따라 달라져 문구 폭이 변하므로 좌표 대신 가운데 정렬로 둔다 */
+.steps {
+  position: absolute;
+  left: 200px;
+  right: 20px;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.step {
+  display: inline-flex;
+  align-items: center;
+  gap: 11.6px;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-sub);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.stepBadge {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 31.641px;
+  height: 31.641px;
+  border: 2.637px solid var(--color-ink);
+  border-radius: 15.82px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-sub);
+  color: var(--color-ink);
+}
+
+.stepOne {
+  background: var(--color-yellow);
+}
+
+/* 겹쳐 누르면 탈락 — 위험 단계라 경고 빨강 */
+.stepTwo {
+  background: var(--color-alert);
+}
+
+.stepThree {
+  background: var(--color-online);
+}
+
+.stepArrow {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-name);
+  color: var(--color-ink);
+  opacity: 0.45;
+}
+
+/* ── 참가자 카드 줄 ── */
+
+.board {
+  position: absolute;
+  left: 59px;
+  top: 226px;
+  width: 1803px;
+  height: 186px;
+}
+
+/* 폭은 인원수에 따라 인라인으로 정해지고, 6명이면 프레임 값 223.594가 그대로 들어간다 */
+.card {
+  position: absolute;
+  top: 0.19px;
+  box-sizing: border-box;
+  height: 185.625px;
+  border: 4.219px solid var(--color-ink);
+  border-radius: 16.875px;
+  box-shadow: 6.328px 6.328px 0 var(--color-ink);
+}
+
+/* 이미 누른 사람 */
+.card_done {
+  background: var(--color-white);
+}
+
+/* 아직 안 누른 사람 — 노란 카드가 "차례가 남았다"는 신호다 */
+.card_wait {
+  background: var(--color-yellow);
+}
+
+.card_out {
+  background: var(--color-track);
+}
+
+.cardBadge {
+  position: absolute;
+  left: 8.44px;
+  top: 6.33px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 33.75px;
+  height: 33.75px;
+  border: 2.637px solid var(--color-ink);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-sub);
+}
+
+.card_done .cardBadge {
+  background: var(--color-ink);
+  color: var(--color-yellow);
+}
+
+.card_wait .cardBadge {
+  background: var(--color-white);
+  color: var(--color-ink);
+}
+
+.card_out .cardBadge {
+  background: var(--color-white);
+  color: var(--color-ink-45);
+}
+
+/* 아바타를 받치는 링 — 배경색은 avatarTiles.ts의 캐릭터별 타일 색을 인라인으로 받는다 */
+.cardRing {
+  position: absolute;
+  left: 50%;
+  top: 8.44px;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  width: 88.594px;
+  height: 88.594px;
+  border: 3.164px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+.cardFace {
+  position: absolute;
+  left: 50%;
+  top: 25.31px;
+  transform: translateX(-50%);
+  width: 54.844px;
+  height: 54.844px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.cardName {
+  position: absolute;
+  left: 8px;
+  right: 8px;
+  top: 95.47px;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-headline);
+  line-height: 1.265;
+  color: var(--color-ink);
+  text-align: center;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* 인원이 많아 카드가 좁아지면 문구가 잘려 나간다 — 카드 밖으로 삐져나오는 것보다 낫다 */
+.cardState {
+  position: absolute;
+  left: 50%;
+  top: 142.28px;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  max-width: calc(100% - 16px);
+  overflow: hidden;
+  padding: 7.383px 14.766px;
+  border: 2.109px solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  line-height: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.card_done .cardState {
+  background: var(--color-online);
+  color: var(--color-ink);
+}
+
+.card_wait .cardState {
+  background: var(--color-ink);
+  color: var(--color-white);
+}
+
+.card_out .cardState {
+  background: var(--color-leave);
+  color: var(--color-ink);
+}
+
+/* ── 무대 ── */
+
+.stage {
+  position: absolute;
+  left: 57px;
+  top: 427.69px;
+  box-sizing: border-box;
+  width: 1221px;
+  height: 486px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 4.219px solid var(--color-ink);
+  border-radius: 21.094px;
+  box-shadow: 8.438px 8.438px 0 var(--color-ink);
+}
+
+/* UP 버튼을 감싸는 점선 타원 — 긴장감을 주는 장식이라 상태와 무관하다 */
+.pressureRing {
+  position: absolute;
+  left: 385.78px;
+  top: 144.47px;
+  box-sizing: border-box;
+  width: 442.969px;
+  height: 274.219px;
+  border: 5px dashed var(--color-alert);
+  border-radius: 50%;
+  opacity: 0.55;
+}
+
+/* 무대 위쪽을 가로지르는 잉크 띠 — 카드 모서리를 덮도록 테두리 밖에서 시작한다 */
+.roundBar {
+  position: absolute;
+  left: -4.22px;
+  top: -3.53px;
+  width: 1221px;
+  height: 92px;
+  background: var(--color-ink);
+  border-radius: 16.875px;
+}
+
+/* 오른쪽 게이지(x411)와 겹치지 않게 폭을 잘라둔다 */
+.roundTitle {
+  position: absolute;
+  left: 25px;
+  top: 24px;
+  max-width: 370px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-head);
+  line-height: 1.265;
+  color: var(--color-yellow);
+  white-space: pre;
+}
+
+/* 프레임은 남은 초를 게이지 안에 넣지만, 게이지가 줄면 잉크 위로 나와 안 읽혀서 위쪽 설명 줄에 합쳤다 */
+.gaugeLabel {
+  position: absolute;
+  left: 411px;
+  top: 14.31px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  line-height: 1;
+  color: var(--color-white-55);
+  white-space: pre;
+}
+
+.gaugeTrack {
+  position: absolute;
+  left: 411px;
+  top: 35px;
+  box-sizing: border-box;
+  width: 400px;
+  height: 27.422px;
+  background: var(--color-ink-12);
+  border: 2.637px solid var(--color-white);
+  border-radius: var(--radius-pill);
+}
+
+.gaugeFill {
+  position: absolute;
+  left: 415px;
+  top: 38.16px;
+  box-sizing: border-box;
+  height: 21.094px;
+  background: var(--color-yellow);
+  border: 1.055px solid var(--color-white);
+  border-radius: var(--radius-pill);
+}
+
+/* 생존자 수만큼 깔리는 순번 눈금 */
+.dot {
+  position: absolute;
+  top: 30px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 31.641px;
+  height: 31.641px;
+  background: var(--color-white-12);
+  border: 2.637px solid var(--color-white-45);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-meta);
+  line-height: 1;
+  color: var(--color-white-45);
+}
+
+.dotOn {
+  background: var(--color-yellow);
+  border-color: var(--color-ink);
+  color: var(--color-ink);
+}
+
+/* ── UP 버튼 ── */
+
+.up {
+  position: absolute;
+  left: 50%;
+  top: 202.48px;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2.109px;
+  width: 295.313px;
+  height: 158.203px;
+  background: var(--color-alert);
+  border: 5.273px solid var(--color-ink);
+  border-radius: 25.313px;
+  box-shadow:
+    0 0 27.422px var(--color-alert),
+    10.547px 10.547px 0 var(--color-ink);
+  /* 안쪽 문구가 길어져도 버튼 밖으로 새지 않게 잘라둔다 */
+  padding: 0 12px;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.up:disabled {
+  background: var(--color-muted);
+  box-shadow: 10.547px 10.547px 0 var(--color-ink);
+  cursor: default;
+}
+
+.up:active:not(:disabled) {
+  transform: translateX(-50%) translate(4px, 4px);
+  box-shadow: 6px 6px 0 var(--color-ink);
+}
+
+/* 서브라운드 사이의 대기 상태 — 누를 수 없다는 걸 색으로 먼저 알린다 */
+.upWait {
+  background: var(--color-ink);
+  box-shadow: 10.547px 10.547px 0 var(--color-ink);
+  cursor: default;
+}
+
+.upLabel {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 72px;
+  line-height: 1.265;
+  color: var(--color-white);
+  white-space: nowrap;
+}
+
+.upNote {
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: rgba(255, 255, 255, 0.85);
+  white-space: nowrap;
+}
+
+/* ── 눌린 순서 ── */
+
+.order {
+  position: absolute;
+  left: 1312px;
+  top: 428px;
+  box-sizing: border-box;
+  width: 550px;
+  height: 486px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 4.219px solid var(--color-ink);
+  border-radius: 16.875px;
+  box-shadow: 8.438px 8.438px 0 var(--color-ink);
+}
+
+.orderTitle {
+  position: absolute;
+  left: 25.11px;
+  top: 18.98px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-name);
+  line-height: 1.265;
+  color: var(--color-ink);
+}
+
+.orderCaption {
+  position: absolute;
+  right: 25.11px;
+  top: 27.42px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: rgba(14, 13, 20, 0.35);
+}
+
+.orderRule {
+  position: absolute;
+  left: 25.11px;
+  top: 56.95px;
+  width: 490.667px;
+  height: 3.164px;
+  background: var(--color-ink);
+}
+
+/* 3명까지는 그대로 들어가고, 생존자가 더 많으면 이 안에서만 스크롤된다 */
+.orderList {
+  position: absolute;
+  left: 25.11px;
+  top: 70.11px;
+  width: 490.667px;
+  height: 286.37px;
+  overflow-y: auto;
+}
+
+.orderRow {
+  position: relative;
+  height: 109.68px;
+}
+
+.orderRow::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 1.055px;
+  background: var(--color-ink-12);
+}
+
+.orderDot {
+  position: absolute;
+  left: 0;
+  top: 17.43px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 31.641px;
+  height: 31.641px;
+  background: var(--color-yellow);
+  border: 2.637px solid var(--color-ink);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-sub);
+  line-height: 1;
+  color: var(--color-ink);
+}
+
+.orderRing {
+  position: absolute;
+  left: 53.34px;
+  top: 12.16px;
+  box-sizing: border-box;
+  width: 42.188px;
+  height: 42.188px;
+  border: 2.637px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+.orderFace {
+  position: absolute;
+  left: 60.67px;
+  top: 19.36px;
+  width: 27.422px;
+  height: 27.422px;
+  object-fit: contain;
+  pointer-events: none;
+}
+
+.orderName {
+  position: absolute;
+  left: 122.67px;
+  top: 19.54px;
+  max-width: 280px;
+  overflow: hidden;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-btn);
+  line-height: 1.265;
+  color: var(--color-ink);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.orderTime {
+  position: absolute;
+  right: 0;
+  top: 23.76px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: rgba(14, 13, 20, 0.45);
+}
+
+.orderRuleMid,
+.orderRuleBottom {
+  position: absolute;
+  left: 25.11px;
+  width: 490.667px;
+  height: 3.164px;
+  background: var(--color-ink-12);
+}
+
+.orderRuleMid {
+  top: 356.48px;
+}
+
+.orderRuleBottom {
+  top: 447.19px;
+}
+
+/* 아직 안 누른 사람 자리 — 목록이 스크롤돼도 항상 아래에 붙어 있다 */
+.orderNext {
+  position: absolute;
+  left: 25.11px;
+  top: 366.96px;
+  width: 490.667px;
+  height: 70px;
+}
+
+.orderDotEmpty {
+  top: 20.11px;
+  background: var(--color-track);
+  border-color: var(--color-ink-12);
+  color: rgba(14, 13, 20, 0.35);
+}
+
+.orderRingEmpty {
+  top: 14.84px;
+  background: var(--color-track);
+  border-color: var(--color-ink-12);
+}
+
+.orderNextMark {
+  position: absolute;
+  left: 70.67px;
+  top: 24.51px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-sub);
+  line-height: 1;
+  color: rgba(14, 13, 20, 0.35);
+}
+
+.orderNextText {
+  position: absolute;
+  left: 122.67px;
+  top: 21.51px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-btn);
+  line-height: 1.265;
+  color: rgba(14, 13, 20, 0.45);
+}
+
+.orderFooter {
+  position: absolute;
+  left: 65.78px;
+  top: 453.47px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: rgba(14, 13, 20, 0.45);
+}
+
+/* ── 전원 탈락 ── */
+
+.invalidPanel {
+  position: absolute;
+  left: 50%;
+  top: 180px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-6);
+}
+
+.invalidText {
+  font-family: var(--font-title);
+  font-size: var(--font-size-btn);
+  color: var(--color-ink);
+}
+
+.invalidActions {
+  display: flex;
+  gap: var(--space-4);
+}
+
+/* 상태 밴드 뒤에 깔리는 붉은 긴장감 */
+.pressure {
+  position: absolute;
+  left: 21px;
+  top: 938px;
+  width: 1877px;
+  height: 125px;
+  background: var(--color-alert);
+  opacity: 0.1;
+}

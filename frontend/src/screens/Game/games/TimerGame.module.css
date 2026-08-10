@@ -1,0 +1,432 @@
+/* 시간초 잡기 무대 — Figma 542:2995 기준.
+   GameScreen의 1920×1080 좌표계 위에 참가자 카드 줄·큰 숫자판·정지 타임라인·STOP 버튼을 절대 배치한다. */
+
+/* ── 오른쪽 위 상태 ── */
+
+.targetPill {
+  position: absolute;
+  left: 1404.67px;
+  top: 49.96px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 237.333px;
+  height: 40.078px;
+  background: var(--color-yellow);
+  border: 2.637px solid var(--color-ink);
+  border-radius: 42.188px;
+  filter: drop-shadow(3.164px 3.164px 0 var(--color-ink));
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.topicPill {
+  position: absolute;
+  left: 1662px;
+  top: 48.91px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 200px;
+  height: 42.188px;
+  padding: 0 15.5px;
+  background: var(--color-white);
+  border: 3.164px solid var(--color-ink);
+  border-radius: 42.188px;
+  filter: drop-shadow(4.219px 4.219px 0 var(--color-ink));
+  font-family: var(--font-display);
+  font-size: var(--font-size-sub);
+  color: var(--color-ink);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.topicPill img {
+  flex-shrink: 0;
+  width: 25.313px;
+  height: 25.313px;
+}
+
+/* ── 참가자 카드 줄 ── */
+
+/* left는 순서마다 달라 인라인으로 준다 */
+.playerCard {
+  position: absolute;
+  top: 144px;
+  box-sizing: border-box;
+  width: 283px;
+  height: 80px;
+  background: var(--color-white);
+  border: 3.164px solid var(--color-ink);
+  border-radius: 16.875px;
+  filter: drop-shadow(4.219px 4.219px 0 var(--color-ink));
+}
+
+.playerAvatar {
+  position: absolute;
+  left: 15.5px;
+  top: 18.91px;
+  width: 35.859px;
+  height: 35.859px;
+  border-radius: 17.93px;
+  object-fit: cover;
+}
+
+.playerName {
+  position: absolute;
+  left: 78.21px;
+  top: 13.63px;
+  max-width: 120px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-display);
+  font-size: var(--font-size-sub);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.playerState {
+  position: absolute;
+  left: 70.17px;
+  top: 38.05px;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-meta);
+  white-space: nowrap;
+}
+
+/* 이미 멈춘 사람은 초록으로 바뀐다 */
+.stateDone {
+  color: var(--color-online);
+}
+
+.playerMe {
+  position: absolute;
+  left: 215.5px;
+  top: 14.69px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 45.333px;
+  height: 23.203px;
+  background: var(--color-ink);
+  border: 2.109px solid var(--color-ink);
+  border-radius: 42.188px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-white);
+}
+
+/* ── 큰 숫자판 ── */
+
+.hero {
+  position: absolute;
+  left: 59px;
+  top: 244px;
+  box-sizing: border-box;
+  width: 1803px;
+  height: 300px;
+  background: var(--color-white);
+  border: 5.273px solid var(--color-ink);
+  border-radius: 33.75px;
+  filter: drop-shadow(10.547px 10.547px 0 var(--color-ink));
+}
+
+.heroCaption {
+  position: absolute;
+  left: 225.64px;
+  top: 28.71px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-sub);
+  color: var(--color-alert);
+  white-space: nowrap;
+}
+
+/* 경과 시간 — 화면에서 가장 큰 글자 */
+.heroValue {
+  position: absolute;
+  left: 222.98px;
+  top: 59.57px;
+  font-family: var(--font-display);
+  font-size: 160px;
+  line-height: 1.1;
+  color: var(--color-ink);
+}
+
+.heroUnit {
+  position: absolute;
+  left: 565.73px;
+  top: 183.29px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-name);
+  color: rgba(14, 13, 20, 0.5);
+}
+
+/* 경과와 남은 시간을 가르는 세로선 */
+.heroDivider {
+  position: absolute;
+  left: 894.64px;
+  top: 41.37px;
+  width: 3.164px;
+  height: 206.719px;
+  background: rgba(14, 13, 20, 0.18);
+  border-radius: 2.109px;
+}
+
+.heroRightLabel {
+  position: absolute;
+  left: 1213.18px;
+  top: 66.68px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-sub);
+  color: rgba(14, 13, 20, 0.55);
+}
+
+.heroRightValue {
+  position: absolute;
+  left: 1251.81px;
+  top: 91.1px;
+  font-family: var(--font-display);
+  font-size: 112px;
+  line-height: 1.1;
+  color: var(--color-alert);
+}
+
+.heroRightUnit {
+  position: absolute;
+  left: 1210.14px;
+  top: 232.43px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  color: var(--color-alert);
+  white-space: nowrap;
+}
+
+/* ── 정지 타임라인 ── */
+
+.timeline {
+  position: absolute;
+  left: 59px;
+  top: 564px;
+  box-sizing: border-box;
+  width: 1803px;
+  height: 200px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 4.219px solid var(--color-ink);
+  border-radius: 25.313px;
+  box-shadow: 6.328px 6.328px 0 var(--color-ink);
+}
+
+.timelineCaption {
+  position: absolute;
+  left: 27.78px;
+  top: 14.77px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: rgba(14, 13, 20, 0.45);
+}
+
+.timelineHazardLabel {
+  position: absolute;
+  right: 27.78px;
+  top: 14.77px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-alert);
+}
+
+.track,
+.trackOutline {
+  position: absolute;
+  left: 27.78px;
+  top: 65.39px;
+  width: 1738.667px;
+  height: 37.969px;
+  border-radius: 10.547px;
+}
+
+.track {
+  background: #ece7f7;
+}
+
+/* 채움과 빗금 위에 테두리만 덧그린다 */
+.trackOutline {
+  box-sizing: border-box;
+  border: 3.164px solid var(--color-ink);
+}
+
+/* 목표를 넘긴 구간 — 45도 빗금을 반복해서 깐다 */
+.hazard {
+  position: absolute;
+  top: 65.39px;
+  height: 37.969px;
+  background:
+    repeating-linear-gradient(
+      55deg,
+      rgba(255, 71, 77, 0.55) 0 9.5px,
+      transparent 9.5px 40px
+    ),
+    rgba(255, 71, 77, 0.16);
+}
+
+.fill {
+  position: absolute;
+  left: 27.78px;
+  top: 65.39px;
+  height: 37.969px;
+  border-radius: 10.547px;
+  background: var(--color-yellow);
+}
+
+/* 목표 지점을 가리키는 굵은 세로선과 알약 */
+.targetLine {
+  position: absolute;
+  top: 50.62px;
+  width: 6.328px;
+  height: 75.938px;
+  background: var(--color-ink);
+  border-radius: 3.164px;
+}
+
+.targetTag {
+  position: absolute;
+  top: 16.87px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 176px;
+  height: 27.422px;
+  background: var(--color-yellow);
+  border: 2.637px solid var(--color-ink);
+  border-radius: 42.188px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* 내 현재 위치 */
+.meLine {
+  position: absolute;
+  top: 50.34px;
+  width: 6.328px;
+  height: 75.938px;
+  background: var(--color-alert);
+  border-radius: 3.164px;
+}
+
+.meBadge {
+  position: absolute;
+  top: 21.34px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 35.859px;
+  height: 27.422px;
+  background: var(--color-alert);
+  border: 2.637px solid var(--color-ink);
+  border-radius: 42.188px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-white);
+}
+
+.scaleLeft,
+.scaleRight {
+  position: absolute;
+  top: 41.78px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: rgba(14, 13, 20, 0.35);
+}
+
+.scaleLeft {
+  left: 27.78px;
+}
+
+.scaleRight {
+  right: 27.78px;
+}
+
+/* ── 큰 버튼 ── */
+
+.bigButton {
+  position: absolute;
+  left: 510px;
+  top: 784px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 900px;
+  height: 130px;
+  border: 5.273px solid var(--color-ink);
+  border-radius: 37.969px;
+  filter: drop-shadow(10.547px 10.547px 0 var(--color-ink));
+  font-family: var(--font-display);
+  font-size: 88px;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.bigStop {
+  background: var(--color-alert);
+  color: var(--color-white);
+}
+
+.bigStart {
+  background: var(--color-online);
+  color: var(--color-ink);
+}
+
+/* 이미 멈췄거나 집계가 끝난 상태 — 누를 수 없다 */
+.bigDone {
+  background: var(--color-white);
+  color: var(--color-ink);
+  font-size: var(--font-size-hero);
+}
+
+.bigStop:active,
+.bigStart:active:not(:disabled) {
+  transform: translate(4px, 4px);
+  filter: drop-shadow(6px 6px 0 var(--color-ink));
+}
+
+/* 라운드가 아직 안 열린 찰나 — 눌러도 서버가 거절하므로 잠긴 것으로 보이게 한다 */
+.bigStart:disabled {
+  opacity: 0.5;
+}
+
+/* HUD 오른쪽에 붙는 빨간 알약 — 공통 HudPill(노랑)과 색만 다르다 */
+.hudPill {
+  padding: 12.656px 18.984px;
+  background: var(--color-alert);
+  border: 3.164px solid var(--color-ink);
+  border-radius: 42.188px;
+  box-shadow: 4.219px 4.219px 0 var(--color-ink);
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-white);
+  white-space: nowrap;
+}

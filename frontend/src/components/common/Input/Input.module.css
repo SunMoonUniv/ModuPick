@@ -1,0 +1,133 @@
+/* 입력 필드 — --input 배경 · r14 · b3 이 스펙. 카드 안(흰 배경)에 놓이므로 라벨은 잉크색이다. */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font-family: var(--font-title);
+  font-size: var(--font-size-sub);
+  color: var(--color-ink);
+}
+
+/* 보라 배경 위 라벨 — 고정폭 메타 폰트로 올려 필드 위에 얹힌 태그처럼 보이게 한다 */
+.labelOnPurple {
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+}
+
+/* 필수 항목 */
+.yellow {
+  color: var(--color-yellow);
+}
+
+/* 선택 항목 */
+.cyan {
+  color: var(--color-cyan);
+}
+
+.shell {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  height: 64px;
+  padding: 0 var(--space-4);
+  background: var(--color-input);
+  border: var(--border-thin) solid var(--color-ink);
+  border-radius: var(--radius-btn);
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+/* 보라 배경 위에 바로 놓이는 필드 — 흰 배경 + 하드 그림자로 배경에서 확실히 떠 보이게 한다 */
+.shellOnPurple {
+  height: 72px;
+  padding: 0 var(--space-5);
+  background: var(--color-white);
+  border-radius: var(--radius-input);
+  box-shadow: var(--shadow-btn);
+}
+
+/* 포커스가 들어오면 배경을 시안으로 바꿔 어디를 입력 중인지 색으로 알린다 */
+.shell:focus-within {
+  background: var(--color-cyan);
+}
+
+/* 검증 실패 상태 — 아래 helper 텍스트도 같이 강조된다 */
+.invalid {
+  background: var(--color-pink);
+}
+
+/* 여러 줄 입력(킹메이커 의견 등) */
+.multiline {
+  height: auto;
+  min-height: 148px;
+  padding: var(--space-4);
+  align-items: flex-start;
+}
+
+.control {
+  flex: 1;
+  min-width: 0;
+  font-size: var(--font-size-body);
+  font-weight: var(--font-weight-body);
+}
+
+.control::placeholder {
+  color: var(--color-muted);
+}
+
+.textarea {
+  resize: none;
+  min-height: 116px;
+  line-height: var(--line-height-normal);
+}
+
+/* 입력값이 화면의 주인공일 때 (닉네임) — 제목 폰트로 크게 */
+.strong {
+  font-family: var(--font-display);
+  font-size: var(--font-size-name);
+}
+
+/* 입력 글자수 / 최대 글자수 */
+.counter {
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink-45);
+  font-variant-numeric: tabular-nums;
+}
+
+.helper {
+  font-size: var(--font-size-meta);
+  color: var(--color-muted);
+  min-height: 24px;
+}
+
+/* 보라 배경 위에서는 muted 회색이 묻히므로 라벤더로 올린다 */
+.helperOnPurple {
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-lavender);
+}
+
+.helperError {
+  color: var(--color-ink);
+  font-weight: 700;
+}
+
+/* 보라 배경 위 에러는 잉크색이 안 보이므로 옐로로 강조한다 */
+.helperOnPurple.helperError {
+  color: var(--color-yellow);
+}
+
+/* 방 코드처럼 자릿수를 또박또박 보여줘야 하는 입력 */
+.code {
+  font-family: var(--font-title);
+  font-size: var(--font-size-head);
+  letter-spacing: 0.12em;
+  text-align: center;
+}

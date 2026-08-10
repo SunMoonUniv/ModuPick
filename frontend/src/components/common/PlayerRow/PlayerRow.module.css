@@ -1,0 +1,200 @@
+/* 참가자 행 카드 — 대기방 왼쪽 열의 549×92 가로 카드 (Figma 542:504 계열).
+   아바타 링·이름·소개·상태 칩이 한 줄에 놓이고, 방장 화면에서만 오른쪽 끝에 강퇴 버튼이 붙는다. */
+
+.row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 549px;
+  height: 92px;
+  padding: 0 7.84px 0 15.5px;
+  background: var(--color-white);
+  border: 3.164px solid var(--color-ink);
+  border-radius: 14.766px;
+  box-shadow: 5.273px 5.273px 0 var(--color-ink);
+}
+
+/* 방장 행은 테두리를 더 두껍게 해서 명단 맨 위에서 바로 구분되게 한다 */
+.isHost {
+  border-width: 5.273px;
+}
+
+/* 내 행은 옅은 하늘색 바탕으로 명단에서 바로 찾을 수 있게 한다 */
+.isMe {
+  background: var(--color-mine);
+}
+
+/* 게임 중 탈락했거나 방을 나간 사람 */
+.isOut {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+/* 지금 이 사람이 지목/선택된 상태 (저격 투표 대상 등) */
+.isPicked {
+  background: var(--color-pink);
+}
+
+.selectable {
+  cursor: pointer;
+  transition: transform var(--duration-fast) var(--ease-out);
+}
+
+.selectable:hover:not(.isOut) {
+  transform: translate(-2px, -2px);
+}
+
+/* 흰 원 링 안에 캐릭터가 떠 있는 형태 — 링과 그림 크기가 달라 Avatar 컴포넌트 대신 여기서 직접 그린다 */
+.avatarWrap {
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 52.734px;
+  height: 52.734px;
+  background: var(--color-white);
+  border: 2.451px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+.avatarImage {
+  position: absolute;
+  left: 3.32px;
+  top: 2.83px;
+  width: 42.188px;
+  height: 42.188px;
+  object-fit: cover;
+}
+
+/* 방장 아바타 위로 반쯤 걸치는 왕관 */
+.crown {
+  position: absolute;
+  left: 12.56px;
+  top: -16.65px;
+  width: 29.531px;
+  height: 29.531px;
+  z-index: 1;
+}
+
+.info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-left: 32.6px;
+}
+
+.nickname {
+  font-family: var(--font-display);
+  font-size: var(--font-size-name);
+  line-height: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 한 줄 소개 — 고정폭 글꼴로 기술적인 인상을 준다 */
+.bio {
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: rgba(14, 13, 20, 0.5);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trailing {
+  display: flex;
+  align-items: center;
+  gap: 12.656px;
+  flex-shrink: 0;
+}
+
+/* 상태 칩 — 색만 다르고 모양은 모두 같다 */
+.chip {
+  padding: 7.383px 12.656px;
+  border: 2.109px solid var(--color-ink);
+  border-radius: 42.188px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.chipHost {
+  background: var(--color-yellow);
+}
+
+.chipReady {
+  background: var(--color-online);
+}
+
+.chipIdle {
+  background: var(--color-white);
+}
+
+.chipMe {
+  background: var(--color-cyan);
+}
+
+.chipOut {
+  background: var(--color-track);
+}
+
+/* 방장만 보이는 강퇴 버튼 */
+.kick {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  width: 27.422px;
+  height: 27.422px;
+  border: 2.109px solid var(--color-ink);
+  border-radius: 6.328px;
+  background: var(--color-white);
+  font-size: var(--font-size-micro);
+  line-height: 1;
+}
+
+.kick:hover {
+  background: var(--color-leave);
+}
+
+/* 아직 아무도 앉지 않은 자리 — 점선 행 */
+.empty {
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+  width: 549px;
+  height: 64px;
+  padding: 0 16.36px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2.637px dashed rgba(255, 255, 255, 0.5);
+  border-radius: 14.766px;
+}
+
+.emptyMark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--radius-pill);
+  background: rgba(255, 255, 255, 0.16);
+  font-family: var(--font-display);
+  font-size: var(--font-size-name);
+  color: var(--color-white);
+  opacity: 0.55;
+}
+
+.emptyText {
+  margin-left: 45px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: rgba(255, 255, 255, 0.6);
+}

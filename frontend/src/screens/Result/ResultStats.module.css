@@ -1,0 +1,40 @@
+/* 결과 카드 안쪽 통계 타일 — 프레임 542:1119 / 542:2049 / 542:2292가 같은 판을 서로 다른 자리에 둔다.
+   좌표는 컴포넌트가 인라인 style로 받고, 여기서는 타일 한 칸의 생김새만 잡는다. */
+
+.stat {
+  position: absolute;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 357.333px;
+  height: 67.5px;
+  border: 2.637px solid var(--color-ink);
+  border-radius: 12.656px;
+  box-shadow: 4.219px 4.219px 0 var(--color-ink);
+  font-family: var(--font-chat);
+  font-size: var(--font-size-micro);
+  color: rgba(14, 13, 20, 0.6);
+}
+
+/* 위쪽 큰 숫자 */
+.stat b {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-name);
+  color: var(--color-ink);
+}
+
+.cyan {
+  background: var(--color-stat-cyan);
+}
+
+.pink {
+  background: var(--color-stat-pink);
+}
+
+.yellow {
+  background: var(--color-stat-yellow);
+}

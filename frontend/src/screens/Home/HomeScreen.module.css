@@ -1,0 +1,607 @@
+/* 표지(홈) — Figma 542:195 기준. 디자인이 FHD 1920×1080 고정이라 요소를 프레임 좌표 그대로 절대 배치한다.
+   왼쪽은 히어로 카피와 진입 액션, 오른쪽은 미리보기 패널(DemoPanel), 아래는 게임 6종 슬라이더다. */
+
+.screen {
+  position: relative;
+  width: var(--layout-width);
+  height: var(--layout-height);
+}
+
+/* ── 머리말 ── */
+
+.brand {
+  position: absolute;
+  left: 45px;
+  top: 38px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-btn);
+  line-height: 1;
+  letter-spacing: 0.5px;
+  color: var(--color-cyan);
+}
+
+/* 로고 오른쪽의 전체화면 전환 버튼. 보라 배경 위라 흰색을 반투명으로 낮춰 로고보다 뒤로 보내다 */
+.fullscreenHint {
+  position: absolute;
+  /* 로고(left 45 + 폭 150)에서 한 칸 띄운다 */
+  left: 255px;
+  top: 38px;
+  /* 로고 글자 높이(24)와 같은 띠 안에서 세로 가운데에 놓는다 — 글자 크기를 바꿔도 로고와 눈높이가 유지된다 */
+  height: var(--font-size-btn);
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-sub);
+  line-height: 1;
+  letter-spacing: 0.5px;
+  color: var(--color-white-55);
+  padding: 0;
+  transition: color var(--duration-fast) var(--ease-out);
+}
+
+/* 누를 수 있는 상태(button)에서만 밝아진다 — F11 전체화면일 때는 span이라 그대로 있는다 */
+button.fullscreenHint:hover {
+  color: var(--color-white);
+}
+
+/* 오른쪽 위를 가로지르는 한 줄 소개 띠 */
+.nav {
+  position: absolute;
+  right: 50px;
+  top: 31px;
+  box-sizing: border-box;
+  width: 955px;
+  height: 58px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 4px solid var(--color-ink);
+  border-radius: 6px;
+  box-shadow: var(--shadow-hard);
+}
+
+.nav p {
+  position: absolute;
+  left: 42px;
+  top: 12px;
+  width: 875px;
+  font-family: var(--font-display);
+  /* Black Han Sans는 굵기가 400 하나뿐이다 — body의 500이 흘러들면 브라우저가 가짜 볼드를 만든다 */
+  font-weight: 400;
+  font-size: 17px;
+  line-height: var(--line-height-normal);
+  color: var(--color-ink);
+  white-space: pre-wrap;
+  word-break: keep-all;
+}
+
+/* 히어로 카피 위에 붙는 핑크 알약 */
+.eyebrow {
+  position: absolute;
+  left: 105px;
+  top: 112px;
+  box-sizing: border-box;
+  width: 289px;
+  height: 40px;
+  padding: 8px 16px;
+  background: var(--color-pink);
+  border: 2.5px solid var(--color-ink);
+  border-radius: 40px;
+  box-shadow: var(--shadow-btn);
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-sub);
+  line-height: 1;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* ── 히어로 카피 3줄 — 줄마다 색과 시작 x가 다르다 ── */
+
+.heroYellow,
+.heroPink,
+.heroWhite {
+  position: absolute;
+  display: block;
+  height: 103.2px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 134.4px;
+  line-height: 86.4px;
+  letter-spacing: -1.2px;
+  /* 프레임의 3px 바깥쪽 외곽선 — CSS 외곽선은 글자 선 위에 반씩 걸쳐 그려지므로,
+     두 배 두께로 깔고 paint-order로 면을 그 위에 덮어 바깥 3px만 남긴다 */
+  -webkit-text-stroke: calc(var(--border-thin) * 2) var(--color-ink);
+  paint-order: stroke fill;
+  text-shadow: var(--shadow-text-lg);
+  white-space: nowrap;
+}
+
+.heroYellow {
+  left: 105px;
+  top: 204px;
+  color: var(--color-yellow);
+}
+
+.heroPink {
+  left: 81px;
+  top: 343px;
+  color: var(--color-pink);
+}
+
+.heroWhite {
+  left: 115px;
+  top: 475px;
+  color: var(--color-white);
+}
+
+/* ── 진입 액션 ── */
+
+/* 주요 CTA — 잉크 바탕에 노란 글씨라 공용 Button의 어떤 변형과도 색이 달라 화면 안에서 직접 그린다 */
+.createButton {
+  position: absolute;
+  left: 103px;
+  top: 620px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 231px;
+  height: 80px;
+  padding: 17px 26px;
+  background: var(--color-ink);
+  border: 3px solid var(--color-ink);
+  border-radius: 8px;
+  box-shadow: var(--shadow-hard);
+  font-family: var(--font-chat);
+  font-weight: 800;
+  font-size: var(--font-size-btn);
+  color: var(--color-yellow);
+  white-space: nowrap;
+}
+
+.createArrow {
+  font-size: var(--font-size-meta);
+}
+
+.createButton:active {
+  transform: translate(3px, 3px);
+  box-shadow: var(--shadow-btn-pressed);
+}
+
+/* 방 코드 입력 — 흰 상자 안에 "MODU-" 접두어 + 숫자 6칸 + 참여 버튼 */
+.codeField {
+  position: absolute;
+  left: 376px;
+  top: 620px;
+  box-sizing: border-box;
+  width: 388px;
+  height: 80px;
+  background: var(--color-white);
+  border: 3px solid var(--color-ink);
+  border-radius: 8px;
+  box-shadow: var(--shadow-btn);
+}
+
+.codePrefix,
+.codeInput {
+  position: absolute;
+  top: 22px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 30px;
+  line-height: 45px;
+  letter-spacing: 1px;
+  color: var(--color-ink-85);
+}
+
+.codePrefix {
+  left: 15px;
+}
+
+.codeInput {
+  left: 118px;
+  width: 160px;
+}
+
+.codeInput::placeholder {
+  color: var(--color-track);
+}
+
+.joinButton {
+  position: absolute;
+  left: 286px;
+  top: 8px;
+  box-sizing: border-box;
+  width: 81px;
+  height: 56px;
+  background: var(--color-pink);
+  border: 2.5px solid var(--color-ink);
+  border-radius: 6px;
+  font-family: var(--font-chat);
+  font-weight: 800;
+  font-size: var(--font-size-btn);
+  color: var(--color-ink);
+}
+
+.joinButton:disabled {
+  opacity: 0.45;
+}
+
+/* 프레임에 없는 요소 — 입장 실패·임시 서버 미기동 안내를 CTA 아래 빈 줄에 눕힌다 */
+.status {
+  position: absolute;
+  left: 103px;
+  top: 706px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-yellow);
+}
+
+/* ── 슬라이더 머리말 ── */
+
+.stripNote {
+  position: absolute;
+  left: 36px;
+  top: 738px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: var(--color-yellow);
+}
+
+/* 오른쪽 끝에서 흐려지며 이어지는 겹화살표 — 슬라이더가 계속 흐른다는 신호다 */
+.chevron {
+  position: absolute;
+  top: 739px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 30px;
+  line-height: 1;
+  color: var(--color-yellow);
+}
+
+.chevron1 {
+  left: 1810px;
+  opacity: 0.35;
+}
+
+.chevron2 {
+  left: 1836px;
+  opacity: 0.65;
+}
+
+.chevron3 {
+  left: 1862px;
+}
+
+/* ── 게임 슬라이더 ── */
+
+.slider {
+  position: absolute;
+  left: 22px;
+  top: 768px;
+  width: 1876px;
+  height: 285px;
+  overflow: hidden;
+}
+
+/* 카드가 얹힌 노란 점선 레일 두 줄 */
+.railTop,
+.railBottom {
+  position: absolute;
+  left: 0;
+  width: 1920px;
+  height: 3px;
+  background: repeating-linear-gradient(
+    to right,
+    rgba(255, 226, 62, 0.4) 0 30px,
+    transparent 30px 48px
+  );
+}
+
+.railTop {
+  top: -1.5px;
+}
+
+.railBottom {
+  top: 278.5px;
+}
+
+/* 뒤로 흘러가는 속도선 — 색·길이·굵기는 인라인 스타일로 카드마다 다르게 준다 */
+.speedLine {
+  position: absolute;
+}
+
+.fadeIn {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 200px;
+  background: linear-gradient(
+    to right,
+    rgba(91, 45, 231, 0.72) 0%,
+    rgba(91, 45, 231, 0.32) 55%,
+    rgba(91, 45, 231, 0) 100%
+  );
+}
+
+.fadeOut {
+  position: absolute;
+  right: -21px;
+  top: -2px;
+  bottom: 2px;
+  width: 200px;
+  background: linear-gradient(
+    to right,
+    rgba(91, 45, 231, 0) 0%,
+    rgba(91, 45, 231, 0.45) 40%,
+    rgba(91, 45, 231, 0.94) 100%
+  );
+}
+
+/* ── 게임 카드 ── */
+
+/* 카드 묶음을 담아 통째로 옆으로 미는 띠. 위치는 매 프레임 JS가 transform으로 직접 넣는다 */
+.cardTrack {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+
+/* 바탕색·기울기·왼쪽 잔상 그림자는 게임마다 달라 인라인 스타일로 준다.
+   --card-rotate(기울기)와 --card-lift(마우스 올렸을 때 떠오르는 높이)를 합쳐 한 transform으로 그린다 */
+.gameCard {
+  position: absolute;
+  box-sizing: border-box;
+  width: 282.24px;
+  height: 173.376px;
+  padding: 0;
+  overflow: hidden;
+  border: 4.032px solid var(--color-ink);
+  border-radius: 16.128px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  --card-lift: 0px;
+  --card-scale: 1;
+  transform: translateY(var(--card-lift)) rotate(var(--card-rotate)) scale(var(--card-scale));
+  /* 끝에서 살짝 넘쳤다 돌아오는 곡선 — 붙었다 떨어지는 쫀득한 느낌을 낸다 */
+  transition: transform 380ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* 마우스를 올리거나 키보드로 짚으면 위로 떠오르며 커진다 */
+.gameCard:hover,
+.gameCard:focus-visible {
+  --card-lift: -26px;
+  --card-scale: 1.09;
+  z-index: 2;
+}
+
+/* 미리보기 패널이 지금 이 게임을 보여주는 중이라는 표시 */
+.gameCardActive {
+  --card-lift: -12px;
+  outline: 4px solid var(--color-white);
+  outline-offset: 3px;
+}
+
+/* 손가락으로 미는 느낌 — 누르는 동안만 살짝 눌린다 */
+.gameCard:active {
+  --card-scale: 1.03;
+  transition-duration: 90ms;
+}
+
+/* 움직임을 줄여달라고 설정한 사용자에게는 흐름도 튀어오름도 끈다 (JS 쪽 흐름도 같은 조건으로 멈춘다) */
+@media (prefers-reduced-motion: reduce) {
+  .gameCard {
+    transition: none;
+  }
+}
+
+/* 카드 오른쪽 위를 파고드는 반투명 원 장식 */
+.cardDeco {
+  position: absolute;
+  left: 197.57px;
+  top: -46.37px;
+  width: 133.056px;
+  height: 133.056px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.cardStep {
+  position: absolute;
+  left: 16.13px;
+  top: 14.11px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 10.08px;
+  letter-spacing: 1.008px;
+  color: rgba(14, 13, 20, 0.6);
+}
+
+/* 순서 숫자가 든 흰 원 */
+.cardNumber {
+  position: absolute;
+  left: 16.13px;
+  top: 48.38px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46.368px;
+  height: 46.368px;
+  background: var(--color-white);
+  border: 3.024px solid var(--color-ink);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: 24.192px;
+  color: var(--color-ink);
+}
+
+.cardName {
+  position: absolute;
+  left: 74.59px;
+  top: 48.38px;
+  font-family: var(--font-display);
+  font-size: 25.2px;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.cardTagline {
+  position: absolute;
+  left: 75.6px;
+  top: 88.7px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 11.088px;
+  letter-spacing: 0.2016px;
+  color: rgba(14, 13, 20, 0.72);
+  white-space: nowrap;
+}
+
+/* ── 카드 아이콘 — 78.624px 정사각형 안에 게임마다 다른 도형을 그린다 ── */
+
+.iconBox {
+  position: absolute;
+  left: 197.57px;
+  top: 92.74px;
+  width: 78.624px;
+  height: 78.624px;
+}
+
+/* 룰렛: 큰 테두리 원 + 대각선으로 마주 보는 사분면 두 조각 */
+.iconRing {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 5.04px solid rgba(255, 255, 255, 0.64);
+  border-radius: 50%;
+}
+
+.iconQuadrantBR {
+  position: absolute;
+  left: 39.312px;
+  top: 39.312px;
+  width: 39.312px;
+  height: 39.312px;
+}
+
+.iconQuadrantTL {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 39.312px;
+  height: 39.312px;
+}
+
+/* 사다리: 세로 기둥 2 + 가로 발판 3 */
+.ladderLegL,
+.ladderLegR {
+  position: absolute;
+  top: 0;
+  width: 9.072px;
+  height: 78.624px;
+  border-radius: 3.024px;
+  background: rgba(255, 255, 255, 0.59);
+}
+
+.ladderLegL {
+  left: 6.05px;
+}
+
+.ladderLegR {
+  left: 63.5px;
+}
+
+.ladderRung {
+  position: absolute;
+  left: 0;
+  width: 78.624px;
+  height: 9.072px;
+  border-radius: 3.024px;
+  background: rgba(255, 255, 255, 0.59);
+}
+
+.iconCrown {
+  position: absolute;
+  left: 0;
+  top: 6.04px;
+  width: 78.624px;
+  height: 54.432px;
+}
+
+/* 시간초: 문자판 원 + 위쪽 용두 + 바늘 */
+.timerDial {
+  position: absolute;
+  left: 6.05px;
+  top: 12.09px;
+  box-sizing: border-box;
+  width: 66.528px;
+  height: 66.528px;
+  border: 7.056px solid rgba(255, 255, 255, 0.59);
+  border-radius: 50%;
+}
+
+.timerCap {
+  position: absolute;
+  left: 28.22px;
+  top: 0;
+  width: 22.176px;
+  height: 12.096px;
+  border-radius: 3.024px;
+  background: rgba(255, 255, 255, 0.59);
+}
+
+.timerHand {
+  position: absolute;
+  left: 36.29px;
+  top: 26.2px;
+  width: 6.048px;
+  height: 24.192px;
+  border-radius: 3.024px;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+/* 저격: 과녁 세 겹 */
+.targetOuter {
+  position: absolute;
+  inset: 0;
+  box-sizing: border-box;
+  border: 7.056px solid rgba(255, 255, 255, 0.59);
+  border-radius: 50%;
+}
+
+.targetInner {
+  position: absolute;
+  left: 17.13px;
+  top: 17.13px;
+  box-sizing: border-box;
+  width: 44.352px;
+  height: 44.352px;
+  border: 7.056px solid rgba(255, 255, 255, 0.59);
+  border-radius: 50%;
+}
+
+.targetDot {
+  position: absolute;
+  left: 31.25px;
+  top: 31.24px;
+  width: 16.128px;
+  height: 16.128px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.64);
+}
+
+.iconArrow {
+  position: absolute;
+  left: -1.2px;
+  top: -0.72px;
+  width: 81.015px;
+  height: 79.85px;
+}

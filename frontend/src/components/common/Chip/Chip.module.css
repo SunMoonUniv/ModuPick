@@ -1,0 +1,101 @@
+/* 칩 — r999 · b4가 스펙. 색·크기·그림자는 prop으로 갈아끼우고 화면마다 복사본을 만들지 않는다. */
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  border: var(--border-control) solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  line-height: 1;
+  /* 알약은 한 줄이 전제다 — 좁은 자리(아바타 타일 등)에 놓여도 접히지 않게 한다 */
+  white-space: nowrap;
+  transition: background var(--duration-fast) var(--ease-out);
+}
+
+/* ── 크기 ── */
+.md {
+  padding: var(--space-3) var(--space-5);
+  font-size: var(--font-size-meta);
+}
+
+/* 카드·타일 안에 얹히는 작은 알약 — 테두리도 같이 얇아진다 */
+.sm {
+  padding: var(--space-1) var(--space-3);
+  border-width: var(--border-hair);
+  font-size: var(--font-size-micro);
+}
+
+/* ── 색 ── */
+.white {
+  background: var(--color-white);
+  color: var(--color-ink);
+}
+
+.cyan {
+  background: var(--color-cyan);
+  color: var(--color-ink);
+}
+
+.yellow {
+  background: var(--color-yellow);
+  color: var(--color-ink);
+}
+
+.pink {
+  background: var(--color-pink);
+  color: var(--color-ink);
+}
+
+.lavender {
+  background: var(--color-lavender);
+  color: var(--color-ink);
+}
+
+/* 잉크 알약만 글자를 옐로로 뒤집는다 — 어두운 배경 위 대비 확보 */
+.ink {
+  background: var(--color-ink);
+  color: var(--color-yellow);
+}
+
+/* 배경 위에 떠 있는 알약 */
+.elevated {
+  box-shadow: var(--shadow-sm);
+}
+
+/* 고정폭 메타 폰트 — 상태·수치를 담은 알약이 기술적인 인상을 갖게 한다 */
+.mono {
+  font-family: var(--font-meta);
+  font-weight: 700;
+}
+
+/* 클릭해서 고를 수 있는 칩 (설정 세그먼트 등) */
+.selectable {
+  cursor: pointer;
+}
+
+.selectable:hover:not(.disabled) {
+  background: var(--color-lavender);
+}
+
+.selected {
+  background: var(--color-yellow);
+}
+
+.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* 사다리 결과 항목처럼 삭제 버튼이 붙는 칩 */
+.removeButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border: var(--border-hair) solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  background: var(--color-white);
+  font-size: var(--font-size-meta);
+  line-height: 1;
+}

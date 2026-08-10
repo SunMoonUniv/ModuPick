@@ -1,0 +1,33 @@
+/* 빈자리 행 — 점선 · 라벤더. 보라 배경 위에 직접 놓이므로 채워진 배경 없이 테두리만 그린다. */
+
+.empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-6);
+  border: var(--border-thin) dashed var(--color-empty);
+  border-radius: var(--radius-btn);
+  color: var(--color-empty);
+  text-align: center;
+}
+
+.icon {
+  font-size: var(--font-size-headline);
+}
+
+.title {
+  font-family: var(--font-title);
+  font-size: var(--font-size-body);
+}
+
+.description {
+  font-size: var(--font-size-meta);
+}
+
+/* 흰 카드 안에 놓일 때 — 라벤더 점선은 흰 배경에서 너무 흐려서 잉크 톤으로 낮춘다 */
+.onLight {
+  border-color: var(--color-track);
+  color: var(--color-muted);
+}

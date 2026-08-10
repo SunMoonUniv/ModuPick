@@ -1,0 +1,130 @@
+/* 인게임 화면의 공통 껍데기 — Figma의 게임 프레임(542:1289 등)이 공유하는 제목 줄과 가이드 팝업.
+   무대·오른쪽 위 상태 표시·하단 상태 밴드는 게임별 컴포넌트가 같은 좌표계 위에 직접 그린다. */
+
+.screen {
+  position: relative;
+  width: var(--layout-width);
+  height: var(--layout-height);
+}
+
+/* 게임 이름 · 가이드 버튼 · 영문 부제가 한 줄에 붙는다 */
+.titleRow {
+  position: absolute;
+  left: 59px;
+  top: 44px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 52px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-head);
+  line-height: 1;
+  color: var(--color-white);
+  white-space: nowrap;
+}
+
+/* 언제든 다시 열 수 있는 가이드 버튼 */
+.guideButton {
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 52px;
+  height: 52px;
+  background: var(--color-yellow);
+  border: 3px solid var(--color-ink);
+  border-radius: 40px;
+  box-shadow: var(--shadow-btn);
+  font-family: var(--font-display);
+  font-size: var(--font-size-headline);
+  line-height: 1;
+  color: var(--color-ink);
+}
+
+.guideButton:active {
+  transform: translate(3px, 3px);
+  box-shadow: var(--shadow-btn-pressed);
+}
+
+.subtitleEn {
+  font-family: var(--font-display);
+  font-size: var(--font-size-meta);
+  color: var(--color-yellow);
+  white-space: nowrap;
+}
+
+.meta {
+  position: absolute;
+  left: 59px;
+  top: 100px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  letter-spacing: 1.0547px;
+  color: var(--color-cyan);
+}
+
+/* ── 가이드 팝업 ── */
+
+.guideList {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.guideStep {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  padding: var(--space-4) var(--space-5);
+  border: var(--border-thin) solid var(--color-ink);
+  border-radius: var(--radius-btn);
+  font-size: var(--font-size-meta);
+}
+
+.guideIndex {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  border: var(--border-hair) solid var(--color-ink);
+  border-radius: var(--space-2);
+  background: var(--color-ink);
+  color: var(--color-yellow);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-title);
+  font-size: var(--font-size-meta);
+}
+
+.guideFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: var(--space-8);
+  font-size: var(--font-size-sub);
+  color: var(--color-ink);
+}
+
+.guideMute {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+}
+
+/* 서버가 요청을 거절했을 때의 토스트 */
+.toast {
+  position: absolute;
+  left: 50%;
+  top: 880px;
+  transform: translateX(-50%);
+  padding: var(--space-4) var(--space-8);
+  border-radius: var(--radius-pill);
+  background: var(--color-leave);
+  color: var(--color-ink);
+  box-shadow: var(--shadow-hard);
+  z-index: var(--z-toast);
+}
