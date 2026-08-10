@@ -29,7 +29,7 @@ services:
     container_name: modupick-db
     restart: unless-stopped
 
-    environment:
+  environment:
       # 기본값을 두지 않는다. .env가 없는 채로 뜨면 개발용 비밀번호가 그대로
       # 운영에 올라가고, 그 사실을 아무도 모르게 된다.
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?.env에 MYSQL_ROOT_PASSWORD가 필요하다. .env.example을 복사해 .env를 만든다}
