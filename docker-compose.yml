@@ -29,19 +29,19 @@ services:
     container_name: modupick-db
     restart: unless-stopped
 
-  environment:
+    environment:
       # 기본값을 두지 않는다. .env가 없는 채로 뜨면 개발용 비밀번호가 그대로
       # 운영에 올라가고, 그 사실을 아무도 모르게 된다.
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?.env에 MYSQL_ROOT_PASSWORD가 필요하다. .env.example을 복사해 .env를 만든다}
       MYSQL_DATABASE: modupick
 
-      # 앱 계정을 엔트리포인트가 먼저 만들게 한다. db_migration/sql/0090_grants.sql의
-      # CREATE USER IF NOT EXISTS는 비밀번호를 리터럴 modupick으로 박아 두었고, 계정이
-      # 이미 있으면 아무것도 바꾸지 않는다 — 그래서 여기서 만들어 두면 .env의 값이 이기고,
-      # 0090은 권한 부여만 하게 된다. 이 두 줄이 없으면 .env를 modupick이 아닌 값으로
-      # 두는 순간 백엔드만 access denied로 재시작 루프에 빠진다(DB는 healthy로 보인다).
-      MYSQL_USER: ${MODUPICK_MYSQL_USER:-modupick}
-      MYSQL_PASSWORD: ${MODUPICK_APP_PASSWORD:-modupick}
+      # 앱 계정 비밀번호. 0095_app_password.sh가 이 값을 읽어 ALTER USER로 맞춘다.
+      #
+      # MYSQL_USER·MYSQL_PASSWORD를 쓰지 않는다. 그 경로는 엔트리포인트가 계정을 만들면서
+      # 대상 DB에 GRANT ALL까지 함께 주고, 그러면 0090_grants.sql이 설계한 최소 권한
+      # (SELECT·INSERT·UPDATE 전체 + DELETE는 5개 테이블만)이 덮여 앱 계정이 DROP까지
+      # 할 수 있게 된다.
+      MODUPICK_APP_PASSWORD: ${MODUPICK_APP_PASSWORD:-modupick}
 
     # 세션 시간대 +00:00은 서버 전역으로 박는다. 저장은 UTC이고 판정 시각은
     # 정수 밀리초라, 시간대가 어긋나면 만료·감사 시각이 통째로 밀린다.
