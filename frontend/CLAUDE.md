@@ -12,6 +12,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 There is no test runner configured yet — no test script, no test files.
 
+## Serving the built app
+
+`Dockerfile` builds `dist/` and copies it into an nginx image together with `nginx.conf`; the repo-root `docker-compose.yml` runs that as the `frontend` service. nginx serves the static files **and** proxies `/api` and `/ws` to the backend container, so the browser only ever talks to one origin.
+
+That single-origin rule is why `src/api/endpoint.ts` resolves the server from `window.location.origin` rather than a host and port. Don't reintroduce a hardcoded port there — it would bypass nginx, resurrect CORS, and break `wss` once the app is served over TLS. `VITE_SERVER_URL` stays as the escape hatch for pointing at a backend on a different address.
+
 ## Temporary local server (`local-server/`)
 
 Until the real backend exists, `local-server/` (Express + raw WebSocket, in-memory, no DB) implements the **whole** v1.0 contract in `API 기본 명세서 요약.md` — REST (rooms/members/avatars/games), the waiting-room socket events, *and* the in-game protocol (`game:action`, `game:phase`, `server:tick`, `game:progress`, `game:tie`, `game:result`, `round:closed`) for all 6 minigames. Files: `server.js` (HTTP/socket wiring, room lifecycle), `ws.js` (the WebSocket adapter that gives `server.js` a Socket.IO-shaped API), `state.js` (in-memory store), `games.js` (game catalog + config schemas — the authoritative defaults), `engines.js` (per-game judging).
@@ -22,7 +28,7 @@ The socket transport matches the real backend: the client connects to `/ws/rooms
 
 All judging is server-side; client animations only replay an already-decided outcome. When changing a game rule, change `engines.js` — not the screen.
 
-To play across LAN PCs: the host runs both `npm run server` (port 8000) and `npm run dev` on one machine; every player (including the host) opens `http://<host's LAN IP>:5173`. The frontend always targets `http://<page's hostname>:8000` (see `src/api/endpoint.ts`, override with `VITE_SERVER_URL`), so this works with zero config as long as the frontend and `local-server` run on the same machine. This whole directory is meant to be deleted once the real backend ships — don't build on top of it as if it were permanent.
+To play across LAN PCs: the host runs both `npm run server` (port 8000) and `npm run dev` on one machine; every player (including the host) opens `http://<host's LAN IP>:5173`. The dev server proxies `/api` and `/ws` to `127.0.0.1:8000` (`vite.config.ts`, override with the `BACKEND_URL` env var), so this works with zero config — and with no CORS involved — as long as the frontend and the backend run on the same machine. This whole directory is meant to be deleted once the real backend ships — don't build on top of it as if it were permanent.
 
 ## Project state
 
