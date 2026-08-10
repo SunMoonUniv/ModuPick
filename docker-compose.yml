@@ -37,11 +37,15 @@ services:
 
       # 앱 계정 비밀번호. 0095_app_password.sh가 이 값을 읽어 ALTER USER로 맞춘다.
       #
+      # 기본값을 적지 않는다. 여기에 비밀번호처럼 보이는 리터럴을 두면 비밀 탐지기가
+      # 하드코딩으로 잡는다. 비워 두면 0095가 ALTER를 건너뛰고 0090_grants.sql이 만든
+      # 값이 그대로 남는다 — CI가 그 경로로 돈다(.env 없이 database만 띄운다).
+      #
       # MYSQL_USER·MYSQL_PASSWORD를 쓰지 않는다. 그 경로는 엔트리포인트가 계정을 만들면서
       # 대상 DB에 GRANT ALL까지 함께 주고, 그러면 0090_grants.sql이 설계한 최소 권한
       # (SELECT·INSERT·UPDATE 전체 + DELETE는 5개 테이블만)이 덮여 앱 계정이 DROP까지
       # 할 수 있게 된다.
-      MODUPICK_APP_PASSWORD: ${MODUPICK_APP_PASSWORD:-modupick}
+      MODUPICK_APP_PASSWORD: ${MODUPICK_APP_PASSWORD:-}
 
     # 세션 시간대 +00:00은 서버 전역으로 박는다. 저장은 UTC이고 판정 시각은
     # 정수 밀리초라, 시간대가 어긋나면 만료·감사 시각이 통째로 밀린다.
@@ -98,7 +102,12 @@ services:
     environment:
       # 호스트는 서비스 이름 database다. 컨테이너 사이는 도커 내부 DNS로 찾으며
       # 포트는 컨테이너 안의 3306이다(호스트에 매핑한 3307이 아니다).
-      DATABASE_URL: mysql+aiomysql://modupick:${MODUPICK_APP_PASSWORD:-modupick}@database:3306/modupick
+      #
+      # 비밀번호에 기본값을 적지 않는다(위 database의 같은 변수 주석 참조). 여기서 :? 로
+      # 필수를 걸 수는 없다 — compose는 database만 띄울 때도 파일 전체를 해석하므로
+      # .env 없이 도는 CI가 그 자리에서 멈춘다. .env에 값이 없으면 백엔드가 접속 거부로
+      # 죽는다. 조용히 잘못 도는 것이 아니라 로그에 access denied로 남는다.
+      DATABASE_URL: mysql+aiomysql://modupick:${MODUPICK_APP_PASSWORD:-}@database:3306/modupick
       # 배포에서는 프론트와 백엔드가 nginx 뒤 같은 오리진이라 CORS가 걸릴 일이 없다.
       # 이 값은 vite dev 서버(5173)에서 붙을 때만 쓴다.
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
