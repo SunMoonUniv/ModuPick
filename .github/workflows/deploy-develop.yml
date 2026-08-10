@@ -4,6 +4,8 @@ on:
   push:
     branches:
       - develop
+  # 수동 실행. 이 버튼은 워크플로 파일이 기본 브랜치에 올라간 뒤부터 Actions 탭에 나타난다.
+  workflow_dispatch:
 
 jobs:
   # CI 게이트 — 하나라도 실패하면 deploy 가 아예 시작되지 않는다.
