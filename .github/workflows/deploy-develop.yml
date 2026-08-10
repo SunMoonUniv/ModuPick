@@ -21,11 +21,34 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Create .env file for Cloudflare Tunnel
+      # .env를 배포마다 시크릿에서 다시 쓴다. 러너에 만들어 두는 방법은 쓸 수 없다 —
+      # actions/checkout이 기본으로 git clean -ffdx를 돌려 .gitignore에 걸린 .env까지 지운다.
+      #
+      # 두 인코딩 함정을 피한다.
+      #   Out-File -Encoding utf8은 Windows PowerShell 5.1에서 BOM을 붙인다. 그러면 첫 줄의
+      #   키가 MYSQL_ROOT_PASSWORD가 아니라 ﻿MYSQL_ROOT_PASSWORD가 되어 그 값만 조용히
+      #   무시되고, compose는 "필요하다"며 멈춘다.
+      #   @'...'@는 작은따옴표 here-string이라 PowerShell이 안을 건드리지 않는다. @"..."@로 쓰면
+      #   비밀번호에 든 $나 백틱을 변수·이스케이프로 해석해 값이 달라진다.
+      - name: Write .env from secrets
         run: |
-          "CF_TUNNEL_TOKEN=${{ secrets.CF_TUNNEL_TOKEN }}" | Out-File -FilePath .env -Encoding utf8
+          $envText = @'
+          MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}
+          MODUPICK_APP_PASSWORD=${{ secrets.MODUPICK_APP_PASSWORD }}
+          CF_TUNNEL_TOKEN=${{ secrets.CF_TUNNEL_TOKEN }}
+          TRUST_PROXY=true
+          DEVTOOLS_ENABLED=false
+          '@
+          # compose는 .env 값 안의 $도 변수 참조로 해석한다. 비밀번호에 $가 들어 있으면
+          # 그 뒤가 통째로 빈 문자열로 치환돼(p$word → p) 아무도 모르게 다른 비밀번호가 된다.
+          # $$가 리터럴 $의 이스케이프다. -replace의 치환문에서 $$는 $ 하나를 뜻하므로 넷을 쓴다.
+          $envText = $envText -replace '\$', '$$$$'
+          [System.IO.File]::WriteAllText("$PWD\.env", $envText, (New-Object System.Text.UTF8Encoding $false))
 
+      # DB 비밀번호는 볼륨이 처음 만들어질 때 구워진다. 시크릿을 나중에 바꾸면 볼륨 안 계정과
+      # 어긋나 DB가 healthy를 받지 못하고, 그걸 기다리는 백엔드도 뜨지 않는다. 그때는 서버에서
+      # docker compose down -v로 볼륨을 지워야 한다 — 방은 재기동마다 사라지므로 잃을 데이터는 없다.
       - name: Build and Deploy with Docker Compose
         run: |
-          docker-compose down
-          docker-compose up -d --build
+          docker compose --profile tunnel down
+          docker compose --profile tunnel up -d --build
