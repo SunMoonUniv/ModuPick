@@ -1,0 +1,56 @@
+.panel {
+  width: 640px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: var(--font-size-title);
+  line-height: var(--line-height-tight);
+}
+
+.description {
+  color: var(--color-ink);
+}
+
+.prefix {
+  font-family: var(--font-title);
+  font-size: var(--font-size-name);
+  color: var(--color-muted);
+}
+
+/* 코드 조회에 성공했을 때 보여주는 방 미리보기 */
+.preview {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  padding: var(--space-5) var(--space-6);
+  border-radius: var(--radius-btn);
+  background: var(--color-green);
+}
+
+.previewName {
+  font-weight: 700;
+  font-size: var(--font-size-btn);
+}
+
+.previewMeta {
+  font-size: var(--font-size-sub);
+  color: var(--color-ink);
+}
+
+.error {
+  padding: var(--space-4) var(--space-5);
+  border-radius: var(--radius-btn);
+  border: var(--border-thin) solid var(--color-ink);
+  background: var(--color-pink);
+  color: var(--color-ink);
+  font-size: var(--font-size-sub);
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+}

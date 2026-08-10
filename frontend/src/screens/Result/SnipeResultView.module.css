@@ -1,0 +1,132 @@
+/* 익명 저격 결과 (최다 피격) — Figma 542:2476 기준.
+   당첨자 발표 카드와 골격은 같지만 위쪽 띠가 질문 문구이고, 왕관 대신 과녁이 올라간다. */
+
+.card {
+  position: absolute;
+  left: 59px;
+  top: 144px;
+  box-sizing: border-box;
+  width: 1221px;
+  height: 698px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 6.328px solid var(--color-ink);
+  border-radius: 25.313px;
+  box-shadow: 14.766px 14.766px 0 var(--color-ink);
+}
+
+/* 카드 위쪽을 가로지르는 핑크 띠에 이번 판의 질문이 그대로 올라간다 */
+.banner {
+  position: absolute;
+  left: -6.33px;
+  top: -6.33px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1221.333px;
+  height: 71.72px;
+  padding: 0 40px;
+  overflow: hidden;
+  background: var(--color-pink);
+  border-bottom: 4.219px solid var(--color-ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-name);
+  color: var(--color-white);
+  white-space: nowrap;
+}
+
+/* 아바타 뒤에 깔리는 연보라 후광 */
+.halo {
+  position: absolute;
+  left: 50%;
+  top: 82.27px;
+  transform: translateX(-50%);
+  width: 358.594px;
+  height: 358.594px;
+  border-radius: 50%;
+  background: var(--color-pastel-4);
+}
+
+.ring {
+  position: absolute;
+  left: 50%;
+  top: 124.45px;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  width: 274.219px;
+  height: 274.219px;
+  background: var(--color-lilac);
+  border: 5.273px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+.ring img {
+  position: absolute;
+  left: 13.71px;
+  top: 13.71px;
+  width: 236.25px;
+  height: 236.25px;
+  object-fit: cover;
+}
+
+/* 후광 위쪽에 반쯤 걸치는 과녁 — 당첨자 발표 프레임의 왕관과 같은 자리다 */
+.mark {
+  position: absolute;
+  left: 50%;
+  top: 90.67px;
+  transform: translateX(-50%);
+  font-size: 72px;
+  line-height: 1.265;
+}
+
+.name {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 394.55px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 72px;
+  line-height: 1.265;
+  text-align: center;
+  color: var(--color-ink);
+}
+
+/* 몇 표를 받아 걸렸는지 못 박는 잉크 알약 */
+.pill {
+  position: absolute;
+  left: 50%;
+  top: 499.92px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8.438px;
+  padding: 10.547px 21.094px;
+  background: var(--color-ink);
+  border-radius: 42.188px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-btn);
+  color: var(--color-yellow);
+  white-space: nowrap;
+}
+
+.pillIcon {
+  font-size: var(--font-size-sub);
+}
+
+/* 카드 맨 아래 한 줄 — 기본 줄높이로는 카드 밖으로 잘려서 줄높이를 1로 눌렀다 */
+.footer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 641.47px;
+  line-height: 1;
+  text-align: center;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: rgba(14, 13, 20, 0.35);
+}

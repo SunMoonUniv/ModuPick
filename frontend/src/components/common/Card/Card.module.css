@@ -1,0 +1,45 @@
+/* 카드 — 보라 배경 위에 얹는 흰 판. border5 · r20 · shadow6 이 이 디자인의 기본 카드 규격이다. */
+
+.card {
+  background: var(--color-white);
+  border: var(--border-card) solid var(--color-ink);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-hard);
+}
+
+.padded {
+  padding: var(--space-6);
+}
+
+/* 클릭 가능한 카드(게임 선택 타일 등) */
+.interactive {
+  cursor: pointer;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out),
+    background var(--duration-fast) var(--ease-out);
+}
+
+/* 그림자를 키우면서 살짝 떠오르게 — 눌림의 반대 방향 */
+.interactive:hover {
+  transform: translate(-2px, -2px);
+  box-shadow: 8px 8px 0 var(--color-ink);
+}
+
+/* 선택된 카드는 옐로로 칠해 지금 고른 항목임을 색으로 알린다 */
+.selected {
+  background: var(--color-yellow);
+}
+
+/* 최소 인원 미달 등으로 지금은 고를 수 없는 카드 */
+.disabled {
+  opacity: 0.45;
+  pointer-events: none;
+  box-shadow: none;
+}
+
+/* 어두운 연출이 필요한 곳(게임 무대 위 패널)에 쓰는 반전 카드 */
+.inverse {
+  background: var(--color-ink);
+  color: var(--color-white);
+}

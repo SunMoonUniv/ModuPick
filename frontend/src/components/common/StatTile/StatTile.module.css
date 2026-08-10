@@ -1,0 +1,44 @@
+/* Stat 타일 — 파운데이션 시트의 "Stat 3색 타일". 시안·핑크·옐로 파스텔을 순서대로 돌려가며 쓴다. */
+
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  padding: var(--space-3) var(--space-4);
+  border: var(--border-thin) solid var(--color-ink);
+  border-radius: var(--radius-stat);
+  min-width: 148px;
+}
+
+/* 첫 번째 타일 */
+.cyan {
+  background: var(--color-stat-cyan);
+}
+
+.label {
+  font-size: var(--font-size-meta);
+  color: var(--color-ink);
+}
+
+.value {
+  font-family: var(--font-title);
+  font-size: var(--font-size-name);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.1;
+}
+
+/* 두 번째 타일 */
+.pink {
+  background: var(--color-stat-pink);
+}
+
+/* 세 번째 타일 */
+.yellow {
+  background: var(--color-stat-yellow);
+}
+
+/* 지금 주목해야 하는 값 (내 기록, 1위 등) */
+.highlight {
+  background: var(--color-yellow);
+  box-shadow: var(--shadow-btn);
+}

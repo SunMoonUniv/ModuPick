@@ -1,0 +1,132 @@
+/* 당첨자 발표 결과 — Figma 542:1119 기준.
+   ResultScreen의 1920×1080 좌표계 위에 카드·다음 진행 패널·비껴간 사람 띠를 그대로 절대 배치한다. */
+
+/* ── 당첨자 카드 ── */
+
+.card {
+  position: absolute;
+  left: 59px;
+  top: 144px;
+  box-sizing: border-box;
+  width: 1221px;
+  height: 698px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 6.328px solid var(--color-ink);
+  border-radius: 25.313px;
+  box-shadow: 14.766px 14.766px 0 var(--color-ink);
+}
+
+/* 카드 위쪽을 가로지르는 핑크 띠 — 테두리 밖까지 꽉 채운다 */
+.banner {
+  position: absolute;
+  left: -6.33px;
+  top: -6.33px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1221px;
+  height: 72px;
+  background: var(--color-pink);
+  border-bottom: 4px solid var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-headline);
+  color: var(--color-white);
+  white-space: pre;
+}
+
+/* 아바타 뒤에 깔리는 분홍 후광 */
+.halo {
+  position: absolute;
+  left: 50%;
+  top: 75.67px;
+  transform: translateX(-50%);
+  width: 358.594px;
+  height: 358.594px;
+  border-radius: 50%;
+  background: var(--color-stat-pink);
+}
+
+.winnerRing {
+  position: absolute;
+  left: 50%;
+  top: 117.86px;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  width: 274.219px;
+  height: 274.219px;
+  background: var(--color-yellow);
+  border: 5.273px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+.winnerRing img {
+  position: absolute;
+  left: 13.71px;
+  top: 13.71px;
+  width: 236.25px;
+  height: 236.25px;
+  object-fit: cover;
+}
+
+/* 아바타 링 위로 반쯤 걸치는 왕관 */
+.crown {
+  position: absolute;
+  left: 50%;
+  top: 71.64px;
+  transform: translateX(-50%);
+  width: 100px;
+  height: 100px;
+}
+
+.winnerName {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 440.27px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 72px;
+  line-height: 1;
+  text-align: center;
+  color: var(--color-ink);
+}
+
+/* 어떤 게임에서 무엇에 당첨됐는지 알리는 잉크 알약 */
+.winnerPill {
+  position: absolute;
+  left: 50%;
+  top: 536.27px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8.438px;
+  padding: 10.547px 21.094px;
+  background: var(--color-ink);
+  border-radius: 42.188px;
+  font-family: var(--font-display);
+  font-size: var(--font-size-btn);
+  color: var(--color-yellow);
+  white-space: nowrap;
+}
+
+.winnerPill img {
+  width: 24px;
+  height: 24px;
+}
+
+/* 카드 맨 아래 한 줄 — 기본 줄높이로는 카드 밖으로 잘려서 줄높이를 1로 눌렀다 */
+.cardFooter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 665px;
+  line-height: 1;
+  text-align: center;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: rgba(14, 13, 20, 0.35);
+}
+
+/* 아래 "비껴간 사람" 띠는 저격 결과와 같은 판이라 SafeBand 컴포넌트로 빠져 있다 */

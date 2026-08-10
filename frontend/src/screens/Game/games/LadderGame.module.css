@@ -1,0 +1,286 @@
+/* 랜덤 사다리 무대 — Figma 542:935 기준.
+   GameScreen의 1920×1080 좌표계 위에 사다리판·주자·도착 칸·오른쪽 매칭 패널을 절대 배치한다.
+   레인 색과 x좌표는 인원수에 따라 달라져서 인라인 스타일로 준다. */
+
+/* ── 오른쪽 위 상태 ── */
+
+/* 제목 줄 오른쪽에 붙는 잉크 배너 */
+.startBanner {
+  position: absolute;
+  left: 587px;
+  top: 43.44px;
+  padding: 10.547px 18.984px;
+  background: var(--color-ink);
+  border-radius: 16.875px;
+  box-shadow: 3.164px 4.219px 0 var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-btn);
+  color: var(--color-yellow);
+  white-space: nowrap;
+}
+
+/* 기울어진 시안 카드 — 출발 신호 */
+.goCard {
+  position: absolute;
+  left: 1435px;
+  top: 47px;
+  padding: 11.602px 21.094px;
+  background: var(--color-cyan);
+  border: 4.219px solid var(--color-ink);
+  border-radius: 14.766px;
+  box-shadow: 5.273px 5.273px 0 var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-headline);
+  color: var(--color-ink);
+  white-space: nowrap;
+  transform: rotate(7deg);
+}
+
+.tracePill {
+  position: absolute;
+  left: 1655.36px;
+  top: 51.51px;
+  padding: 9.492px 15.82px;
+  background: var(--color-yellow);
+  border: 2.637px solid var(--color-ink);
+  border-radius: 42.188px;
+  box-shadow: 3.164px 3.164px 0 var(--color-ink);
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* ── 사다리판 ── */
+
+/* 세로 기둥 — 색만 레인마다 다르다 */
+.pole {
+  position: absolute;
+  top: 213.67px;
+  box-sizing: border-box;
+  width: 12.656px;
+  height: 610px;
+  border: 2.109px solid var(--color-ink);
+  border-radius: 6.328px;
+}
+
+/* 옆 레인으로 건너가는 가로줄 */
+.rung {
+  position: absolute;
+  height: 8px;
+  border-radius: 4.219px;
+  background: var(--color-white);
+}
+
+/* 주자가 지나온 자리에 남는 색 꼬리 */
+.trail {
+  position: absolute;
+  width: 18.984px;
+  height: 112.87px;
+  border-radius: 9.492px;
+}
+
+/* ── 주자 ── */
+
+/* 기둥 중심을 기준으로 아바타와 이름표를 얹는다 */
+.runner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  transform: translate(-50%, -50%);
+}
+
+.runnerChip {
+  padding: 2px 10px;
+  border: 2.109px solid var(--color-ink);
+  border-radius: 13.711px;
+  font-family: var(--font-display);
+  font-size: var(--font-size-sub);
+  line-height: 1.2;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.runnerRing {
+  position: relative;
+  box-sizing: border-box;
+  width: 61.172px;
+  height: 61.172px;
+  border: 2.637px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+.runnerRing img {
+  position: absolute;
+  left: 9.5px;
+  top: 9.5px;
+  width: 36.914px;
+  height: 36.914px;
+  object-fit: cover;
+}
+
+/* ── 도착 칸 ── */
+
+.goal {
+  position: absolute;
+  top: 844px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 70px;
+  padding: 0 12px;
+  border: 3.164px solid var(--color-ink);
+  border-radius: 12.656px;
+  box-shadow: 4.219px 4.219px 0 var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-sub);
+  color: var(--color-ink);
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+/* ── 오른쪽 매칭 현황 ── */
+
+.panel {
+  position: absolute;
+  left: 1312px;
+  top: 144px;
+  box-sizing: border-box;
+  width: 550px;
+  height: 770px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 3.164px solid var(--color-ink);
+  border-radius: 21.094px;
+  box-shadow: 6.328px 7.383px 0 var(--color-ink);
+}
+
+.panelTitle {
+  position: absolute;
+  left: 16.84px;
+  top: 16.84px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-name);
+  color: var(--color-ink);
+}
+
+.panelNote {
+  position: absolute;
+  left: 16.84px;
+  top: 55.84px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-meta);
+}
+
+.panelRule {
+  position: absolute;
+  left: 16.84px;
+  top: 87.84px;
+  width: 510px;
+  height: 3px;
+  background: #d9d9e0;
+}
+
+/* 카드 6장까지는 그대로 들어가고, 인원이 더 많으면 이 안에서만 스크롤된다 */
+.panelList {
+  position: absolute;
+  left: 16.84px;
+  top: 104.84px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 524px;
+  height: 645px;
+  padding-right: 14px;
+  overflow-y: auto;
+}
+
+.memberCard {
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 510px;
+  height: 95px;
+  border: 2.637px solid var(--color-ink);
+  border-radius: 14.766px;
+  box-shadow: 4.219px 4.219px 0 var(--color-ink);
+}
+
+/* 링 색은 그 사람의 레인 색과 같아서 인라인으로 준다 */
+.memberAvatar {
+  position: absolute;
+  left: 11.36px;
+  top: 16.86px;
+  box-sizing: border-box;
+  width: 56px;
+  height: 56px;
+  border: 2.637px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+.memberAvatar img {
+  position: absolute;
+  left: 5.36px;
+  top: 5.36px;
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+}
+
+.memberName {
+  position: absolute;
+  left: 85.36px;
+  top: 27.36px;
+  max-width: 96px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-display);
+  font-size: var(--font-size-name);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* 배정 결과가 들어갈 자리 — 확정 전에는 물음표만 돈다 */
+.roleSlot {
+  position: absolute;
+  left: 187.36px;
+  top: 20.61px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 304px;
+  height: 48.516px;
+  background: var(--color-white);
+  border: 1.582px solid #d1d1db;
+  border-radius: 12.656px;
+}
+
+.roleValue {
+  font-family: var(--font-display);
+  font-size: var(--font-size-btn);
+  color: var(--color-ink);
+}
+
+.rolePending {
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-sub);
+  color: rgba(14, 13, 20, 0.42);
+}
+
+/* 슬롯 오른쪽 끝에서 색으로 깜빡이는 물음표 */
+.roleMark {
+  position: absolute;
+  right: 16px;
+  font-family: var(--font-display);
+  font-size: var(--font-size-headline);
+  line-height: 1;
+}

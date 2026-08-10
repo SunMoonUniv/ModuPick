@@ -1,0 +1,268 @@
+/* ModuPick 디자인 토큰 — Figma "00 · 파운데이션 & 토큰" 시트(노드 543:13)에서 추출한 값.
+   디자인 언어는 네오브루탈리즘이다: 보라 배경 위에 잉크색 두꺼운 테두리 + 오프셋 하드 그림자(번짐 없음).
+
+   화면/컴포넌트는 색·간격·라디우스·섀도우·폰트를 직접 쓰지 않고 여기 정의된 변수만 참조한다.
+   Figma에 바인딩된 변수가 없어(get_variable_defs가 빈 객체) 이 파일이 토큰의 유일한 정본이다. */
+
+@import url('https://fonts.googleapis.com/css2?family=Black+Han+Sans&family=Do+Hyeon&family=Gothic+A1:wght@500;700;800&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=Nanum+Gothic+Coding:wght@700&display=swap');
+
+:root {
+  /* ── 팔레트 (PALETTE 섹션 그대로) ── */
+  /* 모든 화면의 바탕색. 흰 배경이 아니라 이 보라 위에 카드를 얹는 구조다 */
+  --color-bg-purple: #5b2de7;
+  /* 테두리·본문 텍스트·CTA 배경에 전부 쓰이는 기준 검정 */
+  --color-ink: #0e0d14;
+  /* 강조, 본인 채팅 말풍선 */
+  --color-pink: #ff4fd4;
+  /* 강조 뱃지, 주요 액션 */
+  --color-yellow: #ffe23e;
+  /* 보조 강조, 어두운 버튼 위의 글자색 */
+  --color-cyan: #57ebfa;
+  /* READY·긍정 상태 */
+  --color-green: #46e08a;
+  /* 보조 배경, 시스템 메시지 */
+  --color-lavender: #c9b8ff;
+  /* 입력 필드 배경 */
+  --color-input: #f7f7fa;
+  /* 프로그레스 트랙, 비활성 뱃지 배경 */
+  --color-track: #e5e5eb;
+  --color-white: #ffffff;
+
+  /* ── 보조 색 (컴포넌트 시트에서 확인된 값) ── */
+  /* 플레이스홀더·비활성 라벨 */
+  --color-muted: #8c8a99;
+  /* 보라 배경 위 점선 빈자리 행의 테두리·글자 */
+  --color-empty: #d1c7f2;
+  /* Stat 3색 타일 — 순서대로 시안·핑크·옐로의 파스텔 버전 */
+  --color-stat-cyan: #c9f5f7;
+  --color-stat-pink: #ffcaf2;
+  --color-stat-yellow: #fff6cc;
+  /* Safe Band 칩 배경 */
+  --color-safe: #c6f0d6;
+  /* 눈치게임 결과의 라운드 기록 표 — 행 바탕 · 통과 칩 · 시간 초과 탈락 칩 · 동시 입력 강조 */
+  --color-row-soft: #faf9fd;
+  --color-pass-soft: #e8fbf0;
+  --color-timeout-soft: #ffe4f6;
+  --color-stat-amber: #fff3b0;
+  /* 결과 화면 색종이·강조에 쓰는 연보라 — 팔레트의 --color-lavender보다 진하다 */
+  --color-lilac: #b899ff;
+  /* 사다리 6번째 레인처럼 시안이 한 번 더 필요할 때 쓰는 청록 */
+  --color-teal: #73e5e5;
+  /* 시간초 잡기의 경고 빨강 — 나가기 버튼(--color-leave)보다 채도가 높아 숫자에서도 읽힌다 */
+  --color-alert: #ff474d;
+  /* 기록 결과의 오차가 가장 작은 쪽을 칠하는 녹색 — 팔레트의 --color-online보다 차분해 작은 칩에서도 글자가 읽힌다 */
+  --color-error-near: #4acc70;
+  /* 흰 카드 위 정확도 막대의 빈 구간 — 회색 --color-track과 달리 보라 계열이라 카드 톤이 이어진다 */
+  --color-track-soft: #efecfb;
+  /* 결과 화면 "비껴간 사람" 카드가 순서대로 돌려 쓰는 파스텔 5색 */
+  --color-pastel-1: #bff4d6;
+  --color-pastel-2: #ffcaf2;
+  --color-pastel-3: #cdf9fd;
+  --color-pastel-4: #eae0ff;
+  --color-pastel-5: #d5f7f7;
+  /* "● 접속 중"·READY 같은 온라인 표시 — 팔레트의 --color-green보다 진해서 흰 카드 위에서 읽힌다 */
+  --color-online: #29db78;
+  /* 참가자 명단에서 "나"인 행의 옅은 하늘색 바탕 */
+  --color-mine: #eafdff;
+  /* 표지(홈) 게임 카드 바탕 — 6종을 서로 구분하려고 팔레트에 없는 세 색을 추가로 쓴다 */
+  --color-orange: #ff8833;
+  --color-salmon: #ff8c8c;
+  --color-violet: #9e66ff;
+
+  /* ── 화면 프레임(542:xxx)에서만 쓰이는 색 ── */
+  /* 게임 시작 버튼 */
+  --color-start: #18ce4e;
+  /* 나가기 버튼 */
+  --color-leave: #fa5c57;
+  /* 채팅의 시스템 알림 알약 배경과 글자 */
+  --color-system-bg: #efebfb;
+  --color-system-text: #6b6b7d;
+  /* 채팅 작성자·시각 같은 흐린 메타 */
+  --color-meta: #80808c;
+  /* 하단 상태 밴드의 보조 설명 줄 — --color-meta보다 진해서 흰 밴드 위에서 또렷하다 */
+  --color-band-meta: #666673;
+  /* 게임 아이콘 배지 배경 — 게임 6종 순서대로 */
+  --color-game-roulette: #ff6b3e;
+  --color-game-ladder: #57ebfa;
+  --color-game-kingmaker: #ffe23e;
+  --color-game-timer: #29db78;
+  --color-game-snipe: #ffb041;
+  --color-game-nunchi: #b899ff;
+
+  /* 이미 다른 사람이 확정해 고를 수 없는 아바타 타일의 회색 배경 */
+  --color-avatar-taken: #ccc9d6;
+
+  /* 익명 저격의 사격장 연출 — 조준선은 경고 빨강을 살짝 투명하게, 총알 궤적은 더 옅게 깐다 */
+  --color-scope: rgba(255, 71, 77, 0.9);
+  --color-tracer: rgba(255, 71, 77, 0.55);
+  /* 흰 카드 위에 깔리는 방안지 격자 — 보라 계열이라 카드 톤을 해치지 않는다 */
+  --color-grid-soft: rgba(124, 58, 237, 0.14);
+  /* 팔레트의 --color-cyan보다 한 톤 가라앉은 청록 — 사격장 라벨 알약처럼 강조가 아닌 상태 표시에 쓴다 */
+  --color-cyan-mid: #4adee5;
+
+  /* ── 잉크 반투명 단계 ── */
+  /* 흰 카드 위에서 본문보다 한 단계 낮은 글자에 쓴다. 회색 --color-muted와 달리 배경색이 비쳐 톤이 이어진다 */
+  /* 카드 안 구분선 */
+  --color-ink-12: rgba(14, 13, 20, 0.12);
+  /* 글자수 카운터처럼 가장 흐린 보조 정보 */
+  --color-ink-45: rgba(14, 13, 20, 0.45);
+  /* 이름 아래 한 줄 소개 */
+  --color-ink-55: rgba(14, 13, 20, 0.55);
+  /* 밝은 타일 위 작은 라벨 */
+  --color-ink-85: rgba(14, 13, 20, 0.85);
+
+  /* ── 흰색 반투명 단계 (보라 배경 위 부제·설명) ── */
+  /* 잉크색 띠 위에 얹는 단계 — 게이지 트랙·아직 안 채워진 눈금처럼 바탕이 비쳐야 하는 자리 */
+  --color-white-12: rgba(255, 255, 255, 0.12);
+  --color-white-45: rgba(255, 255, 255, 0.45);
+  --color-white-55: rgba(255, 255, 255, 0.55);
+  --color-white-80: rgba(255, 255, 255, 0.8);
+  --color-white-90: rgba(255, 255, 255, 0.9);
+
+  /* 인게임 무대 배경 — 대기방의 밝은 보라보다 어둡게 깔아 연출에 집중시킨다 (S-05a 프레임 기준) */
+  --color-stage: #2e1a63;
+  /* 무대 뒤에 은은하게 퍼지는 방사형 글로우 */
+  --color-stage-glow: #4a2596;
+
+  /* 화면 전체를 감싸는 장식용 창틀 — 잉크 테두리 + 네 모서리의 핑크 정사각형 */
+  --frame-border: 6px;
+  --frame-inset: 17px;
+  --frame-corner: 17px;
+
+  /* ── 폰트 패밀리 ── */
+  /* 화면 제목·히어로 — 가장 굵은 제목용 */
+  --font-display: 'Black Han Sans', sans-serif;
+  /* 게임 헤드라인·이름·버튼 라벨 */
+  --font-title: 'Do Hyeon', sans-serif;
+  /* 본문 전체 */
+  --font-body: 'IBM Plex Sans KR', system-ui, sans-serif;
+  /* 메타·설명 줄 — 화면 프레임이 고정폭 계열을 써서 기술적인 인상을 준다 */
+  --font-meta: 'Nanum Gothic Coding', var(--font-body);
+  /* 채팅 말풍선 */
+  --font-chat: 'Gothic A1', var(--font-body);
+
+  /* ── 타입 래더 ── */
+  /* 결과 화면 당첨자 이름 */
+  --font-size-hero: 60px;
+  /* 화면 대제목·카드 안 주인공 이름 (프로필 "캐릭터를 골라줘!", 내 캐릭터 카드의 닉네임) */
+  --font-size-display: 56px;
+  /* 화면 제목 */
+  --font-size-title: 44px;
+  /* 섹션 헤드 */
+  --font-size-head: 40px;
+  /* 게임 헤드라인 */
+  --font-size-headline: 34px;
+  /* 참가자 이름·카드 제목 */
+  --font-size-name: 28px;
+  /* 버튼·칩·강조 */
+  --font-size-btn: 24px;
+  /* 기본 본문·채팅 말풍선 */
+  --font-size-body: 22px;
+  /* 서브라인·설명 */
+  --font-size-sub: 20px;
+  /* 메타·뱃지·타임스탬프 */
+  --font-size-meta: 18px;
+  /* 알약 안 짧은 문구·카운터 — 파운데이션 시트의 18px 하한보다 작지만 실제 화면 프레임이 이 크기를 쓴다 */
+  --font-size-micro: 16px;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  /* 본문 기본 굵기 — Figma가 본문/서브/메타를 전부 Medium으로 쓴다. 컴포넌트에서 400으로 되돌리지 말 것 */
+  --font-weight-body: 500;
+
+  /* ── 간격 (4 · 8 · 12 · 16 · 20 · 24 · 32 · 59) ── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  /* 화면 좌우 여백과 같은 값 — 큰 덩어리 사이 간격에도 쓴다 */
+  --space-margin: 59px;
+
+  /* ── 라디우스 ── */
+  /* 입력 필드 */
+  --radius-input: 11px;
+  --radius-btn: 14px;
+  --radius-stat: 12px;
+  --radius-bubble: 16px;
+  /* 아바타 선택 타일 */
+  --radius-tile: 17px;
+  --radius-card: 20px;
+  /* 화면 주인공 카드 (프로필의 "내 캐릭터" 카드처럼 큰 덩어리) */
+  --radius-card-lg: 25px;
+  --radius-pill: 999px;
+
+  /* ── 테두리 두께 ── */
+  /* 카드·밴드 */
+  --border-card: 5px;
+  /* 칩·버튼 */
+  --border-control: 4px;
+  /* 뱃지·말풍선·입력·Stat 타일 */
+  --border-thin: 3px;
+  /* Safe Band 칩처럼 작은 요소 */
+  --border-hair: 2px;
+
+  /* ── 섀도우 (번짐 0의 오프셋 그림자 — 네오브루탈리즘의 핵심) ── */
+  /* 작은 알약·뱃지 */
+  --shadow-sm: 3px 3px 0 var(--color-ink);
+  --shadow-hard: 6px 6px 0 var(--color-ink);
+  --shadow-btn: 4px 4px 0 var(--color-ink);
+  /* 화면 폭을 크게 차지하는 주요 버튼 */
+  --shadow-lg: 8px 8px 0 var(--color-ink);
+  /* 화면 주인공 카드 — 오프셋이 클수록 앞으로 튀어나와 보인다 */
+  --shadow-xl: 12px 12px 0 var(--color-ink);
+  /* 버튼을 눌렀을 때 그림자를 줄여 실제로 눌린 것처럼 보이게 한다 */
+  --shadow-btn-pressed: 1px 1px 0 var(--color-ink);
+  /* 보라 배경 위 흰 대제목에 넣는 잉크색 그림자 (text-shadow 전용) */
+  --shadow-text: 4px 4px 0 var(--color-ink);
+  /* 표지(홈) 히어로 카피처럼 100px를 넘는 글자에 쓰는 더 두꺼운 잉크 그림자 */
+  --shadow-text-lg: 6px 6px 0 var(--color-ink);
+
+  /* ── 그리드 (FHD 1920×1080 고정, 반응형 없음) ── */
+  --layout-width: 1920px;
+  --layout-height: 1080px;
+  /* 좌우 여백 */
+  --layout-margin: 59px;
+  /* 여백을 뺀 콘텐츠 폭 */
+  --content-width: 1803px;
+  /* 헤더: 제목 y44 높이 48, 서브라인 y100 */
+  --header-title-top: 44px;
+  --header-title-height: 48px;
+  --header-sub-top: 100px;
+  /* 콘텐츠 영역: y144부터 높이 770 (y914까지) */
+  --content-top: 144px;
+  --content-height: 770px;
+  /* 하단 액션 밴드: y938, 높이 108 */
+  --band-top: 938px;
+  --band-height: 108px;
+  /* 2컬럼 레이아웃: 좌 1221 + 갭 32 + 우 550 */
+  --col2-left: 1221px;
+  --col2-right: 550px;
+  --col2-gap: 32px;
+  /* 3컬럼 레이아웃(대기방): 549 + 528 + 670, 갭 28 */
+  --col3-a: 549px;
+  --col3-b: 528px;
+  --col3-c: 670px;
+  --col3-gap: 28px;
+
+  /* ── 아바타 지름 (⌀42~72) ── */
+  --avatar-sm: 42px;
+  --avatar-md: 56px;
+  --avatar-lg: 72px;
+  /* 결과 화면 당첨자용 큰 아바타 */
+  --avatar-xl: 160px;
+
+  /* ── 모션 ── */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --duration-fast: 120ms;
+  --duration-normal: 240ms;
+  --duration-slow: 420ms;
+
+  /* ── 레이어 ── */
+  --z-sticky: 10;
+  --z-overlay: 100;
+  --z-modal: 200;
+  --z-toast: 300;
+}

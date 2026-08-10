@@ -1,0 +1,76 @@
+/* 아바타 선택 칸 — Figma 542:724(그리드) · 618:5799(상태별 컴포넌트) 기준. 140×146 고정. */
+
+.tile {
+  position: relative;
+  width: 140px;
+  height: 146px;
+  border: var(--border-thin) solid var(--color-ink);
+  border-radius: var(--radius-tile);
+  box-shadow: var(--shadow-btn);
+  overflow: hidden;
+  transition:
+    transform var(--duration-fast) var(--ease-out),
+    box-shadow var(--duration-fast) var(--ease-out);
+}
+
+.tile:hover:not(:disabled):not(.selected) {
+  transform: translate(-2px, -2px);
+  box-shadow: var(--shadow-hard);
+}
+
+.tile:active:not(:disabled) {
+  transform: translate(2px, 2px);
+  box-shadow: var(--shadow-btn-pressed);
+}
+
+/* 아바타 그림이 칸을 거의 꽉 채우고 위쪽에 살짝 붙는다 — 아래에 상태 라벨 자리를 남기기 위해서다 */
+.image {
+  position: absolute;
+  top: 7px;
+  left: 50%;
+  translate: -50% 0;
+  width: 126px;
+  height: 126px;
+  object-fit: cover;
+  pointer-events: none;
+}
+
+/* 내가 고른 칸 — 옐로 바탕에 핑크 테두리로 그리드에서 단번에 눈에 띄게 한다 */
+.selected {
+  background: var(--color-yellow);
+  border-width: var(--border-control);
+  border-color: var(--color-pink);
+  box-shadow: var(--shadow-hard);
+}
+
+/* "★ 내 캐릭터" 알약 — 칸 아래쪽 왼편에 거의 붙여 얹는다 */
+.label {
+  position: absolute;
+  left: 12px;
+  bottom: 2px;
+}
+
+/* 다른 사람이 확정한 칸 — 회색 + 점선 + 반투명으로 "고를 수 없음"을 세 겹으로 알린다 */
+.taken {
+  background: var(--color-avatar-taken);
+  border-style: dashed;
+  box-shadow: none;
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* 선점 칸은 아래쪽에 "선점됨" 라벨이 들어와야 해서 그림을 위로 더 붙인다 */
+.taken .image {
+  top: 1px;
+}
+
+.takenLabel {
+  position: absolute;
+  bottom: 10px;
+  left: 0;
+  width: 100%;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink-85);
+}

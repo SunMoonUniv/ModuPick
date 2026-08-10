@@ -1,0 +1,103 @@
+/* 결과 화면 아래 "비껴간 사람" 띠 — Figma 542:1119 / 542:2476이 같은 값을 쓴다.
+   ResultScreen의 1920×1080 좌표계 위에 그대로 절대 배치한다. */
+
+.band {
+  position: absolute;
+  left: 59px;
+  top: 866px;
+  box-sizing: border-box;
+  width: 1803px;
+  height: 180px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 4.219px solid var(--color-ink);
+  border-radius: 16.875px;
+  box-shadow: 8.438px 8.438px 0 var(--color-ink);
+}
+
+.title {
+  position: absolute;
+  left: 32.78px;
+  top: 15.78px;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  color: var(--color-ink);
+}
+
+/* 카드 5장까지는 그대로 들어가고, 인원이 더 많으면 가로로 스크롤된다 */
+.list {
+  position: absolute;
+  left: 32.78px;
+  top: 51.78px;
+  display: flex;
+  gap: 20px;
+  width: 1730px;
+  height: 110px;
+  overflow-x: auto;
+}
+
+.card {
+  position: relative;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 330px;
+  height: 100px;
+  border: 2.637px solid var(--color-ink);
+  border-radius: 12.656px;
+  box-shadow: 4.219px 4.219px 0 var(--color-ink);
+}
+
+/* 링 색은 카드 배경과 짝지어 인라인으로 준다 */
+.avatar {
+  position: absolute;
+  left: 16.03px;
+  top: 15.72px;
+  box-sizing: border-box;
+  width: 63.281px;
+  height: 63.281px;
+  border: 3.164px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+.avatar img {
+  position: absolute;
+  left: 13px;
+  top: 9.5px;
+  width: 36.914px;
+  height: 36.914px;
+  object-fit: cover;
+}
+
+.name {
+  position: absolute;
+  left: 121.82px;
+  top: 34.86px;
+  max-width: 66px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-sub);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.pill {
+  position: absolute;
+  left: 192.03px;
+  top: 33.65px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 114.667px;
+  height: 27.422px;
+  background: var(--color-white);
+  border: 2.109px solid var(--color-ink);
+  border-radius: 42.188px;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+}

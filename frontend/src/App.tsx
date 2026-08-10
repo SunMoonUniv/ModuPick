@@ -1,41 +1,67 @@
-import { useEffect, useState } from "react";
-import { useApp } from "./lib/store";
-import { Landing } from "./screens/Landing";
-import { CreateRoom } from "./screens/CreateRoom";
-import { Profile } from "./screens/Profile";
-import { Lobby } from "./screens/Lobby";
-import { GameHost } from "./screens/GameHost";
-import { Result } from "./screens/Result";
-import { Modals } from "./components/Modals";
+import { useEffect } from 'react'
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 
-/** 1920×1080 고정 스테이지(D-17)를 뷰포트에 맞춰 스케일 — 발표 화면 대응 */
-function useStageScale() {
-  const [scale, setScale] = useState(1);
+import { useRoomStore } from './store/roomStore'
+import { HomeScreen } from './screens/Home/HomeScreen'
+import { CreateRoomScreen } from './screens/CreateRoom/CreateRoomScreen'
+import { JoinRoomScreen } from './screens/JoinRoom/JoinRoomScreen'
+import { ProfileScreen } from './screens/Profile/ProfileScreen'
+import { WaitingRoomScreen } from './screens/WaitingRoom/WaitingRoomScreen'
+import { GameScreen } from './screens/Game/GameScreen'
+import { ResultScreen } from './screens/Result/ResultScreen'
+import { ClosedScreen } from './screens/Closed/ClosedScreen'
+
+// 방 상태가 바뀌면 전원이 같은 화면으로 넘어가야 하므로, 라우팅을 사용자 클릭이 아니라 스토어 상태로 결정한다.
+// (예: 방장이 게임을 시작하면 참가자 화면도 자동으로 /game으로 이동)
+function useStateDrivenRouting() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const connection = useRoomStore((s) => s.connection)
+  const closed = useRoomStore((s) => s.closed)
+  const round = useRoomStore((s) => s.round)
+  const result = useRoomStore((s) => s.result)
+  const serverOffsetMs = useRoomStore((s) => s.serverOffsetMs)
+
   useEffect(() => {
-    const onResize = () =>
-      setScale(Math.min(window.innerWidth / 1920, window.innerHeight / 1080));
-    onResize();
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
-  return scale;
+    if (closed) {
+      if (location.pathname !== '/closed') navigate('/closed', { replace: true })
+      return
+    }
+    if (connection !== 'connected') return
+
+    if (round) {
+      if (location.pathname !== '/game') navigate('/game', { replace: true })
+      return
+    }
+    // 라운드가 닫혀 대기방으로 돌아온 경우
+    if (location.pathname === '/game' || location.pathname === '/result')
+      navigate('/room', { replace: true })
+  }, [closed, connection, round, location.pathname, navigate])
+
+  // 결과 화면 전환은 서버가 준 절대 시각에 맞춰 전원이 동시에 일어나야 한다 (API-05)
+  useEffect(() => {
+    if (!result) return
+    const at = new Date(result.resultScreenAt).getTime()
+    const delay = Math.max(0, at - (Date.now() + serverOffsetMs))
+    const id = setTimeout(() => navigate('/result', { replace: true }), delay)
+    return () => clearTimeout(id)
+  }, [result, serverOffsetMs, navigate])
 }
 
-export default function App() {
-  const screen = useApp((s) => s.screen);
-  const scale = useStageScale();
+export function App() {
+  useStateDrivenRouting()
 
   return (
-    <div className="stage-viewport">
-      <div className="stage" style={{ transform: `scale(${scale})` }}>
-        {screen === "landing" && <Landing />}
-        {screen === "create" && <CreateRoom />}
-        {screen === "profile" && <Profile />}
-        {screen === "lobby" && <Lobby />}
-        {screen === "game" && <GameHost />}
-        {screen === "result" && <Result />}
-        <Modals />
-      </div>
-    </div>
-  );
+    <Routes>
+      <Route path="/" element={<HomeScreen />} />
+      <Route path="/create" element={<CreateRoomScreen />} />
+      <Route path="/join" element={<JoinRoomScreen />} />
+      <Route path="/profile" element={<ProfileScreen />} />
+      <Route path="/room" element={<WaitingRoomScreen />} />
+      <Route path="/game" element={<GameScreen />} />
+      <Route path="/result" element={<ResultScreen />} />
+      <Route path="/closed" element={<ClosedScreen />} />
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  )
 }

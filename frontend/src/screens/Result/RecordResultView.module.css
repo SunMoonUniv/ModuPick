@@ -1,0 +1,433 @@
+/* 기록 순위 결과 — Figma 542:2292 기준.
+   ResultScreen의 1920×1080 좌표계 위에 결과 카드 · 다음 진행 패널 · 기록 분포 띠를 그대로 절대 배치한다. */
+
+/* ── 기록 순위 카드 ── */
+
+.card {
+  position: absolute;
+  left: 59px;
+  top: 144px;
+  box-sizing: border-box;
+  width: 1221px;
+  height: 698px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 6.328px solid var(--color-ink);
+  border-radius: 25.313px;
+  box-shadow: 14.766px 14.766px 0 var(--color-ink);
+  /* 프레임의 글자는 전부 기본 줄높이다 — 본문 기본값(1.5)을 쓰면 순위표 줄 간격이 벌어진다 */
+  line-height: normal;
+}
+
+/* 카드 위쪽을 가로지르는 노란 띠 — 테두리 밖까지 꽉 채운다 */
+.banner {
+  position: absolute;
+  left: -6.33px;
+  top: -6.33px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1221.333px;
+  height: 67.5px;
+  background: var(--color-yellow);
+  border-bottom: 4.219px solid var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-headline);
+  color: var(--color-ink);
+  white-space: pre;
+}
+
+/* ── 왼쪽 1위 스포트라이트 ── */
+
+/* 아바타 뒤에 깔리는 분홍 후광 */
+.halo {
+  position: absolute;
+  left: 57.67px;
+  top: 109.69px;
+  width: 278.438px;
+  height: 278.438px;
+  border-radius: 50%;
+  background: var(--color-stat-pink);
+}
+
+/* 링 색은 1위 순위 색과 같아서 인라인으로 받는다 */
+.ring {
+  position: absolute;
+  left: 88.67px;
+  top: 141.67px;
+  box-sizing: border-box;
+  width: 215.156px;
+  height: 215.156px;
+  border: 6.328px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+.ring img {
+  position: absolute;
+  left: 8.67px;
+  top: 8.67px;
+  width: 185.625px;
+  height: 185.625px;
+  object-fit: cover;
+}
+
+/* 후광 위쪽에 반쯤 걸치는 트로피 — 후광과 같은 축(x 196.67)에 놓는다 */
+.trophy {
+  position: absolute;
+  left: 0;
+  top: 69.67px;
+  width: 393.34px;
+  text-align: center;
+  font-size: 72px;
+  line-height: 1;
+}
+
+/* 이름·알약·설명 줄은 모두 후광과 같은 축(x 196.67)에 가운데를 맞춘다 */
+.winnerName {
+  position: absolute;
+  left: 0;
+  top: 360.67px;
+  width: 393.34px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 72px;
+  line-height: 1;
+  color: var(--color-ink);
+}
+
+/* 1위의 오차를 알리는 잉크 알약 */
+.winnerPill {
+  position: absolute;
+  left: 196.67px;
+  top: 447.19px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8.438px;
+  padding: 10.547px 21.094px;
+  background: var(--color-ink);
+  border-radius: 42.188px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-btn);
+  color: var(--color-yellow);
+  white-space: nowrap;
+}
+
+/* 알약 왼쪽 시계 이모지는 글자보다 한 단계 작다 */
+.winnerPillIcon {
+  font-size: var(--font-size-sub);
+}
+
+.winnerSub {
+  position: absolute;
+  left: 0;
+  top: 505.36px;
+  width: 393.34px;
+  text-align: center;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+/* ── 오른쪽 순위표 ── */
+
+.listTitle {
+  position: absolute;
+  left: 570.65px;
+  top: 103.36px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-sub);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* 6명은 스크롤 없이 들어가고, 최대 10명이면 이 영역 안에서만 세로로 스크롤된다 */
+.records {
+  position: absolute;
+  left: 583.01px;
+  top: 156.43px;
+  display: flex;
+  flex-direction: column;
+  gap: 14.766px;
+  width: 560px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.record {
+  display: flex;
+  align-items: center;
+  gap: 10.547px;
+  flex-shrink: 0;
+}
+
+.rank {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 31.641px;
+  height: 31.641px;
+  background: var(--color-white);
+  border: 2.109px solid var(--color-ink);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-meta);
+  color: var(--color-ink);
+}
+
+/* 1위만 색을 뒤집어 검은 배지로 만든다 */
+.rankTop {
+  background: var(--color-ink);
+  color: var(--color-yellow);
+}
+
+/* 링 색은 순위 색과 짝지어 인라인으로 준다 */
+.avatar {
+  position: relative;
+  box-sizing: border-box;
+  flex-shrink: 0;
+  width: 40.078px;
+  height: 40.078px;
+  border: 2.637px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+.avatar img {
+  position: absolute;
+  left: 1.05px;
+  top: 1.05px;
+  width: 32.695px;
+  height: 32.695px;
+  object-fit: cover;
+}
+
+/* 닉네임은 최대 8자까지 들어와 프레임의 2자 폭(40px)보다 넓게 잡고, 넘치면 말줄임한다 */
+.name {
+  flex-shrink: 0;
+  width: 88px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.score {
+  flex-shrink: 0;
+  width: 78px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-sub);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* 오차가 적을수록 길게 차는 막대 */
+.accuracy {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  width: 147.656px;
+  height: 21.094px;
+  overflow: hidden;
+  background: var(--color-track-soft);
+  border: 2.109px solid var(--color-ink);
+  border-radius: 10.547px;
+}
+
+.accuracyFill {
+  display: block;
+  height: 100%;
+  border-radius: 10.547px;
+}
+
+/* 목표 대비 시간차 알약 */
+.dev {
+  flex-shrink: 0;
+  padding: 5.273px 12.656px;
+  background: var(--color-white);
+  border: 2.109px solid var(--color-ink);
+  border-radius: 42.188px;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.devTop {
+  background: var(--color-ink);
+  color: var(--color-yellow);
+}
+
+/* 카드 맨 아래 한 줄 — 기본 줄높이로는 카드 밖으로 잘려서 줄높이를 1로 눌렀다 */
+.cardFooter {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 641.47px;
+  line-height: 1;
+  text-align: center;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: rgba(14, 13, 20, 0.35);
+}
+
+/* ── 아래 기록 분포 띠 ── */
+
+.spread {
+  position: absolute;
+  left: 59px;
+  top: 866px;
+  box-sizing: border-box;
+  width: 1803px;
+  height: 180px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 4.219px solid var(--color-ink);
+  border-radius: 16.875px;
+  box-shadow: 8.438px 8.438px 0 var(--color-ink);
+  line-height: normal;
+}
+
+.spreadTitle {
+  position: absolute;
+  left: 32.78px;
+  top: 15.78px;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  color: var(--color-ink);
+}
+
+/* 마크가 늘어서는 축 — 왼쪽(1위)부터 오른쪽(꼴찌)까지 오차 등급 색이 이어진다 */
+.spreadTrack {
+  position: absolute;
+  left: 82.11px;
+  top: 78.78px;
+  width: 1400px;
+  height: 6px;
+  border-radius: 3px;
+  opacity: 0.25;
+  background: linear-gradient(
+    90deg,
+    var(--color-error-near) 0%,
+    var(--color-yellow) 34%,
+    var(--color-pink) 67%,
+    var(--color-lilac) 100%
+  );
+}
+
+/* 목표에 가장 가까운 왼쪽 끝을 짚는 세로 눈금 */
+.spreadGoalTick {
+  position: absolute;
+  left: 82.11px;
+  top: 38.78px;
+  width: 2.1px;
+  height: 40px;
+  background: var(--color-pink);
+}
+
+.spreadGoal {
+  position: absolute;
+  left: 455.78px;
+  top: 14.78px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 132px;
+  height: 26px;
+  background: var(--color-pink);
+  border: 2.109px solid var(--color-ink);
+  border-radius: 42.188px;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-white);
+  white-space: nowrap;
+}
+
+/* 참가자 한 명분 — 좌표는 컴포넌트가 순위 간격으로 계산해 인라인으로 준다 (중심선 기준) */
+.mark {
+  position: absolute;
+  top: 0;
+  width: 0;
+}
+
+.markAvatar {
+  position: absolute;
+  left: 50%;
+  top: 53.78px;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  width: 56px;
+  height: 56px;
+  border: 3.5px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+.markAvatar img {
+  position: absolute;
+  left: 2.5px;
+  top: 2.5px;
+  width: 44px;
+  height: 44px;
+  object-fit: cover;
+}
+
+/* 1위만 테두리를 한 단계 두껍게 해서 눈에 먼저 걸리게 한다 */
+.markTop {
+  border-width: 4.5px;
+}
+
+.markTop img {
+  left: 1.5px;
+  top: 1.5px;
+}
+
+.markName {
+  position: absolute;
+  left: 50%;
+  top: 111.78px;
+  transform: translateX(-50%);
+  width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.markDev {
+  position: absolute;
+  left: 50%;
+  top: 138.78px;
+  transform: translateX(-50%);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 23px;
+  border: 2px solid var(--color-ink);
+  border-radius: 11.5px;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+}

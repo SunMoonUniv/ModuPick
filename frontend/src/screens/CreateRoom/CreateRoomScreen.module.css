@@ -1,0 +1,567 @@
+/* 방 만들기 (S-02) — Figma 542:1922 기준.
+   디자인이 FHD 1920×1080 고정이라 요소를 프레임 좌표 그대로 절대 배치한다.
+   왼쪽은 입력 카드 두 장 + 안내 줄, 오른쪽은 미리보기 패널, 아래는 상태 밴드다. */
+
+.screen {
+  position: relative;
+  width: var(--layout-width);
+  height: var(--layout-height);
+}
+
+/* ── 머리말 ── */
+
+.title {
+  position: absolute;
+  left: 59px;
+  top: 44px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-head);
+  line-height: 1;
+  color: var(--color-white);
+}
+
+.subtitle {
+  position: absolute;
+  left: 59px;
+  top: 100px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  letter-spacing: 1.0547px;
+  color: var(--color-cyan);
+}
+
+.backButton {
+  position: absolute;
+  left: 1730.6px;
+  top: 53.12px;
+  padding: 9.492px 15.82px;
+  background: var(--color-white);
+  border: 2.637px solid var(--color-ink);
+  border-radius: 42.188px;
+  box-shadow: 3.164px 3.164px 0 var(--color-ink);
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  color: var(--color-ink);
+  white-space: pre;
+}
+
+/* ── 입력 카드 공통 ── */
+
+.nameCard,
+.membersCard {
+  position: absolute;
+  left: 59.33px;
+  box-sizing: border-box;
+  width: 1221px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 5.273px solid var(--color-ink);
+  border-radius: 21.094px;
+  box-shadow: 6.328px 6.328px 0 var(--color-ink);
+}
+
+.nameCard {
+  top: 143.85px;
+  height: 228px;
+}
+
+.membersCard {
+  top: 431.85px;
+  height: 320px;
+}
+
+.cardTitle {
+  position: absolute;
+  left: 34.73px;
+  top: 22.73px;
+  font-family: var(--font-display);
+  font-size: var(--font-size-name);
+  color: var(--color-ink);
+}
+
+.cardHint {
+  position: absolute;
+  left: 34.73px;
+  top: 63.73px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+  opacity: 0.6;
+}
+
+/* ── 방 이름 입력 ── */
+
+.nameInput {
+  position: absolute;
+  left: 34.73px;
+  top: 102.73px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 8.438px;
+  width: 1141px;
+  height: 80px;
+  padding: 0 23.203px;
+  background: var(--color-input);
+  border: 3.164px solid var(--color-ink);
+  border-radius: 14.766px;
+}
+
+.nameInput input {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-name);
+  color: var(--color-ink);
+  /* 입력 커서가 디자인의 핑크 막대 역할을 한다 */
+  caret-color: var(--color-pink);
+}
+
+.nameInput input::placeholder {
+  color: var(--color-muted);
+}
+
+.counter {
+  flex-shrink: 0;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  color: var(--color-ink);
+  opacity: 0.55;
+}
+
+/* ── 인원 스테퍼 ── */
+
+.stepper {
+  position: absolute;
+  left: 34.73px;
+  top: 104.73px;
+  display: flex;
+  align-items: center;
+  gap: 14.766px;
+  height: 105.469px;
+}
+
+.stepMinus,
+.stepPlus {
+  box-sizing: border-box;
+  width: 59.063px;
+  height: 59.063px;
+  border: 3.164px solid var(--color-ink);
+  border-radius: 14.766px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-head);
+  line-height: 1;
+}
+
+.stepMinus {
+  background: var(--color-white);
+  color: var(--color-ink);
+}
+
+.stepPlus {
+  background: var(--color-pink);
+  color: var(--color-white);
+}
+
+/* 숫자는 Black Han Sans 40px, 단위 "명"만 고정폭 20px으로 작게 붙는다 */
+.stepValue {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4.219px;
+  width: 126.563px;
+  height: 59.063px;
+  background: var(--color-yellow);
+  border: 3.164px solid var(--color-ink);
+  border-radius: 14.766px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-sub);
+  color: var(--color-ink);
+}
+
+.stepValue b {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-head);
+}
+
+/* 스테퍼와 "빠른 선택"을 가르는 세로선 */
+.stepperDivider {
+  position: absolute;
+  left: 360.95px;
+  top: 106.73px;
+  width: 2.109px;
+  height: 59.063px;
+  background: rgba(14, 13, 20, 0.15);
+  border-radius: 2.109px;
+}
+
+.presetLabel {
+  position: absolute;
+  left: 412.95px;
+  top: 110.73px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+  opacity: 0.55;
+}
+
+.presets {
+  position: absolute;
+  left: 413.06px;
+  top: 134.58px;
+  display: flex;
+  gap: 10.547px;
+}
+
+.chip {
+  height: 35px;
+  /* 프레임의 칩 줄 전체 폭(367px)에 맞춘 값 — 웹폰트 글자 폭이 Figma보다 조금 넓어 좌우 여백을 줄였다 */
+  padding: 0 17.7px;
+  background: var(--color-white);
+  border: 2.637px solid var(--color-ink);
+  border-radius: 42.188px;
+  box-shadow: 3.164px 3.164px 0 var(--color-ink);
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+}
+
+/* 지금 고른 인원과 같은 칩 */
+.chipOn {
+  background: var(--color-yellow);
+}
+
+/* ── 인원 슬라이더 ── */
+
+.track,
+.trackFill {
+  position: absolute;
+  left: 34.73px;
+  top: 234.73px;
+  box-sizing: border-box;
+  height: 21.094px;
+  border: 2.637px solid var(--color-ink);
+  border-radius: 10.547px;
+}
+
+.track {
+  width: 1141px;
+  background: var(--color-track);
+}
+
+.trackFill {
+  background: var(--color-cyan);
+}
+
+.knob {
+  position: absolute;
+  top: 228.4px;
+  box-sizing: border-box;
+  width: 33.75px;
+  height: 33.75px;
+  background: var(--color-pink);
+  border: 3.164px solid var(--color-ink);
+  border-radius: 50%;
+}
+
+/* 보이는 막대 위에 겹치는 투명 range — 드래그와 방향키 조작을 브라우저에 맡긴다 */
+.range {
+  position: absolute;
+  left: 34.73px;
+  top: 228.4px;
+  width: 1141px;
+  height: 33.75px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.rangeMin,
+.rangeMax {
+  position: absolute;
+  top: 265.82px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+  opacity: 0.5;
+}
+
+.rangeMin {
+  left: 34.73px;
+}
+
+.rangeMax {
+  left: 1144.09px;
+  width: 31.641px;
+  text-align: right;
+}
+
+/* ── 안내 줄 ── */
+
+.privacyHint {
+  position: absolute;
+  left: 59.33px;
+  top: 783.85px;
+  box-sizing: border-box;
+  width: 1221px;
+  height: 72px;
+  background: var(--color-white);
+  border: 3.164px solid var(--color-ink);
+  border-radius: 14.766px;
+  box-shadow: 5.273px 5.273px 0 var(--color-ink);
+}
+
+.privacyMain {
+  position: absolute;
+  left: 25.84px;
+  top: 23.84px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  color: var(--color-ink);
+  white-space: pre;
+}
+
+.privacySub {
+  position: absolute;
+  left: 956.84px;
+  top: 24.84px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+  opacity: 0.55;
+}
+
+/* ── 미리보기 패널 ── */
+
+.preview {
+  position: absolute;
+  left: 1312px;
+  top: 144px;
+  box-sizing: border-box;
+  width: 550px;
+  height: 770px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 5.966px solid var(--color-ink);
+  border-radius: 14.766px;
+  box-shadow: 7.16px 7.16px 0 var(--color-ink);
+}
+
+.previewTitle {
+  position: absolute;
+  left: 22.03px;
+  top: 18.03px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-headline);
+  color: var(--color-ink);
+}
+
+.previewSub {
+  position: absolute;
+  left: 22.03px;
+  top: 69.03px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  color: var(--color-ink);
+  opacity: 0.6;
+}
+
+/* 값 위에 붙는 작은 항목명 — top은 항목마다 달라 인라인으로 준다 */
+.fieldLabel {
+  position: absolute;
+  left: 22.03px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+  opacity: 0.6;
+}
+
+.fieldName,
+.fieldMembers,
+.fieldCode {
+  position: absolute;
+  left: 22.03px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* 방 이름은 길어질 수 있어 패널 폭에서 말줄임한다 */
+.fieldName {
+  top: 136.03px;
+  width: 494px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: var(--font-size-headline);
+}
+
+.fieldMembers {
+  top: 228.03px;
+  font-size: var(--font-size-name);
+}
+
+.fieldCode {
+  top: 312.03px;
+  font-size: var(--font-size-sub);
+}
+
+/* 아래쪽 3단계 안내 카드 — top은 순서마다 달라 인라인으로 준다 */
+.stepCard {
+  position: absolute;
+  left: 22.03px;
+  box-sizing: border-box;
+  width: 494px;
+  height: 96px;
+  background: var(--color-input);
+  border: 2.983px solid var(--color-ink);
+  border-radius: 14.32px;
+}
+
+/* 단계 번호가 든 원 — 배경색만 단계마다 다르다 */
+.stepBadge {
+  position: absolute;
+  left: 15.68px;
+  top: 29.2px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 31.641px;
+  height: 31.641px;
+  border: 2.983px solid var(--color-ink);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: var(--font-size-btn);
+  color: var(--color-ink);
+}
+
+.stepTitle {
+  position: absolute;
+  left: 71.68px;
+  top: 26.56px;
+  font-family: var(--font-display);
+  font-size: var(--font-size-sub);
+  color: var(--color-ink);
+}
+
+.stepDesc {
+  position: absolute;
+  left: 74.35px;
+  top: 48.87px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+  opacity: 0.6;
+}
+
+/* ── 하단 상태 밴드 ── */
+
+.band {
+  position: absolute;
+  left: 59px;
+  top: 938px;
+  box-sizing: border-box;
+  width: 1803px;
+  height: 108px;
+  background: var(--color-white);
+  border: 3.164px solid var(--color-ink);
+  border-radius: 18.984px;
+  filter: drop-shadow(5.273px 6.328px 0 var(--color-ink));
+}
+
+/* 노란 원 안에 문 이모지 — 지금 단계가 "방 만들기"라는 표시다 */
+.bandBadge {
+  position: absolute;
+  left: 23.84px;
+  top: 23.41px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 54.844px;
+  height: 54.844px;
+  background: var(--color-yellow);
+  border: 3.164px solid var(--color-ink);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-size: var(--font-size-name);
+}
+
+/* 입력한 방 이름이 그대로 들어오므로 버튼 앞에서 말줄임한다 */
+.bandTitle {
+  position: absolute;
+  left: 106.84px;
+  top: 19.34px;
+  width: 1440px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-headline);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.bandSub {
+  position: absolute;
+  left: 106.84px;
+  top: 66.34px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-band-meta);
+}
+
+/* 방 생성이 실패했을 때만 같은 자리에서 색이 바뀐다 */
+.bandError {
+  color: var(--color-leave);
+}
+
+.submitButton {
+  position: absolute;
+  left: 1560.01px;
+  top: 16.46px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  gap: 10.547px;
+  padding: 10.875px 31.641px;
+  background: var(--color-ink);
+  border: 3.164px solid var(--color-ink);
+  border-radius: 12.656px;
+  box-shadow: 6.328px 6.328px 0 var(--color-ink);
+  font-family: var(--font-display);
+  font-size: var(--font-size-name);
+  color: var(--color-yellow);
+  white-space: nowrap;
+}
+
+.submitButton:disabled {
+  opacity: 0.45;
+}
+
+.backButton:active,
+.submitButton:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: var(--shadow-btn-pressed);
+}

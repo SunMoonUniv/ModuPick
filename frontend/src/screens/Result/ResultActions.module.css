@@ -1,0 +1,147 @@
+/* 결과 화면 오른쪽 "다음은?" 패널 — 프레임 542:1119 / 542:2049가 같은 판을 서로 다른 자리에 둔다.
+   좌표는 컴포넌트가 인라인 style로 받고, 여기서는 판 안쪽 구성만 잡는다. */
+
+.panel {
+  position: absolute;
+  box-sizing: border-box;
+  width: 550px;
+  height: 398px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 4.219px solid var(--color-ink);
+  border-radius: 16.875px;
+  box-shadow: 10.547px 10.547px 0 var(--color-ink);
+}
+
+.label {
+  position: absolute;
+  left: 27.78px;
+  top: 21.78px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: rgba(14, 13, 20, 0.6);
+}
+
+/* 두 버튼을 가르는 옅은 선 */
+.rule {
+  position: absolute;
+  left: 27.78px;
+  top: 203.78px;
+  width: 486px;
+  height: 2px;
+  background: rgba(14, 13, 20, 0.15);
+}
+
+.button {
+  position: absolute;
+  left: 27.78px;
+  box-sizing: border-box;
+  width: 486px;
+  height: 112px;
+  border: 3.164px solid var(--color-ink);
+  border-radius: 12.656px;
+  box-shadow: 4.219px 4.219px 0 var(--color-ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-name);
+  color: var(--color-ink);
+  white-space: pre;
+}
+
+/* 방장이 아니면 눌러도 아무 일이 없으므로 그림자를 빼 눌리지 않는 판처럼 보이게 한다 */
+.button:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+}
+
+.button:active:not(:disabled) {
+  transform: translate(3px, 3px);
+  box-shadow: var(--shadow-btn-pressed);
+}
+
+.replay {
+  top: 64.78px;
+  background: var(--color-yellow);
+}
+
+.back {
+  top: 232.78px;
+  background: var(--color-white);
+}
+
+/* ── 가로 판 (Figma 878:2320 / 878:5221) ──
+   같은 두 버튼을 화면 아래 전체 폭 밴드에 옆으로 눕힌 형태다. */
+
+.wide {
+  position: absolute;
+  left: 59px;
+  top: 890px;
+  box-sizing: border-box;
+  width: 1802px;
+  height: 148px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 4.219px solid var(--color-ink);
+  border-radius: 16.875px;
+  box-shadow: 10.547px 10.547px 0 var(--color-ink);
+  line-height: 1;
+}
+
+/* 빈 왼쪽과 버튼 묶음을 가르는 옅은 세로선 */
+.wide .rule {
+  left: 1115.78px;
+  top: 17.78px;
+  width: 2px;
+  height: 104px;
+}
+
+.wide .label {
+  left: 1157.78px;
+  top: 13.78px;
+  font-family: var(--font-chat);
+  font-size: var(--font-size-micro);
+  color: var(--color-band-meta);
+}
+
+.wide .button {
+  top: 41.78px;
+  width: 300px;
+  height: 78px;
+  border-width: 3.164px;
+  border-radius: 12.656px;
+  box-shadow: 4.219px 4.219px 0 var(--color-ink);
+  font-size: 26px;
+}
+
+.wide .replay {
+  left: 1157.78px;
+}
+
+.wide .back {
+  left: 1473.78px;
+}
+
+/* ── 낮은 가로 판 (Figma 542:2773) ──
+   위 카드가 y904까지 내려와 밴드를 y924부터 얇게 깐다. 나머지 구성은 가로 판과 같다. */
+
+.compact {
+  top: 924px;
+  height: 114px;
+}
+
+.compact .rule {
+  top: 11.78px;
+  height: 82px;
+}
+
+.compact .label {
+  top: 7.78px;
+  font-size: 15px;
+}
+
+.compact .button {
+  top: 31.78px;
+  height: 62px;
+  font-size: var(--font-size-btn);
+}

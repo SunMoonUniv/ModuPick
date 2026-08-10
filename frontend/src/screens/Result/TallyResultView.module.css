@@ -1,0 +1,377 @@
+/* 득표 집계 결과 — Figma 878:2320(익명) / 878:5221(실명) 기준.
+   두 프레임은 레이아웃이 같고, 실명 판만 막대를 줄여 오른쪽에 투표자 칩 자리를 만든다.
+   프레임의 오토 레이아웃 스택은 y44에서 시작하고 제목 블록은 공통 껍데기가 그리므로 여기는 y140부터다. */
+
+/* ── 1위 발표 카드 ── */
+
+.hero {
+  position: absolute;
+  left: 59px;
+  top: 140px;
+  box-sizing: border-box;
+  width: 1802px;
+  height: 350px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 6.328px solid var(--color-ink);
+  border-radius: 25.313px;
+  box-shadow: 14.766px 14.766px 0 var(--color-ink);
+  line-height: 1;
+}
+
+/* 카드 위쪽을 가로지르는 핑크 띠 — 테두리 밖까지 꽉 채운다 */
+.strip {
+  position: absolute;
+  left: -6.328px;
+  top: -6.328px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1802px;
+  height: 68px;
+  background: var(--color-pink);
+  border-bottom: 4px solid var(--color-ink);
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-headline);
+  line-height: 1.265;
+  color: var(--color-white);
+  white-space: pre;
+}
+
+/* 띠 오른쪽 끝에 붙는 잉크 알약 */
+.stripChip {
+  position: absolute;
+  left: 1471.67px;
+  top: 10.67px;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 9px 18px;
+  background: var(--color-ink);
+  border-radius: 40px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-yellow);
+  white-space: nowrap;
+}
+
+.heroBody {
+  position: absolute;
+  left: -6.328px;
+  top: 95.67px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 11px;
+  width: 1802px;
+}
+
+/* 확정된 이름 — 길면 한 줄 말줄임 */
+.heroName {
+  max-width: 1700px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 96px;
+  line-height: 1.25;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.heroCaption {
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-body);
+  line-height: 1.25;
+  color: var(--color-band-meta);
+}
+
+.stats {
+  display: flex;
+  gap: 24px;
+}
+
+/* 총 투표 수·1위 득표율·공개 방식 세 칸 — 숫자가 위, 설명이 아래 */
+.stat {
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  width: 563px;
+  height: 66px;
+  border: 2.637px solid var(--color-ink);
+  border-radius: 12.656px;
+  box-shadow: 4.219px 4.219px 0 var(--color-ink);
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--color-band-meta);
+}
+
+.stat b {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.265;
+  color: var(--color-ink);
+}
+
+.statCyan {
+  background: var(--color-stat-cyan);
+}
+
+.statPink {
+  background: var(--color-stat-pink);
+}
+
+.statYellow {
+  background: var(--color-stat-yellow);
+}
+
+/* ── 개표 결과 ── */
+
+.tally {
+  position: absolute;
+  left: 59px;
+  top: 510px;
+  box-sizing: border-box;
+  width: 1802px;
+  height: 356px;
+  overflow: hidden;
+  background: var(--color-white);
+  border: 4.219px solid var(--color-ink);
+  border-radius: 16.875px;
+  box-shadow: 10.547px 10.547px 0 var(--color-ink);
+  line-height: 1;
+}
+
+.tallyHead {
+  position: absolute;
+  left: 27.78px;
+  top: 17.78px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 1738px;
+}
+
+.tallyHead h2 {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 26px;
+  line-height: 1.265;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.modeChip {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  background: var(--color-track-soft);
+  border: 2.109px solid var(--color-ink);
+  border-radius: 40px;
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* 6줄까지는 그대로 들어가고, 후보가 더 많으면 이 영역 안에서만 세로로 스크롤된다 */
+.list {
+  position: absolute;
+  left: 27.78px;
+  top: 67.78px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  width: 1738px;
+  max-height: 263px;
+  overflow-y: auto;
+}
+
+/* 실명 판은 머리글 한 줄이 더 붙는 만큼 목록을 위로 올려 6줄이 카드 안에 그대로 들어가게 한다 */
+.listReveal {
+  top: 56px;
+  max-height: 291px;
+}
+
+/* 줄 안쪽은 칸 시작 x가 줄마다 흔들리지 않도록 좌표로 고정한다 */
+.row {
+  position: relative;
+  flex-shrink: 0;
+  height: 38px;
+}
+
+/* 아무도 안 뽑은 줄 */
+.rowEmpty .label,
+.rowEmpty .votes {
+  color: var(--color-band-meta);
+}
+
+.rank {
+  position: absolute;
+  left: 0;
+  top: 0;
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  background: var(--color-ink);
+  border: 2.109px solid var(--color-ink);
+  border-radius: 50%;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-sub);
+  color: var(--color-white);
+}
+
+/* 1위만 색을 뒤집어 노란 배지로 만든다 */
+.rankTop {
+  background: var(--color-yellow);
+  color: var(--color-ink);
+}
+
+.label {
+  position: absolute;
+  left: 54px;
+  top: 8px;
+  width: 460px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-sub);
+  line-height: 1.25;
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.track {
+  position: absolute;
+  left: 530px;
+  top: 6px;
+  box-sizing: border-box;
+  width: 1106px;
+  height: 26px;
+  overflow: hidden;
+  background: var(--color-track-soft);
+  border: 2.109px solid var(--color-ink);
+  border-radius: 13px;
+}
+
+.track i {
+  display: block;
+  height: 100%;
+  border-radius: 13px;
+}
+
+.votes {
+  position: absolute;
+  left: 1658px;
+  top: 7px;
+  width: 80px;
+  text-align: right;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: var(--font-size-body);
+  line-height: 1.265;
+  color: var(--color-ink);
+}
+
+/* ── 실명 판에서만 나오는 칸들 ── */
+
+/* 막대를 줄여 오른쪽에 투표자 칩 자리를 낸다 */
+.listReveal .track {
+  width: 620px;
+}
+
+.listReveal .votes {
+  left: 1170px;
+}
+
+.voters {
+  position: absolute;
+  left: 1270px;
+  top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 468px;
+  height: 34px;
+  overflow: hidden;
+}
+
+/* 이 후보를 뽑은 사람 한 명 */
+.voter {
+  box-sizing: border-box;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px 0 3px;
+  background: var(--color-white);
+  border: 2.109px solid var(--color-ink);
+  border-radius: 42px;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-ink);
+  white-space: nowrap;
+}
+
+.voter img {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.noVoter {
+  font-family: var(--font-chat);
+  font-style: normal;
+  font-weight: 700;
+  font-size: var(--font-size-micro);
+  color: var(--color-band-meta);
+  white-space: nowrap;
+}
+
+/* 세 칸이 무엇인지 알려주는 머리글 (실명 판 전용) */
+.colHead {
+  position: relative;
+  flex-shrink: 0;
+  height: 20px;
+}
+
+.colHead em {
+  position: absolute;
+  top: 0;
+  font-family: var(--font-chat);
+  font-style: normal;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--color-band-meta);
+  white-space: nowrap;
+}
+
+.colName {
+  left: 0;
+}
+
+.colVotes {
+  left: 1170px;
+}
+
+.colVoters {
+  left: 1270px;
+}

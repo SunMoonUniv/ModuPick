@@ -4,28 +4,28 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "server": "node local-server/server.js"
   },
   "dependencies": {
-    "@fontsource/black-han-sans": "^5.3.0",
-    "@fontsource/do-hyeon": "^5.3.0",
-    "@fontsource/gothic-a1": "^5.3.0",
-    "@fontsource/nanum-gothic-coding": "^5.3.0",
-    "html-to-image": "^1.11.13",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7",
-    "zustand": "^5.0.14"
+    "react": "^19.1.1",
+    "react-dom": "^19.1.1",
+    "react-router-dom": "^7.9.1",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
-    "@types/node": "^24.13.2",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.3",
-    "oxlint": "^1.71.0",
-    "typescript": "~6.0.2",
-    "vite": "^8.1.1"
+    "@types/react": "^19.1.12",
+    "@types/node": "^22.15.3",
+    "@types/react-dom": "^19.1.9",
+    "@vitejs/plugin-react": "^5.0.2",
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "oxlint": "^1.15.0",
+    "typescript": "~5.9.2",
+    "vite": "^7.1.5",
+    "ws": "^8.21.1"
   }
 }
