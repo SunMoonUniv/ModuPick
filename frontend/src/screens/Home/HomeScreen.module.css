@@ -286,7 +286,9 @@ button.fullscreenHint:hover {
   top: 768px;
   width: 1876px;
   height: 285px;
-  overflow: hidden;
+  /* 좌우는 잘라야 카드 띠가 화면 밖에서 흘러 들어오고, 위쪽은 마우스를 올린 카드가 떠오를
+     자리(들림 26 + 확대로 늘어나는 8)를 넘겨줘야 한다. overflow는 한 축만 열 수 없어 clip-path를 쓴다. */
+  clip-path: inset(-40px 0 0 0);
 }
 
 /* 카드가 얹힌 노란 점선 레일 두 줄 */
@@ -303,8 +305,10 @@ button.fullscreenHint:hover {
   );
 }
 
+/* 프레임에서는 무대 경계에 반만 걸치는 선이다 — 위쪽 clip이 열려 있어 잘림에 기대지 않고 높이로 직접 자른다 */
 .railTop {
-  top: -1.5px;
+  top: 0;
+  height: 1.5px;
 }
 
 .railBottom {
@@ -333,7 +337,8 @@ button.fullscreenHint:hover {
 .fadeOut {
   position: absolute;
   right: -21px;
-  top: -2px;
+  /* 위쪽 clip이 열려 있어 음수 top을 쓰면 띠 밖으로 새어 나온다 */
+  top: 0;
   bottom: 2px;
   width: 200px;
   background: linear-gradient(
