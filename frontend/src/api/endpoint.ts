@@ -1,10 +1,11 @@
 // 서버 주소 결정 규칙.
-// 페이지를 연 호스트의 8000번 포트를 그대로 쓴다(uvicorn 기본 포트) — 방장 PC에서 dev 서버와 백엔드를 같이 띄우면
-// LAN의 다른 PC가 `http://<방장 IP>:5173`으로 들어와도 설정 없이 같은 서버를 바라보게 된다.
-// LAN에서 쓰려면 백엔드의 CORS_ORIGINS에 그 주소를 넣어야 한다 — 기본값은 http://localhost:5173 하나뿐이다.
+// 페이지를 연 오리진을 그대로 쓴다. `/api`와 `/ws`를 백엔드로 넘기는 일은 개발에서는 vite 프록시가
+// (vite.config.ts), 배포에서는 nginx가(frontend/nginx.conf) 맡는다 — 두 환경 모두 같은 오리진이 되므로
+// 프론트가 백엔드의 호스트·포트를 알 필요가 없고 CORS도 필요 없다.
+// 백엔드를 다른 주소에 따로 띄워 붙일 때만 VITE_SERVER_URL로 덮어쓴다.
 
 const OVERRIDE = import.meta.env.VITE_SERVER_URL as string | undefined
 
-export const SERVER_URL = OVERRIDE ?? `${window.location.protocol}//${window.location.hostname}:8000`
+export const SERVER_URL = OVERRIDE ?? window.location.origin
 
 export const API_BASE = `${SERVER_URL}/api`
