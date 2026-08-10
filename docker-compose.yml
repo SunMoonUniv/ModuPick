@@ -40,7 +40,7 @@ services:
       # 이미 있으면 아무것도 바꾸지 않는다 — 그래서 여기서 만들어 두면 .env의 값이 이기고,
       # 0090은 권한 부여만 하게 된다. 이 두 줄이 없으면 .env를 modupick이 아닌 값으로
       # 두는 순간 백엔드만 access denied로 재시작 루프에 빠진다(DB는 healthy로 보인다).
-      MYSQL_USER: modupick
+      MYSQL_USER: ${MODUPICK_MYSQL_USER:-modupick}
       MYSQL_PASSWORD: ${MODUPICK_APP_PASSWORD:-modupick}
 
     # 세션 시간대 +00:00은 서버 전역으로 박는다. 저장은 UTC이고 판정 시각은
