@@ -35,6 +35,14 @@ services:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?.env에 MYSQL_ROOT_PASSWORD가 필요하다. .env.example을 복사해 .env를 만든다}
       MYSQL_DATABASE: modupick
 
+      # 앱 계정을 엔트리포인트가 먼저 만들게 한다. db_migration/sql/0090_grants.sql의
+      # CREATE USER IF NOT EXISTS는 비밀번호를 리터럴 modupick으로 박아 두었고, 계정이
+      # 이미 있으면 아무것도 바꾸지 않는다 — 그래서 여기서 만들어 두면 .env의 값이 이기고,
+      # 0090은 권한 부여만 하게 된다. 이 두 줄이 없으면 .env를 modupick이 아닌 값으로
+      # 두는 순간 백엔드만 access denied로 재시작 루프에 빠진다(DB는 healthy로 보인다).
+      MYSQL_USER: modupick
+      MYSQL_PASSWORD: ${MODUPICK_APP_PASSWORD:-modupick}
+
     # 세션 시간대 +00:00은 서버 전역으로 박는다. 저장은 UTC이고 판정 시각은
     # 정수 밀리초라, 시간대가 어긋나면 만료·감사 시각이 통째로 밀린다.
     command:
