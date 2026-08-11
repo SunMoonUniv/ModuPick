@@ -29,6 +29,7 @@ from app.schemas.events import (
     ChatSendRequest,
     GameActionRequest,
     GameConfigRequest,
+    GameDecideRequest,
     GameSelectRequest,
     KickRequest,
     ReadyRequest,
@@ -260,6 +261,18 @@ async def _handle_game_action(conn: SocketConn, data: dict) -> None:
         round_id=req.roundId,
         phase_seq=req.phaseSeq,
         action_type=req.type,
+        payload=req.payload,
+    )
+
+
+async def _handle_game_decide(conn: SocketConn, data: dict) -> None:
+    req = GameDecideRequest(**data)
+    await game_service.handle_decide(
+        participant_pk=conn.participant_id,
+        room_pk=conn.room_id,
+        round_id=req.roundId,
+        phase_seq=req.phaseSeq,
+        choice=req.choice,
     )
 
 
@@ -274,6 +287,7 @@ _HANDLERS = {
     "game:config": _handle_game_config,
     "game:start": _handle_game_start,
     "game:action": _handle_game_action,
+    "game:decide": _handle_game_decide,
     "round:close": _handle_round_close,
 }
 
@@ -289,6 +303,7 @@ _ACTIONS = {
     "game:config": state_machine.Action.GAME_CONFIG,
     "game:start": state_machine.Action.GAME_START,
     "game:action": state_machine.Action.GAME_ACTION,
+    "game:decide": state_machine.Action.HOST_DECIDE,
     "round:close": state_machine.Action.ROUND_CLOSE,
 }
 

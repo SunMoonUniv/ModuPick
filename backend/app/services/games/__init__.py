@@ -12,13 +12,14 @@
 
 from types import ModuleType
 
-from app.services.games import ladder, roulette
+from app.services.games import ladder, roulette, snipe
 
 #: gameId -> 진행 모듈. **여기 없는 게임은 아직 붙지 않았다** — READY에 머물며
 #: 방장의 round:close를 기다린다.
 FLOWS: dict[str, ModuleType] = {
     roulette.GAME_ID: roulette,
     ladder.GAME_ID: ladder,
+    snipe.GAME_ID: snipe,
 }
 
 

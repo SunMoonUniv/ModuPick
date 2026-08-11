@@ -2,6 +2,7 @@
 
 > **대상**: 에러 코드 후보 41종과 REST 엔드포인트 9본 · WebSocket 이벤트 31종의 대응 — HTTP 상태 · 발생 지점 · 소켓 종료 코드 · 클라이언트 처리
 > **작성일**: 2026-08-02
+> **개정일**: 2026-08-11 — game:decide의 choice가 RETRY · ABORT 2종으로 좁아져 targetId가 사라졌다. vote.target_not_found의 발생 지점에서 game:decide를 뺀다([03_socket_events.md](./03_socket_events.md) 개정에 정합)
 > **개정일**: 2026-08-02 — 하트비트가 WebSocket 제어 프레임으로 바뀌어 conn:pong 행을 걷어내고 WebSocket 이벤트 수를 33종 → 31종으로 정정한다
 > **원천**: git 529e312(docs/api.md 「에러 코드 초안」 20건) · git ecceb11(docs/06_api/03_error_codes.md 23건) · docs_legacy/requirements.md US-104·US-602 · [../10_glossary/04_id_conventions.md](../10_glossary/04_id_conventions.md)(네임스페이스 규약)
 
@@ -74,7 +75,7 @@
 | 코드 후보 | HTTP | 발생 지점 | 클라이언트 처리 |
 |-----------|:----:|-----------|----------------|
 | vote.self_not_allowed | 400 | king.vote · snipe.vote | 해당 항목을 비활성으로 표시한다 |
-| vote.target_not_found | 404 | king.vote · snipe.vote · game:decide | 후보 목록을 서버 값으로 되돌린다 |
+| vote.target_not_found | 404 | king.vote · snipe.vote | 후보 목록을 서버 값으로 되돌린다 |
 | vote.limit_exceeded | 409 | king.vote · snipe.vote | 선택 가능 수를 안내한다 |
 | vote.duplicate_target | 400 | king.vote · snipe.vote | 같은 대상에 몰아줄 수 없음을 안내한다 |
 
@@ -124,7 +125,7 @@
 | game:random | member.not_host · game.not_enough_members · game.invalid_action |
 | game:start | member.not_host · game.not_selected · game.not_enough_members · game.not_all_ready · game.invalid_config · game.invalid_action |
 | game:action | game.round_not_found · game.round_already_ended · game.stale_phase · game.invalid_action · game.already_submitted · game.not_eligible · game.elapsed_rejected · vote.* 4종 · common.validation_failed |
-| game:decide | member.not_host · game.decision_not_required · game.round_not_found · game.stale_phase · game.invalid_action · vote.target_not_found |
+| game:decide | member.not_host · game.decision_not_required · game.round_not_found · game.stale_phase · game.invalid_action |
 | round:close | member.not_host · game.round_not_found · game.invalid_action |
 
 인증 전에 도착한 모든 이벤트는 common.protocol_violation이다.
