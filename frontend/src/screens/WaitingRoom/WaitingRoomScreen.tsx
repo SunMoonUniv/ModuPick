@@ -207,6 +207,7 @@ export function WaitingRoomScreen() {
                 gameId={game.gameId}
                 schema={game.configSchema}
                 config={shownConfig}
+                memberCount={members.length}
                 editable={isHost}
                 onChange={(patch) => setPendingPatch((prev) => ({ ...prev, ...patch }))}
               />

@@ -19,6 +19,14 @@
   white-space: nowrap;
 }
 
+/* 문구 안에 끼워 넣는 사다리 아이콘 — 글자 크기에 맞춰 따라 커진다.
+   global.css의 `img { display: block }`을 되돌려야 글자와 한 줄에 놓인다 (블록 상자는 nowrap이 안 먹는다) */
+.emblem {
+  display: inline-block;
+  height: 1.05em;
+  vertical-align: -0.15em;
+}
+
 /* 기울어진 시안 카드 — 출발 신호 */
 .goCard {
   position: absolute;

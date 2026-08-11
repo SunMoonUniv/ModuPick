@@ -33,6 +33,12 @@
   font-size: var(--font-size-headline);
   color: var(--color-ink);
   white-space: pre;
+  gap: 16px;
+}
+
+/* 배너 문구 양옆의 사다리 아이콘 — 글자 크기에 맞춰 따라 커진다 */
+.bannerIcon {
+  height: 1.05em;
 }
 
 /* 역할 카드 2열 격자. 6명이면 3줄에 딱 맞고, 더 많으면 이 영역 안에서만 세로로 스크롤된다 */

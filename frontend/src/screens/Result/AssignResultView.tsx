@@ -1,4 +1,5 @@
 import { avatarSrc } from '../../assets/avatars'
+import { GAME_ICONS } from '../../constants/gameVisuals'
 import { useRoomStore } from '../../store/roomStore'
 import type { AssignResult, Member } from '../../protocol/types'
 import { ConfettiPiece, type ConfettiSpec } from './confetti'
@@ -56,7 +57,12 @@ export function AssignResultView({ result, elapsedMs }: AssignResultViewProps) {
 
       {/* ── 배분 결과 카드 ── */}
       <section className={styles.card}>
-        <div className={styles.banner}>🪜&nbsp;&nbsp;역할 배분 결과&nbsp;&nbsp;🪜</div>
+        {/* 사다리 이모지(🪜, 이모지 13.0)는 윈도우 10 기본 글꼴에 없어 두부(□)로 나온다 — 저장소의 게임 아이콘을 쓴다 */}
+        <div className={styles.banner}>
+          <img className={styles.bannerIcon} src={GAME_ICONS.ladder} alt="" />
+          역할 배분 결과
+          <img className={styles.bannerIcon} src={GAME_ICONS.ladder} alt="" />
+        </div>
 
         <div className={`${styles.grid} scroll-thin`}>
           {result.assignments.map(({ member, item }, i) => {

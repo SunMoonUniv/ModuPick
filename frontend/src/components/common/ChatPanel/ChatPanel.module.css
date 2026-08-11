@@ -124,13 +124,15 @@
 .bubble {
   padding: 10.547px 14.766px;
   background: var(--color-white);
-  border: 2.637px solid var(--color-ink);
+  border: 3.637px solid var(--color-ink);
   border-radius: 13.711px;
   border-top-left-radius: 4.219px;
   box-shadow: 3.164px 3.164px 0 var(--color-ink);
   font-family: var(--font-chat);
   font-weight: 700;
   font-size: var(--font-size-meta);
+  /* 프레임(542:565)의 말풍선 높이 44 = 위아래 여백 10.547 + 텍스트 상자 23 */
+  line-height: 23px;
   color: var(--color-ink);
   word-break: break-word;
   white-space: pre-wrap;
@@ -165,6 +167,8 @@
   font-family: var(--font-meta);
   font-weight: 700;
   font-size: var(--font-size-micro);
+  /* 프레임(542:599)의 알약 높이 30.77 = 위아래 여백 7.383 + 텍스트 상자 16 */
+  line-height: 1;
   color: var(--color-system-text);
 }
 

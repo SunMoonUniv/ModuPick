@@ -13,7 +13,8 @@ const MESSAGES: Record<ClosedReason, { icon: string; title: string; description:
     description: '방장이 나가면 방이 사라집니다. 새 방을 만들거나 다른 코드로 입장해주세요.',
   },
   EMPTY: {
-    icon: '🫧',
+    // 이모지 13.0 이후 글자(🫧 등)는 윈도우 10 기본 이모지 글꼴에 없어 두부(□)로 나온다 — 오래된 이모지만 쓴다
+    icon: '💨',
     title: '방에 아무도 남지 않았어요',
     description: '모든 참가자가 나가서 방이 닫혔습니다.',
   },

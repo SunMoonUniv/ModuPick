@@ -120,6 +120,8 @@
   font-family: var(--font-meta);
   font-weight: 700;
   font-size: var(--font-size-micro);
+  /* 프레임(542:508·542:516)의 알약 높이 30.77 = 위아래 여백 7.383 + 텍스트 상자 16 */
+  line-height: 1;
   color: var(--color-ink);
   white-space: nowrap;
 }

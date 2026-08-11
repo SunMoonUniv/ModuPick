@@ -30,14 +30,14 @@ export const GAMES = {
       '항목이 인원보다 적으면 남는 자리는 X로 채워집니다.',
     ],
     configSchema: {
-      topic: { type: 'text', label: '주제', minLength: 1, maxLength: 12, default: '조별과제' },
+      // 사다리는 주제가 곧 도착 항목이다 — "팀장"만 넣으면 한 명만 팀장이고 나머지는 X가 된다.
       items: {
         type: 'list',
-        label: '결과 항목',
+        label: '주제 (도착 항목)',
         minItems: 1,
         maxItems: 10,
         itemMaxLength: 12,
-        default: ['자료조사', 'PPT 제작', '발표', '회의록', '일정관리', '피드백'],
+        default: ['팀장'],
       },
       speed: {
         type: 'enum',

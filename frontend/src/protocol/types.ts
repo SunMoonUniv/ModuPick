@@ -148,8 +148,8 @@ export interface RouletteConfig {
 
 // 사다리: 하단 결과 항목 목록과 애니메이션 속도
 export interface LadderConfig {
-  topic: string
-  // 1~10개, 각 1~12자. 시작 시 인원수에 맞춰 서버가 X로 채우거나 자른다
+  // 주제가 곧 도착 항목이다 — 별도의 topic 필드가 없다. 1~10개, 각 1~12자.
+  // 시작 시 인원수에 맞춰 서버가 X로 채우거나 자른다
   items: string[]
   speed: 'fast' | 'normal' | 'slow'
 }
