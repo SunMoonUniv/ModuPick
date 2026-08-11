@@ -147,6 +147,9 @@ class RoundState:
     #: 외부 식별자 -> game_options.id. 표를 votes에 넣을 때 대상 행을 가리킨다.
     #: 키가 무엇인지는 게임이 정한다 — 저격은 memberId, 킹메이커는 optionId다.
     option_pks: dict = field(default_factory=dict)
+    #: 제출된 후보(Candidate). 킹메이커만 쓴다 — 다른 게임은 후보가 사람이라 명단
+    #: 스냅샷이 곧 후보다. **author_id를 들고 있으므로 그대로 내보내지 않는다.**
+    candidates: list = field(default_factory=list)
 
 
 @dataclass(slots=True)

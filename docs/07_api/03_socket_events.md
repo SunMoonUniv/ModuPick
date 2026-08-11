@@ -585,6 +585,7 @@ game:decision_required가 나간 뒤에만 받는다.
 |------------|---------|
 | 룰렛 SPINNING | winnerIndex |
 | 사다리 DRAWING | assignments · ladderRungs |
+| 킹메이커 VOTE · RUNOFF | candidates[{ optionId, label }] |
 
 값 이름은 [../06_database/04_options_votes_results.md](../06_database/04_options_votes_results.md)의 result_data 규약을 따른다. **전용 이벤트를 신설하지 않는다** — 게임마다 하나씩 늘어나고 S→C 전수가 바뀐다.
 
