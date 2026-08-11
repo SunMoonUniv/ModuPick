@@ -60,7 +60,7 @@ SEED_MAX = 2**64
 
 
 async def start(*, participant_pk: int, room_pk: int) -> None:
-    """게임을 시작한다.
+    """게임을 시작한다. **대기 상태에서만 받는다.**
 
     검증 순서가 정해져 있다 — 방장 · 방 상태 · 게임 선택 · 최소 인원 · 전원 준비 ·
     설정 유효성. **잠근 뒤에 다시 본다**: 잠금 전 검사는 빠른 실패용이고, 정원과
@@ -69,17 +69,74 @@ async def start(*, participant_pk: int, room_pk: int) -> None:
     성공하면 명단 스냅샷을 고정하고 방을 PLAYING으로 옮긴다. 그 순간부터 새 입장이
     막힌다 — 재접속 경로가 없어 판이 도는 방에 소켓을 새로 받을 수 없다.
     """
-    from app.schemas.events import GameStartedData
-    from app.ws.connection import registry
-    from app.ws.envelope import outgoing
-
     selection = store.selection_of(room_pk)
     if selection is None:
         raise errors.DomainError(errors.GAME_NOT_SELECTED)
     game_id = GameId(selection.game_id)
 
     # 설정은 저장 직전에 다시 검증한다. 규격이 바뀐 채로 남아 있을 수 있다.
-    config = game_config.validate(game_id, selection.config)
+    await _open(
+        participant_pk=participant_pk,
+        room_pk=room_pk,
+        game_id=game_id,
+        config=game_config.validate(game_id, selection.config),
+        again=False,
+    )
+
+
+async def play_again(*, participant_pk: int, room_pk: int) -> None:
+    """결과 화면에서 같은 게임·같은 설정으로 새 판을 연다(F-RESULT-05).
+
+    **대기방을 거치지 않는다.** round:closed를 보내지 않고 준비 상태도 건드리지
+    않는다 — 방이 대기로 돌아가지 않으므로 해제할 이유가 없다. 같은 까닭에 전원
+    준비도 다시 묻지 않는다(08_screen/06이 이 경로의 실패를 not_host ·
+    not_enough_members · invalid_action 셋으로만 규정한다).
+
+    **설정은 직전 라운드의 것을 그대로 쓴다.** 진행 중에는 game:select·game:config가
+    막혀 있어 선택 상태와 같지만, 그 판이 실제로 무엇으로 돌았는지를 쓰는 편이
+    「같은 게임·같은 설정」의 뜻에 정확하다.
+
+    **명단은 그 시점의 참가자로 다시 고정한다.** 도중에 나간 사람은 새 판의 후보가
+    아니며, 인원이 최소 미만이면 거절한다.
+    """
+    state = store.round_of(room_pk)
+    if state is None:
+        raise errors.DomainError(errors.GAME_ROUND_NOT_FOUND)
+    if state.phase != _RESULT_PHASE:
+        # 판이 아직 돌고 있다. 결과 화면에서만 받는다(전표 14행).
+        raise errors.DomainError(errors.GAME_INVALID_ACTION)
+
+    await _open(
+        participant_pk=participant_pk,
+        room_pk=room_pk,
+        game_id=GameId(state.game_id),
+        config=dict(state.config),
+        again=True,
+    )
+
+
+#: 결과 단계의 phase 값. 게임마다 enum이 다르지만 문자열은 하나다.
+_RESULT_PHASE = "RESULT"
+
+
+async def _open(
+    *,
+    participant_pk: int,
+    room_pk: int,
+    game_id: GameId,
+    config: dict,
+    again: bool,
+) -> None:
+    """라운드를 하나 세운다. 시작과 다시 하기가 공유하는 자리다.
+
+    가르는 것은 넷뿐이다 — 요구하는 방 상태 · 준비 검사 여부 · 직전 라운드를 닫는가 ·
+    가이드를 띄우는가. 나머지(명단 스냅샷 · 시드 · 선택지 적재 · 통지)는 같다.
+    """
+    from app.schemas.events import GameStartedData
+    from app.ws.connection import registry
+    from app.ws.envelope import outgoing
+
+    previous = store.round_of(room_pk) if again else None
     seed = secrets.randbelow(SEED_MAX)
     round_id = new_round_id()
 
@@ -98,10 +155,12 @@ async def start(*, participant_pk: int, room_pk: int) -> None:
         if me.role != Role.HOST.value:
             raise errors.DomainError(errors.MEMBER_NOT_HOST)
 
+        # 다시 하기는 결과 화면에서 오므로 방이 이미 진행 상태다.
+        expected = RoomStatus.PLAYING if again else RoomStatus.WAITING
         room = (
             await conn.execute(select(rooms.c.status).where(rooms.c.id == room_pk))
         ).first()
-        if room is None or room.status != RoomStatus.WAITING.value:
+        if room is None or room.status != expected.value:
             raise errors.DomainError(errors.GAME_INVALID_ACTION)
 
         rows = (
@@ -127,10 +186,34 @@ async def start(*, participant_pk: int, room_pk: int) -> None:
 
         # **방장을 제외한 참여자 전원이 준비여야 한다.** 유예 중인 사람은 진입 시점에
         # 준비가 해제되므로 여기서 자연히 걸린다.
-        ready = store.ready_ids(room_pk)
-        waiting = [r for r in rows if r.role != Role.HOST.value and r.id not in ready]
-        if waiting:
-            raise errors.DomainError(errors.GAME_NOT_ALL_READY)
+        #
+        # 다시 하기는 묻지 않는다 — 대기방을 거치지 않아 준비를 누를 자리가 없었고,
+        # 이미 그 판을 함께 돈 사람들이다.
+        if not again:
+            ready = store.ready_ids(room_pk)
+            waiting = [
+                r for r in rows if r.role != Role.HOST.value and r.id not in ready
+            ]
+            if waiting:
+                raise errors.DomainError(errors.GAME_NOT_ALL_READY)
+
+        if previous is not None:
+            # **직전 라운드를 닫되 round:closed는 보내지 않는다.** 대기방으로
+            # 돌아가는 것이 아니라 곧바로 다음 판이 서기 때문이다.
+            await conn.execute(
+                update(game_rounds)
+                .where(
+                    game_rounds.c.id == previous.round_pk,
+                    game_rounds.c.status.in_(
+                        [RoundStatus.READY.value, RoundStatus.RUNNING.value]
+                    ),
+                )
+                .values(
+                    status=RoundStatus.FINISHED.value,
+                    ended_at=_NOW,
+                    ended_reason=EndedReason.COMPLETED.value,
+                )
+            )
 
         result = await conn.execute(
             game_rounds.insert().values(
@@ -181,6 +264,9 @@ async def start(*, participant_pk: int, room_pk: int) -> None:
         for i, r in enumerate(rows)
     ]
 
+    # **직전 라운드의 인메모리 상태를 먼저 걷어낸다.** 남겨 두면 그 라운드에 걸린
+    # 타이머가 살아 있다가 새 판의 단계를 건드린다.
+    store.end_round(room_pk)
     store.begin_round(
         room_pk,
         RoundState(
@@ -210,16 +296,24 @@ async def start(*, participant_pk: int, room_pk: int) -> None:
             ).model_dump(),
         ),
     )
-    log.info("라운드 시작 — room=%s round=%s game=%s", room_pk, round_id, game_id.value)
+    log.info(
+        "라운드 시작 — room=%s round=%s game=%s%s",
+        room_pk,
+        round_id,
+        game_id.value,
+        " (다시 하기)" if again else "",
+    )
 
     # game:started 직후에 game:phase(READY)가 이어진다.
     await emit_phase(room_pk, phase="READY")
 
     # 게임별 진행은 game_service가 맡는다. **순환 import를 피해 여기서 늦게 부른다** —
     # game_service가 emit_phase를 쓰므로 모듈 최상단에서 서로를 참조하게 된다.
+    #
+    # 다시 하기는 가이드를 띄우지 않는다(G-4) — 같은 사람들이 같은 규칙을 다시 본다.
     from app.services import game_service
 
-    await game_service.begin(room_pk)
+    await game_service.begin(room_pk, skip_guide=again)
 
 
 def _initial_options(game_id: GameId, config: dict, rows) -> list[tuple[int | None, str]]:
