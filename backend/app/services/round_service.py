@@ -34,6 +34,7 @@ from app.domain.enums import (
     RoomStatus,
     RoundStatus,
 )
+from app.domain.games import ladder
 from app.infra.clock import clock
 from app.infra.db.session import readonly, transaction
 from app.infra.db.tables import game_options, game_rounds, participants, rooms
@@ -49,7 +50,10 @@ _NOW = text("NOW(6)")
 TICK_INTERVAL_S = 1.0
 
 #: 시드 상한. 64비트 부호 없는 정수를 그대로 담는다(random_seed BIGINT UNSIGNED).
-_SEED_MAX = 2**64
+#:
+#: **한 곳에만 둔다.** 사다리는 자기 검증이 어긋나면 시드를 다시 뽑는데(05_game_rules/03)
+#: 그쪽이 따로 상한을 적으면 두 값이 갈라진 채로 DB 컬럼 규격을 넘길 수 있다.
+SEED_MAX = 2**64
 
 
 # ── 시작 ───────────────────────────────────────────────────────────────────
@@ -76,7 +80,7 @@ async def start(*, participant_pk: int, room_pk: int) -> None:
 
     # 설정은 저장 직전에 다시 검증한다. 규격이 바뀐 채로 남아 있을 수 있다.
     config = game_config.validate(game_id, selection.config)
-    seed = secrets.randbelow(_SEED_MAX)
+    seed = secrets.randbelow(SEED_MAX)
     round_id = new_round_id()
 
     async with transaction() as conn:
@@ -142,11 +146,10 @@ async def start(*, participant_pk: int, room_pk: int) -> None:
         )
         round_pk = result.inserted_primary_key[0]
 
-        # **룰렛은 참가자 전원이 후보다.** 06_database/04 「저장 범위」가 룰렛의
-        # game_options를 "참가자 후보 1인 1행"으로 규정한다. 명단 스냅샷과 같은
-        # 순서·같은 시점에 박아 둬야 나중에 결과를 다시 읽을 때 후보 목록이 비지 않는다.
-        # 저격도 같은 모양이지만 그 게임을 만들 때 함께 검증한다.
-        if game_id is GameId.ROULETTE:
+        # **시작 시점에 이미 정해진 선택지를 여기서 박는다.** 명단 스냅샷과 같은
+        # 순서·같은 시점에 넣어 둬야 나중에 결과를 다시 읽을 때 후보 목록이 비지 않는다.
+        options = _initial_options(game_id, config, rows)
+        if options:
             await conn.execute(
                 game_options.insert(),
                 [
@@ -154,11 +157,11 @@ async def start(*, participant_pk: int, room_pk: int) -> None:
                         "option_id": new_option_id(),
                         "game_round_id": round_pk,
                         "room_id": room_pk,
-                        "participant_id": r.id,
-                        "label": r.nickname,
+                        "participant_id": participant_id,
+                        "label": label,
                         "sort_order": i,
                     }
-                    for i, r in enumerate(rows)
+                    for i, (participant_id, label) in enumerate(options)
                 ],
             )
 
@@ -217,6 +220,29 @@ async def start(*, participant_pk: int, room_pk: int) -> None:
     from app.services import game_service
 
     await game_service.begin(room_pk)
+
+
+def _initial_options(game_id: GameId, config: dict, rows) -> list[tuple[int | None, str]]:
+    """라운드가 서는 시점에 이미 정해진 선택지. (participant_id, label) 목록이다.
+
+    06_database/04 「저장 범위」가 게임별 game_options의 내용을 규정한다.
+
+    | 게임 | 선택지 | participant_id |
+    |------|--------|----------------|
+    | 룰렛 | 참가자 후보 1인 1행 — 조각 배치가 곧 입장 순서다 | 참가자 |
+    | 사다리 | 도착 항목 — 사람을 가리키지 않는다 | **NULL** |
+
+    킹메이커의 안건은 제출 단계에서 도착하므로 여기서 만들지 않는다. 저격의 후보는
+    룰렛과 같은 모양이지만 그 게임을 만들 때 함께 검증한다.
+    """
+    if game_id is GameId.ROULETTE:
+        return [(r.id, r.nickname) for r in rows]
+    if game_id is GameId.LADDER:
+        # **개수를 참가자 수에 맞추는 일은 판정 모듈이 공개한 함수가 한다.** 뼈대가
+        # 따로 구현하면 ARMED 화면이 그리는 항목과 판정이 배정하는 항목이 갈라진다.
+        items = ladder.normalize_items(config.get("resultItems") or (), len(rows))
+        return [(None, label) for label in items]
+    return []
 
 
 # ── 단계 전이 ──────────────────────────────────────────────────────────────
