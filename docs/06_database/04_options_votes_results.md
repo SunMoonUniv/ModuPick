@@ -2,6 +2,7 @@
 
 > **대상**: ModuPick — game_options · votes · game_results 세 테이블의 컬럼·제약·인덱스, 게임별 저장 범위, config·result JSON 스키마
 > **작성일**: 2026-08-02
+> **개정일**: 2026-08-11 — 사다리 config에 topic을 더한다([../05_game_rules/01_common.md](../05_game_rules/01_common.md) 개정에 정합). result_data는 바뀌지 않는다 — 주제는 표시용이라 config에만 있고 확정 결과에는 담기지 않는다
 > **원천**: git 529e312 docs/db.md v0.5 §4 game_options·votes·game_results DDL · v0.4 §9 게임별 저장 테이블 사용 · §13 게임별 JSON 스키마 · git 529e312 docs/db.md「개발 전 반드시 정리할 문제」2(vote_no 의미)·3(입력 제약)·4(winner 컬럼 충돌) · git 529e312 docs/api.md(game:action 입력 표 · king.opinion 120자) · docs_legacy/requirements.md §3.4 방장 설정 항목 · §3.5 게임별 규칙 · §4.5 US-504 · frontend/src/games/Kingmaker.tsx(의견 120자)
 
 세 테이블은 **판이 남기는 것**을 담는다. 무엇을 고를 수 있었는지(game_options) · 누가 무엇에 표를 줬는지(votes) · 최종적으로 무엇이 확정됐는지(game_results)다. 세 테이블 모두 방과 회차에 매달려 있고 밖으로 나가는 참조가 없다.
@@ -176,7 +177,7 @@ CREATE TABLE game_results (
 | 게임 | config 핵심 값 | result_data 핵심 값 |
 |------|---------------|---------------------|
 | 운명의 룰렛 | schemaVersion · topic | schemaVersion · seed · winnerMemberIds[] · wheelOrder[](조각 배치, 입장 순서) |
-| 사다리타기 | schemaVersion · resultItems[] · speed | schemaVersion · seed · assignments[{memberId, optionId, label}] · ladderRungs[{row, leftLane}] |
+| 사다리타기 | schemaVersion · topic · resultItems[] · speed | schemaVersion · seed · assignments[{memberId, optionId, label}] · ladderRungs[{row, leftLane}] |
 | 킹메이커 | schemaVersion · topic · votesPerMember · revealAuthors | schemaVersion · tally[{optionId, label, voteCount}] · winnerOptionIds[] · ballotRounds · authors[{optionId, memberId}](revealAuthors일 때만) |
 | 시간초 잡기 | schemaVersion · topic · targetSeconds · criterion | schemaVersion · records[{memberId, elapsedMs, diffMs, absDiffMs, rank, status}] · winnerMemberIds[] · rematchRounds |
 | 익명 저격 | schemaVersion · question · voteSeconds · multiVote | schemaVersion · tally[{memberId, hitCount}] · winnerMemberIds[] · ballotRounds · abstainCount · decidedByRandom |

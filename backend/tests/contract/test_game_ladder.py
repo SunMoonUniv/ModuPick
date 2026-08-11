@@ -216,8 +216,8 @@ class TestResult:
             result = _drain(host_ws, "game:result")["data"]["result"]
 
             assert set(result) == {"topic", "pairs", "seed", "stats"}
-            # 사다리에는 방장이 정하는 주제가 없다
-            assert result["topic"] is None
+            # 「주제 템플릿 4계열」의 B 계열 기본값이다
+            assert result["topic"] == "조별과제"
             assert 0 <= result["seed"] < 2**64
 
             # **전원이 배정된다.** 1인 선정이 아니다

@@ -62,7 +62,9 @@ def playing(client, size: int, game: str = "roulette", config: dict | None = Non
         for g in guests:
             _drain(g, "game:selected")
 
-        if config:
+        # **None만 미지정이다.** config는 부분 갱신이라 빈 dict도 유효한 입력이고,
+        # falsy로 걸러 버리면 호출자가 {}를 명시해도 설정 이벤트가 생략된다.
+        if config is not None:
             host_ws.send_json({
                 "event": "game:config", "data": {"gameId": game, "config": config}
             })

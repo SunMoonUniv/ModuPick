@@ -173,13 +173,18 @@ async def _with_option_ids(state: RoundState, verdict: Verdict) -> Verdict:
     자리가 채운다 — **도착 컬럼이 그 행의 sort_order와 같은 축이다.**
 
     **detail은 건드리지 않는다.** 연출은 slot으로 그린다.
+
+    도착 컬럼에 맞는 행이 없으면 KeyError로 터진다. **조용히 None을 저장하지
+    않는다** — 저장 스키마가 optionId를 실제 행을 가리키는 값으로 규정하므로 빈 값이
+    남으면 결과를 나중에 읽을 때 항목을 찾을 수 없고, 그 상태가 정상처럼 보인다.
+    누락은 라운드 시작의 선택지 적재가 어긋났을 때만 생기는 구현 결함이다.
     """
     by_slot = await _option_ids(state.round_pk)
     persist = dict(verdict.persist or {})
     persist["assignments"] = [
         {
             "memberId": a["memberId"],
-            "optionId": by_slot.get(a["slot"]),
+            "optionId": by_slot[a["slot"]],
             "label": a["label"],
         }
         for a in persist.get("assignments", ())
@@ -220,13 +225,10 @@ def wire_result(state: RoundState) -> tuple[str, dict]:
     ASSIGN의 result는 topic · pairs · seed · stats다(07_api/03 §17). 저장의
     assignments가 여기서 pairs가 되고 **optionId는 화면에 나가지 않는다** — 항목을
     가리키는 것은 label이고 optionId는 저장·감사 축이다.
-
-    **topic은 null이다.** 사다리에는 방장이 정하는 주제가 없다. 무엇을 나누는 판인지는
-    항목 목록 자체가 말하며, 설정에 없는 값을 서버가 지어내지 않는다.
     """
     data = state.result_data or {}
     return "ASSIGN", {
-        "topic": None,
+        "topic": state.config.get("topic"),
         "pairs": [
             {"memberId": a["memberId"], "itemLabel": a["label"]}
             for a in data.get("assignments", ())
