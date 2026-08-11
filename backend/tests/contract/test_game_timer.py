@@ -326,7 +326,13 @@ class TestCriterion:
 
 class TestRematch:
     def test_동점이면_재대결로_간다(self, client, fast):
-        """같은 값을 신고하면 절대 오차가 같아 단독 승자가 없다."""
+        """같은 값을 신고하면 절대 오차가 같아 단독 승자가 없다.
+
+        **신고값은 허용 오차 안이어야 한다.** 테스트는 START 직후 STOP을 보내므로
+        서버 관측 경과 시간이 몇 밀리초다. 신고값이 MARGIN_MS를 넘게 벗어나면 대조에
+        실패해 사람마다 다른 관측값으로 판정되고, 두 관측값이 같은 밀리초일 때만
+        동점이 된다 — 부하에 따라 갈리는 산발적 실패다.
+        """
         with playing(client, 2, "timer") as (_r, _m, host_ws, guests, started):
             seq = _to_running(host_ws)["data"]["phaseSeq"]
             _catch_up(guests)
@@ -334,7 +340,7 @@ class TestRematch:
 
             for ws in _sockets(host_ws, guests):
                 _start(ws, started, seq)
-                _stop(ws, started, seq, 1_000)
+                _stop(ws, started, seq, 200)
 
             tie = _drain(host_ws, "game:tie", tries=20)["data"]
             assert tie["tieRound"] == 1
@@ -353,7 +359,7 @@ class TestRematch:
             # 방장과 참가1이 같은 값 — 참가2는 미시작이라 후보에서 빠진다
             for ws in (host_ws, guests[0]):
                 _start(ws, started, seq)
-                _stop(ws, started, seq, 1_000)
+                _stop(ws, started, seq, 200)
 
             _drain(host_ws, "game:tie", tries=20)
             rematch = _drain(host_ws, "game:phase", tries=8)
