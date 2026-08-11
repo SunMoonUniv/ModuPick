@@ -15,7 +15,7 @@ import pymysql
 import pytest
 
 from app.domain.enums import EndedReason, RoundStatus
-from app.services import round_service
+from app.services import game_service, round_service
 from tests.conftest import _dsn, confirm, connected, create_room, join, send_auth
 
 
@@ -40,11 +40,14 @@ def _lobby(client, size: int):
 
 
 @contextmanager
-def playing(client, size: int, game: str = "roulette"):
+def playing(client, size: int, game: str = "roulette", config: dict | None = None):
     """전원의 소켓을 열고 게임을 시작한 상태.
 
     **참여자 소켓을 시작 전에 열어 둔다.** 진행 중에는 새 소켓이 붙지 않으므로,
     나중에 열려고 하면 방에 들어갈 수 없다.
+
+    config는 **시작 전에** 넣는다. 설정 변경은 대기방에서만 받으므로(전표 7행)
+    시작한 뒤에는 끼워 넣을 자리가 없다.
     """
     room, members = _lobby(client, size)
     with ExitStack() as stack:
@@ -58,6 +61,16 @@ def playing(client, size: int, game: str = "roulette"):
         _drain(host_ws, "game:selected")
         for g in guests:
             _drain(g, "game:selected")
+
+        # **None만 미지정이다.** config는 부분 갱신이라 빈 dict도 유효한 입력이고,
+        # falsy로 걸러 버리면 호출자가 {}를 명시해도 설정 이벤트가 생략된다.
+        if config is not None:
+            host_ws.send_json({
+                "event": "game:config", "data": {"gameId": game, "config": config}
+            })
+            _drain(host_ws, "game:config_changed")
+            for g in guests:
+                _drain(g, "game:config_changed")
 
         for g in guests:
             g.send_json({"event": "member:ready", "data": {"ready": True}})
@@ -254,16 +267,31 @@ class TestStart:
 # ── 단계 전이와 틱 ─────────────────────────────────────────────────────────
 
 
+@pytest.fixture
+def no_flow(monkeypatch):
+    """게임별 자동 전이를 끈다.
+
+    **판정이 아직 없는 게임을 무대로 삼던 방식은 버렸다.** 게임이 하나씩 붙을 때마다
+    무대를 옮겨야 하고, 옮길 곳이 없어지면 이 계약을 시험할 자리 자체가 사라진다.
+    끄는 쪽이 무엇을 보는지도 분명하다 — 여기가 보는 것은 emit_phase라는 원시 연산이고
+    게임 진행이 함께 돌면 phaseSeq가 흘러가 그 계약이 게임 규칙과 섞인다.
+    """
+
+    async def noop(room_pk: int, *, skip_guide: bool = False) -> None:
+        del room_pk, skip_guide
+
+    monkeypatch.setattr(game_service, "begin", noop)
+
+
 class TestPhaseAndTick:
     """emit_phase라는 **원시 연산**의 계약이다.
 
-    게임을 사다리로 잡는 이유는 판정이 아직 없어서다 — 룰렛은 시작과 동시에
-    GUIDE·ARMED로 자동 전이하므로(game_service) phaseSeq가 흘러가고, 그러면 이 파일이
-    보려는 것이 룰렛 진행 규칙과 섞인다. 룰렛의 자동 전이는 test_game_play.py가 본다.
+    게임별 자동 전이는 no_flow가 끈다. 각 게임이 어떤 단계를 어떤 순서로 밟는지는
+    test_game_play.py(룰렛) · test_game_ladder.py(사다리)가 따로 본다.
     """
 
-    def test_마감이_있는_단계는_틱이_흐른다(self, client):
-        with playing(client, 2, game="ladder") as (room, _members, host_ws, _guests, started):
+    def test_마감이_있는_단계는_틱이_흐른다(self, client, no_flow):
+        with playing(client, 2) as (room, _members, host_ws, _guests, started):
             _drain(host_ws, "game:phase")  # READY
             seq = client.portal.call(
                 partial(
@@ -285,8 +313,8 @@ class TestPhaseAndTick:
             # **틱은 통지 이벤트라 버전을 밀지 않는다**
             assert tick["data"]["roomVersion"] == phase["data"]["roomVersion"]
 
-    def test_단계가_바뀌면_이전_틱이_멈춘다(self, client):
-        with playing(client, 2, game="ladder") as (room, _members, host_ws, _guests, _started):
+    def test_단계가_바뀌면_이전_틱이_멈춘다(self, client, no_flow):
+        with playing(client, 2) as (room, _members, host_ws, _guests, _started):
             _drain(host_ws, "game:phase")
             room_pk = _room_pk(room["code"])
 
@@ -303,15 +331,15 @@ class TestPhaseAndTick:
             for _ in range(2):
                 assert _drain(host_ws, "game:tick")["data"]["phaseSeq"] == 3
 
-    def test_마감이_없으면_틱이_흐르지_않는다(self, client):
-        with playing(client, 2, game="ladder") as (_room, _members, host_ws, _guests, _started):
+    def test_마감이_없으면_틱이_흐르지_않는다(self, client, no_flow):
+        with playing(client, 2) as (_room, _members, host_ws, _guests, _started):
             _drain(host_ws, "game:phase")  # READY — deadlineAt null
             host_ws.send_json({"event": "chat:send", "data": {"text": "틱 없나요"}})
             # 틱이 흐른다면 이 프레임보다 먼저 도착했을 것이다
             assert host_ws.receive_json()["event"] == "chat:message"
 
-    def test_TIE_단계는_결선_회차를_싣는다(self, client):
-        with playing(client, 2, game="ladder") as (room, _members, host_ws, _guests, _started):
+    def test_TIE_단계는_결선_회차를_싣는다(self, client, no_flow):
+        with playing(client, 2) as (room, _members, host_ws, _guests, _started):
             _drain(host_ws, "game:phase")
             client.portal.call(
                 partial(
@@ -325,8 +353,8 @@ class TestPhaseAndTick:
             assert phase["data"]["phase"] == "TIE"
             assert phase["data"]["tieRound"] == 2
 
-    def test_전원이_같은_phase를_받는다(self, client):
-        with playing(client, 2, game="ladder") as (_room, _members, host_ws, guests, _started):
+    def test_전원이_같은_phase를_받는다(self, client, no_flow):
+        with playing(client, 2) as (_room, _members, host_ws, guests, _started):
             _drain(guests[0], "game:started")
             mine = _drain(host_ws, "game:phase")
             theirs = _drain(guests[0], "game:phase")

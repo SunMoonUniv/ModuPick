@@ -2,6 +2,7 @@
 
 > **대상**: 대기방 진입 이후의 전 실시간 통신 정본 — 연결 수명주기 · 인증·권한 · 하트비트와 이탈 판정 · 순서 보장 · 타이머 동기화 · 멱등 · C→S 12종 · S→C 19종 · game:action type 8종 · configSchema
 > **작성일**: 2026-08-02
+> **개정일**: 2026-08-11 — configSchema에 사다리 topic을 더해 15개 → **16개**가 된다. §17의 ASSIGN이 result에 topic을 요구하는데 사다리만 그 값을 만들 설정이 없었다([../05_game_rules/01_common.md](../05_game_rules/01_common.md) 개정에 정합)
 > **개정일**: 2026-08-02 — 하트비트를 애플리케이션 이벤트에서 **WebSocket 제어 프레임 ping**으로 바꾸고 이탈 유예를 참가자 30초·방장 60초로 정정한다([../04_architecture/02_realtime_websocket.md](../04_architecture/02_realtime_websocket.md)에 정합). conn:ping·conn:pong 2종을 폐기해 C→S 13→12 · S→C 20→19가 된다
 > **원천**: git ecceb11(docs/06_api/02_socket.md 376줄) · git 529e312(docs/api.md 「실시간 소켓 이벤트 명세」 · docs/db.md §10·§16) · docs_legacy/requirements.md §3(공통 기준·게임별 규칙) · §4.4 US-401~403 · §5 NFR-01~05 · [../04_architecture/02_realtime_websocket.md](../04_architecture/02_realtime_websocket.md)(하트비트·유예 정본) · frontend/src/lib/types.ts · frontend/src/games/Nunchi.tsx · backend/app/main.py
 
@@ -778,11 +779,12 @@ WINNER의 detail은 게임마다 다르다.
 
 ## configSchema
 
-GET /api/games · GET /api/games/{gameId}가 내려보내는 설정 규격이며 game:config가 이 규격을 따른다. 항목은 **15개**이고 근거는 docs_legacy/requirements.md §3.4다. 규칙의 의미 정본은 [../05_game_rules](../05_game_rules/README.md)다.
+GET /api/games · GET /api/games/{gameId}가 내려보내는 설정 규격이며 game:config가 이 규격을 따른다. 항목은 **16개**이고 근거는 docs_legacy/requirements.md §3.4다. 규칙의 의미 정본은 [../05_game_rules](../05_game_rules/README.md)다.
 
 | gameId | 필드 | 타입 | 범위·값 | 기본값 |
 |--------|------|------|---------|--------|
 | roulette | topic | string | 1~12자 | 팀장 |
+| ladder | topic | string | 1~12자 | 조별과제 |
 | ladder | resultItems | string[] | 1개 이상 · 각 1~12자 · **중복 허용** | 조별과제 세트 6항목 |
 | ladder | speed | enum | FAST · NORMAL · SLOW | NORMAL |
 | kingmaker | topic | string | 1~12자 | 팀명 |
