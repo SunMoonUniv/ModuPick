@@ -14,7 +14,7 @@ import {
 } from '../../../assets/icons'
 import { useRemainMs } from '../../../hooks/useServerClock'
 import { useRoomStore } from '../../../store/roomStore'
-import type { KingmakerConfig } from '../../../protocol/types'
+import type { KingmakerBallotPayload, KingmakerConfig } from '../../../protocol/types'
 import common from './GameCommon.module.css'
 import styles from './KingmakerGame.module.css'
 
@@ -33,7 +33,6 @@ function mmss(ms: number) {
 // 킹메이커. 익명으로 의견을 모은 뒤(SUBMIT) 작성자를 가린 채 투표한다(VOTE/TIE).
 export function KingmakerGame() {
   const round = useRoomStore((s) => s.round)!
-  const tie = useRoomStore((s) => s.tie)
   const result = useRoomStore((s) => s.result)
   const sendAction = useRoomStore((s) => s.sendAction)
 
@@ -47,14 +46,17 @@ export function KingmakerGame() {
   useEffect(() => {
     setPicked([])
     setVoted(false)
-  }, [round.phase, tie?.candidates.length])
+  }, [round.phase, round.tieRound])
+
+  // 결선은 1인 1표로 좁아진다
+  const voteLimit = round.phase === 'RUNOFF' ? 1 : config.votesPerMember
 
   const toggleOption = (optionId: string) => {
     setPicked((prev) => {
       if (prev.includes(optionId)) return prev.filter((id) => id !== optionId)
-      if (prev.length >= config.votesPerMember) {
-        // 1표짜리 설정에서는 새로 고른 쪽으로 바꿔주는 편이 자연스럽다
-        return config.votesPerMember === 1 ? [optionId] : prev
+      if (prev.length >= voteLimit) {
+        // 1표짜리 회차에서는 새로 고른 쪽으로 바꿔주는 편이 자연스럽다
+        return voteLimit === 1 ? [optionId] : prev
       }
       return [...prev, optionId]
     })
@@ -62,24 +64,24 @@ export function KingmakerGame() {
 
   const submitVote = () => {
     if (picked.length === 0) return
-    sendAction('king.vote', { optionIds: picked })
+    sendAction('king.vote', { candidateIds: picked })
     setVoted(true)
   }
 
-  // 결선이면 동점 후보만, 아니면 서버가 준 전체 안건 목록
-  const options = tie
-    ? tie.candidates.map((c) => ({ optionId: c.id, text: c.label }))
-    : (round.options ?? [])
+  // 후보 목록은 투표 단계의 phase payload로만 온다 — 서버가 순서를 섞어 제출 순서를 감춘다
+  const ballot = round.payload as unknown as KingmakerBallotPayload | null
+  const options = (ballot?.candidates ?? []).map((c) => ({ optionId: c.optionId, text: c.label }))
 
   if (round.phase === 'SUBMIT') return <SubmitStage onSubmitted={setMyText} />
 
-  if (round.phase === 'VOTE' || round.phase === 'TIE') {
+  if (round.phase === 'VOTE' || round.phase === 'RUNOFF') {
     return (
       <VoteStage
         options={options}
         myText={myText}
         picked={picked}
         voted={voted}
+        voteLimit={voteLimit}
         onToggle={toggleOption}
         onSubmit={submitVote}
       />
@@ -114,37 +116,35 @@ interface VoteStageProps {
   myText: string
   picked: string[]
   voted: boolean
+  // 이번 회차에 던질 수 있는 표 수. 결선이면 1이다
+  voteLimit: number
   onToggle: (optionId: string) => void
   onSubmit: () => void
 }
 
 // 투표 단계 (S-07 · Figma 878:684). 왼쪽은 실시간 득표 현황, 오른쪽은 내 투표용지.
-function VoteStage({ options, myText, picked, voted, onToggle, onSubmit }: VoteStageProps) {
+function VoteStage({
+  options,
+  myText,
+  picked,
+  voted,
+  voteLimit,
+  onToggle,
+  onSubmit,
+}: VoteStageProps) {
   const round = useRoomStore((s) => s.round)!
   const progress = useRoomStore((s) => s.progress)
-  const optionVotes = useRoomStore((s) => s.optionVotes)
 
   const config = round.config as KingmakerConfig
   const remain = useRemainMs(round.deadlineAt)
   const fullMs = useRef(0)
   if (remain > fullMs.current) fullMs.current = remain
 
-  const alive = round.roundMembers.filter((m) => !m.departed)
-  const doneCount = alive.filter((m) => progress[m.memberId] === 'COMPLETE').length
-
-  // 득표가 많은 순으로 세우되, 같으면 서버가 준 순서를 유지한다
-  const ranked = options
-    .map((o) => ({ ...o, votes: optionVotes[o.optionId] ?? 0 }))
-    .sort((a, b) => b.votes - a.votes)
-  const [top, ...rest] = ranked
-  const maxVotes = Math.max(1, top?.votes ?? 0)
-  // 2위와의 표 차 — 스포트라이트 아래 한 줄에 쓴다
-  const lead = (top?.votes ?? 0) - (rest[0]?.votes ?? 0)
-
-  // 프레임의 컷오프 선은 득표한 항목과 아직 0표인 항목을 가르는 자리다
-  const votedCount = rest.filter((o) => o.votes > 0).length
-  const above = rest.slice(0, votedCount)
-  const below = rest.slice(votedCount)
+  // 서버는 사람별 제출 여부도, 항목별 득표수도 주지 않는다 — 다음 회차의 전략이 되기 때문이다.
+  // 오는 것은 건수뿐이라 중간 순위를 그릴 방법이 없다.
+  const counts = (progress ?? null) as { votedCount?: number; totalCount?: number } | null
+  const doneCount = counts?.votedCount ?? 0
+  const totalCount = counts?.totalCount ?? round.roster.length
 
   return (
     <>
@@ -165,32 +165,32 @@ function VoteStage({ options, myText, picked, voted, onToggle, onSubmit }: VoteS
       ))}
 
       <span className={styles.headPill}>
-        ◷ 집계 중 · {doneCount}/{alive.length} 투표
+        ◷ 집계 중 · {doneCount}/{totalCount} 투표
       </span>
 
-      {/* ── 1위 스포트라이트 ── */}
+      {/* ── 진행 현황 ── 서버가 중간 득표를 감추므로 순위 대신 참여 현황만 그린다 */}
       <section className={styles.spotlight}>
         <div className={styles.spotlightMain}>
           <span className={styles.chipRow}>
             <span className={styles.chipTop}>
               <img src={crownIcon} alt="" />
-              지금 1위
+              개표는 마감 뒤에
             </span>
-            <span className={styles.chipRule}>
-              1인 {config.votesPerMember}표 · 익명
-            </span>
+            <span className={styles.chipRule}>1인 {voteLimit}표 · 익명</span>
           </span>
-          <h2 className={styles.topText}>{top?.text ?? '—'}</h2>
+          <h2 className={styles.topText}>후보 {options.length}개</h2>
           <span className={styles.topBar}>
-            <i style={{ width: `${((top?.votes ?? 0) / maxVotes) * 100}%` }} />
+            <i style={{ width: `${totalCount > 0 ? (doneCount / totalCount) * 100 : 0}%` }} />
           </span>
           <p className={styles.topNote}>
-            {(top?.votes ?? 0) === 0
+            {doneCount === 0
               ? '🔥 아직 아무도 안 눌렀어요'
-              : `🔥 2위와 ${lead === 0 ? '동점' : `${lead}표 차`} · 아직 ${alive.length - doneCount}명이 안 눌렀어요`}
+              : `🔥 아직 ${Math.max(0, totalCount - doneCount)}명이 안 눌렀어요`}
           </p>
         </div>
-        <span className={styles.topCount}>{top?.votes ?? 0}표</span>
+        <span className={styles.topCount}>
+          {doneCount}/{totalCount}
+        </span>
       </section>
 
       <span className={styles.voteBadge}>
@@ -198,31 +198,11 @@ function VoteStage({ options, myText, picked, voted, onToggle, onSubmit }: VoteS
         VOTE!
       </span>
 
-      {/* ── 2위 아래 순위표 ── */}
+      {/* ── 후보 목록 ── 득표를 감추므로 등수 없이 서버가 섞어 준 순서 그대로 세운다 */}
       <div className={`${styles.ranks} scroll-thin`}>
         <div className={styles.rankGroup}>
-          {above.map((o, i) => (
-            <RankRow key={o.optionId} rank={i + 2} option={o} maxVotes={maxVotes} />
-          ))}
-        </div>
-
-        {/* 양쪽에 항목이 있을 때만 컷오프 선을 긋는다 */}
-        {above.length > 0 && below.length > 0 && (
-          <div className={styles.cutoff}>
-            <span className={styles.cutoffLine} />
-            <span className={styles.cutoffChip}>✂ 여기까지 득표 · 아래는 아직 0표</span>
-          </div>
-        )}
-
-        <div className={styles.rankGroup}>
-          {below.map((o, i) => (
-            <RankRow
-              key={o.optionId}
-              rank={above.length + i + 2}
-              option={o}
-              maxVotes={maxVotes}
-              dim
-            />
+          {options.map((o, i) => (
+            <CandidateRow key={o.optionId} index={i + 1} text={o.text} />
           ))}
         </div>
       </div>
@@ -241,7 +221,7 @@ function VoteStage({ options, myText, picked, voted, onToggle, onSubmit }: VoteS
         <div className={styles.ballotHead}>
           <h3>🔒 내 투표</h3>
           <p>
-            익명 · 1인 {config.votesPerMember}표 · 팀명 {options.length}개 중 하나
+            익명 · 1인 {voteLimit}표 · {config.topic} 후보 {options.length}개 중
           </p>
         </div>
 
@@ -289,36 +269,23 @@ function VoteStage({ options, myText, picked, voted, onToggle, onSubmit }: VoteS
       <GameHud
         largeNote
         badge="2"
-        title={round.phase === 'TIE' ? '◷ 동점! 결선 투표…' : '◷ 익명 투표 중…'}
-        note={`${doneCount}/${alive.length}명 투표 완료 · 최다 득표 ${config.topic}이 우리 팀 이름으로 확정`}
+        title={round.phase === 'RUNOFF' ? '◷ 동점! 결선 투표…' : '◷ 익명 투표 중…'}
+        note={`${doneCount}/${totalCount}명 투표 완료 · 최다 득표 ${config.topic}(으)로 확정`}
         right={<HudPill raised>★ 누가 뭘 골랐는지 아무도 몰라요</HudPill>}
       />
     </>
   )
 }
 
-// 2위 이하 한 줄 — 등수 배지 · 안건 이름 · 득표 막대 · 표 수
-function RankRow({
-  rank,
-  option,
-  maxVotes,
-  dim,
-}: {
-  rank: number
-  option: { optionId: string; text: string; votes: number }
-  maxVotes: number
-  // 아직 0표라 흐리게 내리는 줄
-  dim?: boolean
-}) {
+// 후보 한 줄 — 번호 배지와 안건 이름. 득표는 마감 전까지 서버가 내려주지 않아 자리를 비운다
+function CandidateRow({ index, text }: { index: number; text: string }) {
   return (
-    <div className={`${styles.rankRow} ${dim ? styles.rankDim : ''}`}>
-      <span className={styles.rankBadge}>{rank}</span>
-      <span className={styles.rankText}>{option.text}</span>
+    <div className={styles.rankRow}>
+      <span className={styles.rankBadge}>{index}</span>
+      <span className={styles.rankText}>{text}</span>
       <span className={styles.rankBar}>
-        <i style={{ width: `${Math.max(2.26, (option.votes / maxVotes) * 100)}%` }} />
-        {option.votes === 0 && <em>아직 0표</em>}
+        <em>개표 전</em>
       </span>
-      <b className={styles.rankCount}>{option.votes}표</b>
     </div>
   )
 }
@@ -326,27 +293,30 @@ function RankRow({
 // 의견 제출 단계 (S-07-1 · Figma 878:1750). 제한 시간 안에 익명으로 한 줄을 던진다.
 function SubmitStage({ onSubmitted }: { onSubmitted: (text: string) => void }) {
   const round = useRoomStore((s) => s.round)!
-  const me = useRoomStore((s) => s.me)
   const progress = useRoomStore((s) => s.progress)
   const sendAction = useRoomStore((s) => s.sendAction)
 
   const config = round.config as KingmakerConfig
   const [draft, setDraft] = useState('')
+  // 서버가 "누가 냈는지"를 알려주지 않으므로 내 제출 여부는 이 화면이 직접 기억한다
+  const [mine, setMine] = useState(false)
 
   const remain = useRemainMs(round.deadlineAt)
   // 서버가 제출 단계의 전체 길이를 따로 보내주지 않아, 이 단계에서 본 가장 큰 남은 시간을 100%로 삼는다
   const fullMs = useRef(0)
   if (remain > fullMs.current) fullMs.current = remain
 
-  const alive = round.roundMembers.filter((m) => !m.departed)
-  const doneCount = alive.filter((m) => progress[m.memberId] === 'COMPLETE').length
-  const leftCount = alive.length - doneCount
-  const mine = progress[me ?? ''] === 'COMPLETE'
+  // 서버는 제출 건수만 준다 — 사람별 제출 여부는 어떤 게임에서도 오지 않는다
+  const counts = (progress ?? null) as { submittedCount?: number; totalCount?: number } | null
+  const doneCount = counts?.submittedCount ?? 0
+  const totalCount = counts?.totalCount ?? round.roster.length
+  const leftCount = Math.max(0, totalCount - doneCount)
 
   const submit = () => {
     const text = draft.trim()
     if (text.length === 0) return
     sendAction('king.opinion', { text })
+    setMine(true)
     onSubmitted(text)
   }
 
@@ -355,7 +325,7 @@ function SubmitStage({ onSubmitted }: { onSubmitted: (text: string) => void }) {
       {/* 오른쪽 위 제출 현황 알약 — 공통 껍데기의 제목 줄 오른쪽 끝에 붙는다 */}
       <span className={styles.headPill}>
         <img src={lightbulbIcon} alt="" />
-        {doneCount}/{alive.length} 제출 · {leftCount}명 남음
+        {doneCount}/{totalCount} 제출 · {leftCount}명 남음
       </span>
 
       {/* 장식 — 프레임 좌표 그대로 */}
@@ -393,14 +363,14 @@ function SubmitStage({ onSubmitted }: { onSubmitted: (text: string) => void }) {
             <section className={styles.board}>
               <h3>◆ 누가 냈을까?</h3>
               <p>
-                {doneCount}/{alive.length} 제출 ·{' '}
+                {doneCount}/{totalCount} 제출 ·{' '}
                 {leftCount > 0 ? `${leftCount}명만 더 내면 투표 시작` : '곧 투표가 시작돼요'}
               </p>
               <span className={styles.bar}>
                 <i
                   className={styles.barFill}
                   style={{
-                    width: `${(doneCount / Math.max(1, alive.length)) * 100}%`,
+                    width: `${(doneCount / Math.max(1, totalCount)) * 100}%`,
                     background: 'var(--color-online)',
                   }}
                 />

@@ -1,9 +1,10 @@
 import { avatarSrc } from '../../assets/avatars'
 import { useRoomStore } from '../../store/roomStore'
-import type { RecordResult } from '../../protocol/types'
+import type { ResultStat } from '../../protocol/types'
+import type { TimerView } from './adapters'
 import { ConfettiPiece, type ConfettiSpec } from './confetti'
 import { ResultActions } from './ResultActions'
-import { ResultStats } from './ResultStats'
+import { ResultStats, serverStatItems } from './ResultStats'
 import styles from './RecordResultView.module.css'
 
 // 순위표가 1위부터 순서대로 돌려 쓰는 색 — 아바타 링과 정확도 막대에 같은 색을 쓴다
@@ -45,27 +46,37 @@ function sec(ms: number) {
   return (ms / 1000).toFixed(2)
 }
 
+// 기록이 없는 사람(START·STOP이 닿지 않음)의 시간 칸. 빈칸으로 두면 자리만 비어 이유가 안 보인다
+function secOrDash(ms: number | null) {
+  return ms === null ? '-초' : `${sec(ms)}초`
+}
+
 // 부호를 붙인 목표 대비 시간차. 목표보다 빨랐으면 −, 늦었으면 + (프레임과 같은 유니코드 마이너스 기호)
 function dev(ms: number) {
   return `${ms >= 0 ? '+' : '−'}${(Math.abs(ms) / 1000).toFixed(2)}`
 }
 
 interface RecordResultViewProps {
-  result: RecordResult
+  view: TimerView
+  // 아래 통계 타일 줄. 문구까지 서버가 확정해 내려준다
+  stats: ResultStat[]
 }
 
 // 시간초 잡기처럼 참가자별 기록으로 순위를 매기는 결과 화면 (S-08b · Figma 542:2292).
-export function RecordResultView({ result }: RecordResultViewProps) {
+export function RecordResultView({ view, stats }: RecordResultViewProps) {
   const room = useRoomStore((s) => s.room)
-  const me = useRoomStore((s) => s.me)
+  const me = useRoomStore((s) => s.me?.memberId ?? null)
 
-  // 서버가 이미 순위대로 정렬해 보내지만, 화면이 순서를 전제로 그리므로 한 번 더 확정한다
-  const rows = [...result.rows].sort((a, b) => a.rank - b.rank)
+  // 서버가 순위대로 보내온 순서를 그대로 쓴다
+  const rows = view.rows
   const winner = rows[0]
   // 오차가 가장 큰 사람을 100%로 잡아 정확도 막대의 길이를 정한다 (기록 없는 사람은 계산에서 뺀다)
   const worstErrorMs = Math.max(1, ...rows.map((r) => r.absErrorMs ?? 0))
   // "오차 최대"가 승리 조건이면 막대가 반대로 길어진다
-  const isClosest = result.winnerRule === 'closest'
+  const isClosest = view.criterion === 'CLOSEST'
+
+  // 유효 기록이 하나도 없으면 순위표 자체가 성립하지 않는다
+  if (!winner) return null
 
   // 정확도 막대의 채움 비율 (0~1). 기록이 없으면 빈 막대다.
   const fillRatio = (absErrorMs: number | null) => {
@@ -99,9 +110,8 @@ export function RecordResultView({ result }: RecordResultViewProps) {
             : `오차 ${sec(winner.absErrorMs)}초 · 1위!`}
         </span>
         <span className={styles.winnerSub}>
-          목표 {sec(result.targetMs)}초 →{' '}
-          {winner.member.memberId === me ? '내 기록' : '1위 기록'}{' '}
-          {winner.elapsedMs === null ? '없음' : `${sec(winner.elapsedMs)}초`}
+          목표 {sec(view.targetMs)}초 → {winner.member.memberId === me ? '내 기록' : '1위 기록'}{' '}
+          {secOrDash(winner.elapsedMs)}
         </span>
 
         {/* 오른쪽 순위표 */}
@@ -120,9 +130,7 @@ export function RecordResultView({ result }: RecordResultViewProps) {
                   <img src={avatarSrc(row.member.avatarId)} alt="" />
                 </span>
                 <span className={styles.name}>{row.member.nickname}</span>
-                <span className={styles.score}>
-                  {row.elapsedMs === null ? '—' : `${sec(row.elapsedMs)}초`}
-                </span>
+                <span className={styles.score}>{secOrDash(row.elapsedMs)}</span>
                 <span className={styles.accuracy}>
                   <span
                     className={styles.accuracyFill}
@@ -137,19 +145,7 @@ export function RecordResultView({ result }: RecordResultViewProps) {
           })}
         </div>
 
-        <ResultStats
-          top={565.31}
-          items={[
-            { left: 47.01, tone: 'cyan', value: `${sec(result.targetMs)}초`, label: '목표 시간' },
-            {
-              left: 425.67,
-              tone: 'pink',
-              value: winner.absErrorMs === null ? '—' : `${sec(winner.absErrorMs)}초`,
-              label: '1위 오차',
-            },
-            { left: 804.34, tone: 'yellow', value: `${rows.length}명`, label: '참가자' },
-          ]}
-        />
+        <ResultStats top={565.31} items={serverStatItems(stats, [47.01, 425.67, 804.34])} />
 
         <span className={styles.cardFooter}>modupick · 방 {room?.displayCode}</span>
       </section>
@@ -160,12 +156,12 @@ export function RecordResultView({ result }: RecordResultViewProps) {
       {/* ── 아래 기록 분포 띠 ── */}
       <section className={styles.spread}>
         <span className={styles.spreadTitle}>
-          ⏱ 기록 분포 · 목표 {sec(result.targetMs)}초에{' '}
+          ⏱ 기록 분포 · 목표 {sec(view.targetMs)}초에{' '}
           {isClosest ? '가까울수록' : '멀수록'} 왼쪽 순위
         </span>
         <span className={styles.spreadTrack} />
         <span className={styles.spreadGoalTick} />
-        <span className={styles.spreadGoal}>🎯 목표 {sec(result.targetMs)}초</span>
+        <span className={styles.spreadGoal}>🎯 목표 {sec(view.targetMs)}초</span>
 
         {rows.map((row, i) => {
           // 마크는 기록값이 아니라 순위 간격으로 고르게 놓인다 — 1위가 왼쪽 끝, 꼴찌가 오른쪽 끝
@@ -181,7 +177,7 @@ export function RecordResultView({ result }: RecordResultViewProps) {
                 <img src={avatarSrc(row.member.avatarId)} alt="" />
               </span>
               <span className={styles.markName}>
-                {row.member.nickname} {row.elapsedMs === null ? '—' : sec(row.elapsedMs)}
+                {row.member.nickname} {row.elapsedMs === null ? '-' : sec(row.elapsedMs)}
               </span>
               <span className={styles.markDev} style={{ background: chipTone }}>
                 {row.diffMs === null ? '—' : dev(row.diffMs)}

@@ -4,12 +4,52 @@ import styles from './GameConfigForm.module.css'
 
 // 자유 입력 항목에 한 번에 채워 넣을 수 있는 자주 쓰는 값. 서버 스키마에는 없는 순수 입력 편의라
 // 여기(화면 쪽)에 둔다 — 값 자체는 그냥 텍스트라 서버가 알 필요가 없다.
-// 사다리(ladder)의 items는 목록이지만 프리셋은 한 칸짜리 목록으로 들어간다 — 한 명만 그 역할이고 나머지는 X다.
+// 사다리의 resultItems는 목록이지만 프리셋은 한 칸짜리 목록으로 들어간다 — 한 명만 그 역할이고 나머지는 X다.
 const TEXT_PRESETS: Partial<Record<GameId, Record<string, string[]>>> = {
   roulette: { topic: ['팀장', '발표자', '당첨', '벌칙'] },
-  ladder: { items: ['팀장', '발표자', '청소 당번'] },
+  ladder: { resultItems: ['팀장', '발표자', '청소 당번'] },
   kingmaker: { topic: ['팀장', '발표자', '조장'] },
   snipe: { question: ['제일 늦게 올 사람은?', '오늘 발표는 누가 할까?'] },
+}
+
+// 서버 configSchema에는 화면 문구가 없다(필드 이름과 허용값만 온다) — 라벨은 클라가 붙인다.
+const FIELD_LABELS: Record<string, string> = {
+  topic: '주제',
+  resultItems: '도착 항목',
+  speed: '연출 속도',
+  votesPerMember: '1인당 표 수',
+  revealAuthors: '제안자 공개',
+  targetSeconds: '목표 시간',
+  criterion: '승자 기준',
+  question: '질문',
+  voteSeconds: '투표 시간',
+  multiVote: '복수 지목',
+  windowMs: '판정창',
+  roundSeconds: '라운드 제한시간',
+}
+
+// enum 항목의 허용값별 표기. 서버는 저장값만 내려주므로 사람이 읽을 문구를 여기서 잇는다.
+const CHOICE_LABELS: Record<string, Record<string, string>> = {
+  speed: { FAST: '빠르게', NORMAL: '보통', SLOW: '느리게' },
+  criterion: { CLOSEST: '가장 가까운 사람', FARTHEST: '가장 먼 사람' },
+  votesPerMember: { '1': '1표', '2': '2표', '3': '3표' },
+  targetSeconds: { '5': '5초', '7': '7초', '10': '10초' },
+  windowMs: { '300': '0.3초', '500': '0.5초' },
+  roundSeconds: { '10': '10초', '15': '15초', '20': '20초' },
+}
+
+// 켜고 끄는 항목의 표기. 항목마다 문구가 달라야 무엇이 공개되는지 분명해진다.
+const BOOLEAN_LABELS: Record<string, [on: string, off: string]> = {
+  revealAuthors: ['실명 공개', '익명 유지'],
+  multiVote: ['여러 명 가능', '한 명만'],
+}
+
+function labelOf(field: { name: string }) {
+  return FIELD_LABELS[field.name] ?? field.name
+}
+
+function choiceLabel(name: string, value: string | number | boolean) {
+  return CHOICE_LABELS[name]?.[String(value)] ?? String(value)
 }
 
 interface GameConfigFormProps {
@@ -39,48 +79,79 @@ export function GameConfigForm({
 
   return (
     <div className={[styles.form, editable ? '' : styles.readonly].filter(Boolean).join(' ')}>
-      {Object.entries(schema).map(([key, field]) => (
-        <div key={key} className={styles.field}>
-          <span className={styles.label}>{field.label}</span>
+      {schema.map((field) => {
+        const key = field.name
+        return (
+          <div key={key} className={styles.field}>
+            <span className={styles.label}>{labelOf(field)}</span>
 
-          {field.type === 'text' && (
-            <TextField
-              value={String(values[key] ?? '')}
-              maxLength={field.maxLength}
-              presets={TEXT_PRESETS[gameId]?.[key] ?? []}
-              onChange={(next) => onChange({ [key]: next })}
-            />
-          )}
+            {field.type === 'string' && (
+              <TextField
+                value={String(values[key] ?? '')}
+                maxLength={field.maxLength ?? 12}
+                presets={TEXT_PRESETS[gameId]?.[key] ?? []}
+                onChange={(next) => onChange({ [key]: next })}
+              />
+            )}
 
-          {field.type === 'enum' && (
-            <div className={styles.chips}>
-              {field.options.map((option) => (
-                <button
-                  key={String(option.value)}
-                  type="button"
-                  className={
-                    values[key] === option.value ? `${styles.chip} ${styles.chipOn}` : styles.chip
-                  }
-                  onClick={() => onChange({ [key]: option.value })}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </div>
-          )}
+            {field.type === 'enum' && (
+              <div className={styles.chips}>
+                {(field.choices ?? []).map((choice) => (
+                  <button
+                    key={String(choice)}
+                    type="button"
+                    className={
+                      values[key] === choice ? `${styles.chip} ${styles.chipOn}` : styles.chip
+                    }
+                    onClick={() => onChange({ [key]: choice })}
+                  >
+                    {choiceLabel(key, choice)}
+                  </button>
+                ))}
+              </div>
+            )}
 
-          {field.type === 'list' && (
-            <ListField
-              items={(values[key] as string[]) ?? []}
-              // 인원수보다 많은 항목은 어차피 서버가 잘라내므로 칸 자체를 못 늘리게 한다
-              maxItems={Math.min(field.maxItems, memberCount)}
-              itemMaxLength={field.itemMaxLength}
-              presets={TEXT_PRESETS[gameId]?.[key] ?? []}
-              onChange={(next) => onChange({ [key]: next })}
-            />
-          )}
-        </div>
-      ))}
+            {/* 켜고 끄는 항목도 세그먼트 칩으로 그린다 — 체크박스보다 현재 값이 눈에 띈다 */}
+            {field.type === 'boolean' && (
+              <div className={styles.chips}>
+                {[true, false].map((choice) => (
+                  <button
+                    key={String(choice)}
+                    type="button"
+                    className={
+                      values[key] === choice ? `${styles.chip} ${styles.chipOn}` : styles.chip
+                    }
+                    onClick={() => onChange({ [key]: choice })}
+                  >
+                    {(BOOLEAN_LABELS[key] ?? ['켜기', '끄기'])[choice ? 0 : 1]}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* 정수 항목은 허용 범위가 넓어(저격 투표 시간 5~60초) 칩 대신 숫자 칸으로 받는다 */}
+            {field.type === 'int' && (
+              <NumberField
+                value={Number(values[key] ?? field.default ?? 0)}
+                min={field.min ?? 0}
+                max={field.max ?? 999}
+                onChange={(next) => onChange({ [key]: next })}
+              />
+            )}
+
+            {field.type === 'string_list' && (
+              <ListField
+                items={(values[key] as string[]) ?? []}
+                // 인원수보다 많은 항목은 어차피 서버가 잘라내므로 칸 자체를 못 늘리게 한다
+                maxItems={memberCount}
+                itemMaxLength={field.maxLength ?? 12}
+                presets={TEXT_PRESETS[gameId]?.[key] ?? []}
+                onChange={(next) => onChange({ [key]: next })}
+              />
+            )}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -167,6 +238,53 @@ function TextField({ value, maxLength, presets, onChange }: TextFieldProps) {
         </span>
       </div>
     </>
+  )
+}
+
+interface NumberFieldProps {
+  value: number
+  min: number
+  max: number
+  onChange: (next: number) => void
+}
+
+// 범위 안의 정수 하나. 범위를 벗어난 값은 서버가 game.invalid_config로 거절하므로 올리기 전에 가둔다.
+function NumberField({ value, min, max, onChange }: NumberFieldProps) {
+  // 지우는 도중의 빈 칸을 담아둔다 — 빈 문자열은 서버에 올리지 않는다
+  const [draft, setDraft] = useState(String(value))
+  const sent = useRef(value)
+
+  useEffect(() => {
+    if (value !== sent.current) {
+      sent.current = value
+      setDraft(String(value))
+    }
+  }, [value])
+
+  const push = (raw: string) => {
+    setDraft(raw)
+    const parsed = Number(raw)
+    if (raw.trim() && Number.isInteger(parsed) && parsed >= min && parsed <= max) {
+      sent.current = parsed
+      onChange(parsed)
+    }
+  }
+
+  return (
+    <div className={styles.textBox}>
+      <input
+        className={styles.textInput}
+        type="number"
+        inputMode="numeric"
+        value={draft}
+        min={min}
+        max={max}
+        onChange={(e) => push(e.target.value)}
+      />
+      <span className={styles.counter}>
+        {min}~{max}초
+      </span>
+    </div>
   )
 }
 

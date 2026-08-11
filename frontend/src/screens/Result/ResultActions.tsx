@@ -14,7 +14,8 @@ interface ResultActionsProps {
 // 결과 화면의 "다음은?" 패널. 다시 하기·대기방 복귀는 방장만 누를 수 있어 게스트에게는 잠겨 보인다.
 export function ResultActions({ left, top, wide, compact }: ResultActionsProps) {
   const isHost = useRoomStore(selectIsHost)
-  const replayGame = useRoomStore((s) => s.replayGame)
+  // 「다시 하기」는 전용 이벤트가 아니라 game:start다 — 서버가 방 상태를 보고 가른다
+  const startGame = useRoomStore((s) => s.startGame)
   const closeRound = useRoomStore((s) => s.closeRound)
 
   return (
@@ -32,7 +33,7 @@ export function ResultActions({ left, top, wide, compact }: ResultActionsProps) 
       <button
         type="button"
         className={`${styles.button} ${styles.replay}`}
-        onClick={replayGame}
+        onClick={startGame}
         disabled={!isHost}
       >
         ↻&nbsp;&nbsp;다시 하기

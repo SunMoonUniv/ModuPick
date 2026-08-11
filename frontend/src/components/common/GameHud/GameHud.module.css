@@ -83,6 +83,17 @@
   font-size: var(--font-size-sub);
 }
 
+/* 밴드 한가운데 — 방장 시작 버튼 자리. 프레임에는 없는 자리라 위치는 임시로 정한 값이다 */
+.center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .right {
   position: absolute;
   right: 24px;

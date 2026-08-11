@@ -60,6 +60,36 @@
   white-space: nowrap;
 }
 
+/* ARMED 단계에서만 뜨는 방장 실행 버튼 — 판 위 가운데에 놓아 눌러야 할 것이 하나임을 분명히 한다 */
+/* 방장 실행 버튼 — 상태 밴드 가운데에 놓인다. 프레임에 없는 자리라 위치·크기는 임시값이다 */
+.startButton {
+  padding: 12px 28px;
+  background: var(--color-yellow);
+  border: var(--border-control) solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-btn);
+  font-family: var(--font-display);
+  font-size: var(--font-size-btn);
+  color: var(--color-ink);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.startButton:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: default;
+}
+
+/* 방장이 아닌 참가자에게는 같은 자리에 안내 문구만 남긴다 */
+.startWaiting {
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  color: var(--color-band-meta);
+  white-space: nowrap;
+}
+
 /* ── 사다리판 ── */
 
 /* 세로 기둥 — 색만 레인마다 다르다 */

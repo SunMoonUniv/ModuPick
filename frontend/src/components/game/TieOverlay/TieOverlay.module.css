@@ -1,0 +1,127 @@
+/* 동점 통지 · 교착 선택 오버레이 — 프레임 542:4966(MODAL · 동점 발생)을 그대로 옮겼다.
+   무대 위에 겹쳐 뜨므로 게임 화면 요소보다 위 레이어에 놓는다. */
+
+.backdrop {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-ink-85);
+  z-index: var(--z-modal);
+  animation: fade var(--duration-normal) var(--ease-out);
+}
+
+/* 카드 폭은 프레임 실측(568px). 칩이 늘어나면 아래로 접히게 두고 폭은 고정한다 */
+.card {
+  width: 568px;
+  padding: 36px 40px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  background: var(--color-white);
+  border: var(--border-control) solid var(--color-ink);
+  border-radius: 24px;
+  box-shadow: var(--shadow-lg);
+  animation: rise var(--duration-normal) var(--ease-out);
+}
+
+/* 상단 뱃지 — 프레임은 15px 고정폭 글꼴이다 */
+.badge {
+  padding: 9px 18px;
+  font-size: 15px;
+}
+
+.title {
+  font-family: var(--font-display);
+  font-size: 34px;
+  line-height: var(--line-height-tight);
+  text-align: center;
+}
+
+.body {
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--color-band-meta);
+  text-align: center;
+}
+
+/* 동점자 칩 줄 — 인원이 많아지면 다음 줄로 접는다 (프레임은 3명 기준 한 줄) */
+.names {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.name {
+  padding: 8px 16px;
+  font-family: var(--font-display);
+  font-size: 17px;
+}
+
+.caption {
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-muted);
+  text-align: center;
+}
+
+.divider {
+  width: 100%;
+  height: 3px;
+  background: var(--color-track);
+}
+
+.actions {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+}
+
+/* 프레임의 버튼은 본문 글꼴이 아니라 디스플레이 글꼴 18px다 */
+.choiceButton {
+  font-family: var(--font-display);
+  font-size: 18px;
+}
+
+/* 「다시」 버튼만 잉크 배경에 옐로 글자다 (기본 primary는 시안 글자) */
+.retryButton {
+  composes: choiceButton;
+  color: var(--color-yellow);
+}
+
+/* 방장이 아닌 참가자에게 버튼 자리 대신 보여주는 안내 */
+.waiting {
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--color-band-meta);
+  text-align: center;
+}
+
+.footnote {
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--color-dashed);
+  text-align: center;
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}

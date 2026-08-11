@@ -1,15 +1,15 @@
 import { avatarSrc } from '../../assets/avatars'
 import { AVATAR_TILE_COLORS } from '../../constants/avatarTiles'
-import { useRoomStore } from '../../store/roomStore'
-import type { NunchiConfig, NunchiRoundLog, WinnerResult } from '../../protocol/types'
+import type { NunchiVerdict, ResultStat } from '../../protocol/types'
+import type { NunchiView } from './adapters'
 import { ConfettiPiece, PAGE_CONFETTI } from './confetti'
 import { ResultActions } from './ResultActions'
 import styles from './NunchiResultView.module.css'
 
 interface NunchiResultViewProps {
-  result: WinnerResult
-  // 판정 폭·라운드 제한을 요약 알약에 그대로 싣기 위해 라운드 설정을 받는다
-  config: NunchiConfig | null
+  view: NunchiView
+  // 아래 요약 타일. 문구까지 서버가 확정해 내려준다
+  stats: ResultStat[]
 }
 
 // 아바타별 타일 색 — 인게임 화면과 같은 색을 써서 같은 사람인 걸 알아보게 한다
@@ -17,21 +17,17 @@ function tileColor(avatarId: string | null | undefined) {
   return AVATAR_TILE_COLORS[(avatarId ?? '').toUpperCase()] ?? 'var(--color-lavender)'
 }
 
-// 라운드 하나의 탈락 사유를 화면 문구로
-function reasonLabel(round: NunchiRoundLog) {
-  switch (round.reason) {
-    case 'SIMULTANEOUS':
-      return round.gapMs === undefined
-        ? '⚡ 동시 입력'
-        : `⚡ 동시 입력 · ${(round.gapMs / 1000).toFixed(2)}초 차`
-    case 'TIMEOUT':
-      return '⏱ 제한시간 초과'
-    case 'LAST_ONE':
-      return '🐢 마지막 한 명'
-    case 'ALL_PRESSED':
-      return '💥 남은 전원이 누름'
-    case 'DISCONNECTED':
-      return '⏸ 연결 끊김'
+// 판정 4값의 화면 문구. **이 게임에는 탈락이 없다** — 빠져나가거나 후보로 남거나 둘 중 하나다.
+function verdictLabel(verdict: NunchiVerdict) {
+  switch (verdict) {
+    case 'SAFE':
+      return '✅ 혼자 눌러 안전'
+    case 'OVERLAP':
+      return '⚡ 겹쳐 누름 · 남음'
+    case 'NO_INPUT':
+      return '⏱ 안 누름 · 남음'
+    case 'LAST':
+      return '🎯 최후 1인'
   }
 }
 
@@ -40,21 +36,26 @@ function pressLabel(elapsedMs: number | null) {
   return elapsedMs === null ? '미입력' : `${(elapsedMs / 1000).toFixed(2)}초`
 }
 
-// 눈치게임 결과 — 라운드별 판정 기록 (S-10b · Figma 542:2619).
-// 당첨자 카드 대신 "누가 언제 눌러서 살고 죽었는지"를 표로 펼치는 게 이 게임의 결과 발표다.
-export function NunchiResultView({ result, config }: NunchiResultViewProps) {
-  const round = useRoomStore((s) => s.round)
-  const rounds = result.rounds ?? []
+// 프레임(542:2619)의 요약 타일 4칸. **여기만 서버 stats가 아니라 판정 기록을 직접 센다** —
+// 서버가 주는 stats 3개(라운드 수·판정창·최종 선정)에는 사람 수가 하나도 없기 때문이다.
+// 계산이 아니라 같은 payload를 세는 것뿐이라 서버 판정과 어긋날 여지는 없다.
+function verdictTiles(rounds: NunchiView['rounds']) {
+  const rows = rounds.flatMap((r) => r.rows)
+  const uniqueSafe = new Set(rows.filter((r) => r.verdict === 'SAFE').map((r) => r.member.memberId))
+  const count = (verdict: NunchiVerdict) => rows.filter((r) => r.verdict === verdict).length
+  return [
+    { label: '참가자', value: `${rounds[0]?.rows.length ?? 0}명` },
+    { label: '✅ 빠져나감', value: `${uniqueSafe.size}명` },
+    { label: '⚡ 겹쳐 누름', value: `${count('OVERLAP')}회` },
+    { label: '⏱ 안 누름', value: `${count('NO_INPUT')}회` },
+  ]
+}
 
-  const members = round?.roundMembers ?? []
-  // 사유별 탈락 인원 — 요약 타일 3칸에 그대로 들어간다
-  const bySimultaneous = rounds
-    .filter((r) => r.reason === 'SIMULTANEOUS')
-    .reduce((n, r) => n + r.eliminated.length, 0)
-  // 프레임의 마지막 칸은 "제한시간 초과"만 세지만, 마지막 한 명·연결 끊김 탈락도 있어야 합이 맞아서 함께 센다
-  const byOther = rounds
-    .filter((r) => r.reason !== 'SIMULTANEOUS')
-    .reduce((n, r) => n + r.eliminated.length, 0)
+// 눈치게임 결과 — 라운드별 판정 기록 (S-10b · Figma 542:2619).
+// 당첨자 카드 대신 "누가 언제 눌러서 빠져나갔는지"를 표로 펼치는 게 이 게임의 결과 발표다.
+export function NunchiResultView({ view, stats }: NunchiResultViewProps) {
+  const rounds = view.rounds
+  const tiles = verdictTiles(rounds)
 
   return (
     <>
@@ -64,97 +65,101 @@ export function NunchiResultView({ result, config }: NunchiResultViewProps) {
 
       {/* ── 게임 종료 요약 ── */}
       <section className={styles.summary}>
-        <h2 className={styles.summaryTitle}>
-          🎬 게임 종료 · {rounds.length}라운드 진행
-        </h2>
+        <h2 className={styles.summaryTitle}>🎬 게임 종료 · {rounds.length}라운드 진행</h2>
         <span className={styles.summarySub}>
-          혼자 누르면 통과 · 겹치면 동시 탈락 · 시간 초과 시 탈락
+          혼자 누르면 빠져나가고 · 겹치거나 안 누르면 그대로 남는다 · 끝까지 남은 한 명이 뽑힌다
         </span>
-        {config && (
-          <span className={styles.summaryChip}>
-            ⚖ 동시 판정 {(config.decisionWindowMs / 1000).toFixed(1)}초 · 라운드 제한{' '}
-            {Math.round(config.subRoundTimeoutMs / 1000)}초
-          </span>
-        )}
+        {/* 라운드 수·판정창·최종 선정은 서버가 문구까지 확정해 내려주므로 그대로 이어 붙인다 */}
+        <span className={styles.summaryChip}>
+          ◇ {stats.map((stat) => `${stat.label} ${stat.value}`).join(' · ')}
+        </span>
 
-        <span className={`${styles.stat} ${styles.statCyan}`} style={{ left: 633.78 }}>
-          <b>{members.length}명</b>참가자
-        </span>
-        <span className={`${styles.stat} ${styles.statGreen}`} style={{ left: 921.78 }}>
-          <b>1명</b>✅ 통과
-        </span>
-        <span className={`${styles.stat} ${styles.statAmber}`} style={{ left: 1209.78 }}>
-          <b>{bySimultaneous}명</b>⚡ 동시 입력 탈락
-        </span>
-        <span className={`${styles.stat} ${styles.statPink}`} style={{ left: 1497.78 }}>
-          <b>{byOther}명</b>⏱ 제한시간·순서 탈락
-        </span>
+        {tiles.map((tile, i) => (
+          <span
+            key={tile.label}
+            className={`${styles.stat} ${[styles.statCyan, styles.statGreen, styles.statAmber, styles.statPink][i % 4]}`}
+            style={{ left: 633.78 + i * 288 }}
+          >
+            <b>{tile.value}</b>
+            {tile.label}
+          </span>
+        ))}
       </section>
 
       {/* ── 라운드별 판정 기록 ── */}
       <section className={styles.rounds}>
         <h2 className={styles.roundsTitle}>◆ 라운드별 판정 기록</h2>
         <div className={styles.legend}>
-          <span className={`${styles.legendPill} ${styles.legendPass}`}>✅ 혼자 눌러서 통과</span>
-          <span className={`${styles.legendPill} ${styles.legendSim}`}>
-            ⚡ {config ? (config.decisionWindowMs / 1000).toFixed(1) : '0.3'}초 내 동시 입력 탈락
-          </span>
-          <span className={`${styles.legendPill} ${styles.legendTimeout}`}>
-            ⏱ 제한시간 초과 탈락
-          </span>
+          <span className={`${styles.legendPill} ${styles.legendPass}`}>✅ 혼자 눌러서 빠져나감</span>
+          <span className={`${styles.legendPill} ${styles.legendSim}`}>⚡ 겹쳐 눌러 그대로 남음</span>
+          <span className={`${styles.legendPill} ${styles.legendTimeout}`}>⏱ 안 눌러 그대로 남음</span>
         </div>
 
         {/* 라운드가 3개를 넘으면 이 안에서만 세로로 스크롤된다 */}
         <div className={`${styles.roundList} scroll-thin`}>
           {rounds.map((r) => {
-            const simultaneous = r.reason === 'SIMULTANEOUS'
+            const safe = r.rows.filter((row) => row.verdict === 'SAFE')
+            const stayed = r.rows.filter((row) => row.verdict !== 'SAFE')
+            // 겹쳐 누른 사람이 하나라도 있으면 그 라운드는 동시 입력으로 갈린 판이다
+            const overlapped = stayed.some((row) => row.verdict === 'OVERLAP')
             return (
-              <div key={r.subRound} className={styles.round}>
+              <div key={r.round} className={styles.round}>
                 <div className={styles.rail}>
                   <span className={styles.railCaption}>ROUND</span>
-                  <span className={styles.railNumber}>{r.subRound}</span>
-                  <span className={styles.railEntered}>참가 {r.entered}명</span>
+                  <span className={styles.railNumber}>{r.round}</span>
+                  <span className={styles.railEntered}>참가 {r.rows.length}명</span>
                 </div>
 
                 <div className={styles.roundBody}>
                   <div className={`${styles.line} scroll-thin`}>
                     <span className={`${styles.countPill} ${styles.countPass}`}>
-                      ✅ 통과 {r.passed.length}명
+                      ✅ 빠져나감 {safe.length}명
                     </span>
-                    {r.passed.map((p) => (
-                      <span key={p.memberId} className={`${styles.chip} ${styles.chipPass}`}>
+                    {safe.map((row) => (
+                      <span
+                        key={row.member.memberId}
+                        className={`${styles.chip} ${styles.chipPass}`}
+                      >
                         <span
                           className={styles.chipAvatar}
-                          style={{ background: tileColor(p.avatarId) }}
+                          style={{ background: tileColor(row.member.avatarId) }}
                         />
-                        <img className={styles.chipFace} src={avatarSrc(p.avatarId)} alt="" />
-                        <span className={styles.chipName}>{p.nickname}</span>
-                        <span className={styles.chipTime}>{pressLabel(p.elapsedMs)}</span>
+                        <img
+                          className={styles.chipFace}
+                          src={avatarSrc(row.member.avatarId)}
+                          alt=""
+                        />
+                        <span className={styles.chipName}>{row.member.nickname}</span>
+                        <span className={styles.chipTime}>{pressLabel(row.elapsedMs)}</span>
                       </span>
                     ))}
                   </div>
 
                   <div className={`${styles.line} scroll-thin`}>
                     <span className={`${styles.countPill} ${styles.countFail}`}>
-                      ❌ 탈락 {r.eliminated.length}명
+                      ↩ 남음 {stayed.length}명
                     </span>
                     <span
-                      className={`${styles.reason} ${simultaneous ? styles.reasonSim : styles.reasonTimeout}`}
+                      className={`${styles.reason} ${overlapped ? styles.reasonSim : styles.reasonTimeout}`}
                     >
-                      {reasonLabel(r)}
+                      {overlapped ? '⚡ 판정창 안에 겹침' : '⏱ 입력 없음'}
                     </span>
-                    {r.eliminated.map((p) => (
+                    {stayed.map((row) => (
                       <span
-                        key={p.memberId}
-                        className={`${styles.chip} ${simultaneous ? styles.chipSim : styles.chipTimeout}`}
+                        key={row.member.memberId}
+                        className={`${styles.chip} ${row.verdict === 'OVERLAP' ? styles.chipSim : styles.chipTimeout}`}
                       >
                         <span
                           className={styles.chipAvatar}
-                          style={{ background: tileColor(p.avatarId) }}
+                          style={{ background: tileColor(row.member.avatarId) }}
                         />
-                        <img className={styles.chipFace} src={avatarSrc(p.avatarId)} alt="" />
-                        <span className={styles.chipName}>{p.nickname}</span>
-                        <span className={styles.chipTime}>{pressLabel(p.elapsedMs)}</span>
+                        <img
+                          className={styles.chipFace}
+                          src={avatarSrc(row.member.avatarId)}
+                          alt=""
+                        />
+                        <span className={styles.chipName}>{row.member.nickname}</span>
+                        <span className={styles.chipTime}>{verdictLabel(row.verdict)}</span>
                       </span>
                     ))}
                   </div>

@@ -1,6 +1,8 @@
 // ModuPick 프론트-서버 공통 계약 타입.
-// REST 구간(방 생성~프로필 확정)은 실제 백엔드(`backend/app/schemas/rest.py` · `app/domain/errors.py`)를 정본으로 삼는다.
-// 소켓 구간은 아직 임시 서버(local-server/) 계약이며, 백엔드 소켓 전환 작업에서 함께 옮긴다.
+// 정본은 실제 백엔드 코드다 — REST는 `backend/app/schemas/rest.py`, 소켓은
+// `backend/app/schemas/events.py`(생성물 `backend/devtools/socket-events.ts`),
+// 게임 설정은 `backend/app/domain/game_config.py`, phase는 `backend/app/domain/games/*.py`다.
+// 임시 서버(local-server/)는 이 계약과 다르며 더 이상 기준이 아니다.
 
 /* ────────────────────────── 기본 식별자 ────────────────────────── */
 
@@ -8,21 +10,23 @@
 export type MemberId = string
 // 라운드(게임 한 판) 식별자 — `rnd_` 접두
 export type RoundId = string
-// 킹메이커 안건 식별자 — `opt_` 접두
+// 킹메이커 안건 식별자 — `opt_` 접두. 와이어에서는 candidateId라는 이름으로 실린다
 export type OptionId = string
 
-// 게임 6종 식별자 — 서버/클라 양쪽에서 이 문자열 그대로 사용
+// 게임 6종 식별자 — gameId만 와이어도 소문자다 (나머지 열거값은 전부 대문자)
 export type GameId = 'roulette' | 'ladder' | 'kingmaker' | 'timer' | 'snipe' | 'nunchi'
 
-// 방 상태 — 서버는 저장값(소문자)과 와이어 표기(대문자)를 구분하며 API에는 대문자만 실린다.
-// 결과 화면은 방 상태가 아니라 라운드의 단계(phase)이므로 여기 값이 아니다.
+// 방 상태 — 서버는 저장값(소문자)과 와이어 표기(대문자)를 구분하며 와이어에는 대문자만 실린다
 export type RoomStatus = 'WAITING' | 'PLAYING'
 
 // 멤버 상태 — PENDING은 프로필 확정 전 슬롯 선점 단계, ACTIVE는 확정 후 명단에 보이는 상태
 export type MemberStatus = 'PENDING' | 'ACTIVE'
 
-// 방 안에서의 권한 — 방장 위임이 없으므로 라운드 중에도 바뀌지 않는다
-export type MemberRole = 'host' | 'guest'
+// 소켓 연결 품질 — UNSTABLE은 유예 중이라는 표시일 뿐 이탈 확정이 아니다
+export type ConnectionState = 'ONLINE' | 'UNSTABLE'
+
+// 소켓 프로토콜 버전 — conn:auth에 실어 보내며 다르면 서버가 4002로 닫는다
+export const PROTOCOL_VERSION = 1
 
 /* ────────────────────────── 공통 응답/에러 ────────────────────────── */
 
@@ -87,6 +91,20 @@ export interface Envelope<T> {
   timestamp: string
 }
 
+// 소켓 종료 코드 — 어느 코드에서도 자동 재연결하지 않는다. 재접속 경로가 없는 프로토콜이다.
+export const CloseCode = {
+  NORMAL: 1000,
+  PROTOCOL_ERROR: 4002,
+  UNAUTHORIZED: 4401,
+  // 방장이 강퇴했다. 별도 이벤트 없이 이 코드로만 알려 준다
+  KICKED: 4403,
+  AUTH_TIMEOUT: 4408,
+  // 같은 토큰으로 두 번째 연결을 시도했다. 기존 소켓이 살아남는다
+  DUPLICATE: 4409,
+  ROOM_CLOSED: 4410,
+  TOO_LARGE: 4413,
+} as const
+
 // fetch 래퍼가 REST 실패를 throw할 때 쓰는 에러 — code로 화면 분기하려고 만든 클래스
 export class ApiError extends Error {
   code: ErrorCode
@@ -102,41 +120,50 @@ export class ApiError extends Error {
 
 /* ────────────────────────── 도메인 모델 ────────────────────────── */
 
-// 방에 들어와 있는 사람 한 명 — 대기방 명단·게임 화면·결과 화면이 모두 이 형태를 쓴다
+// 명단에 보이는 참가자 한 명 — ACTIVE만 실린다 (프로필 입력 중인 PENDING은 남의 화면에 없다)
 export interface Member {
   memberId: MemberId
   nickname: string
   // A01~A30 중 하나. 방 안에서 중복 불가
   avatarId: string
-  // 한 줄 소개, 0~24자 (없으면 빈 문자열)
-  bio: string
-  role: MemberRole
-  status: MemberStatus
-  // guest 전용 준비 상태. host는 Ready 개념이 없어 항상 false
+  // 한 줄 소개. 안 적었으면 null
+  bio: string | null
+  // 방장 위임이 없으므로 라운드 중에도 바뀌지 않는다
+  isHost: boolean
+  // 참여자 전용 준비 상태. 방장은 준비 집합에 아예 들어가지 않아 항상 false
   ready: boolean
-  joinedAt: string
+  connection: ConnectionState
+  // 방에서 몇 번째로 프로필을 확정했는지 (1부터). 룰렛 조각·사다리 레인 배치가 이 순서다
+  joinOrder: number
 }
 
-// 방 메타데이터 — snapshot과 REST 조회가 공유하는 형태
+// 방 메타데이터 — room:snapshot의 room 필드
 export interface Room {
-  // 서버 내부 6자리 숫자 코드
+  // 서버 내부 6자리 숫자 코드. 소켓 인증과 URL에 쓰는 값이 이쪽이다
   code: string
   // 화면 표시용 `MODU-123456` 형태
   displayCode: string
   roomName: string
   maxMembers: number
-  status: RoomStatus
-  hostMemberId: MemberId
-  // 10분 무활동 만료 시각 (ISO 8601)
+  roomStatus: RoomStatus
+  // 방장이 아직 프로필을 확정하지 않았으면 null
+  hostMemberId: MemberId | null
   expiresAt: string
 }
 
-// 대기방에서 선택된 게임의 현재 상태 — 아직 아무것도 안 골랐으면 null
+// 자신의 상태 — 프로필 화면에 있는지 대기방에 있는지 이 값으로 가른다
+export interface Me {
+  memberId: MemberId
+  isHost: boolean
+  memberStatus: MemberStatus
+}
+
+// 대기방에서 선택된 게임의 현재 상태 — 아직 아무것도 안 골랐으면 null.
+// configSchema는 여기 실리지 않는다 — GET /api/games로 따로 받아 두고 버전만 대조한다.
 export interface GameSelection {
   gameId: GameId
-  // 현재 확정된 옵션 값 (게임별 형태가 달라 느슨하게 둔다)
   config: GameConfig
-  configSchema: ConfigSchema
+  configSchemaVersion: number
 }
 
 /* ────────────────────────── 게임 설정(config) ────────────────────────── */
@@ -146,49 +173,46 @@ export interface RouletteConfig {
   topic: string
 }
 
-// 사다리: 하단 결과 항목 목록과 애니메이션 속도
+// 사다리: 주제와 도착 항목 목록, 연출 속도
 export interface LadderConfig {
-  // 주제가 곧 도착 항목이다 — 별도의 topic 필드가 없다. 1~10개, 각 1~12자.
-  // 시작 시 인원수에 맞춰 서버가 X로 채우거나 자른다
-  items: string[]
-  speed: 'fast' | 'normal' | 'slow'
+  topic: string
+  // 도착 항목. 개수 제한이 없고 시작 시점에 서버가 인원수에 맞춰 X로 채우거나 뒤에서 자른다
+  resultItems: string[]
+  speed: 'FAST' | 'NORMAL' | 'SLOW'
 }
 
 // 킹메이커: 익명 안건 투표
 export interface KingmakerConfig {
   topic: string
-  // 1인당 던질 수 있는 표 수 (1·2·3)
-  votesPerMember: number
-  // 결과 화면에서 안건 제시자를 실명 공개할지
+  // 1인당 던질 수 있는 표 수
+  votesPerMember: 1 | 2 | 3
+  // 결과 화면에서 안건 제시자를 실명 공개할지. 투표자는 어느 설정에서도 공개하지 않는다
   revealAuthors: boolean
 }
 
 // 시간초 잡기: 목표 시간과 승자 기준
 export interface TimerConfig {
   topic: string
-  // 목표 시간 (5000·7000·10000 ms)
-  targetMs: number
-  // closest = 오차 최소가 당첨, farthest = 오차 최대가 당첨
-  winnerRule: 'closest' | 'farthest'
+  // 목표 시간(초). 밀리초가 아니다
+  targetSeconds: 5 | 7 | 10
+  // CLOSEST = 오차 최소가 뽑힘, FARTHEST = 오차 최대가 뽑힘
+  criterion: 'CLOSEST' | 'FARTHEST'
 }
 
-// 익명 저격: 질문과 투표 조건
+// 익명 저격: 질문과 투표 조건. 주제 필드 이름이 topic이 아니라 question이다
 export interface SnipeConfig {
-  // 질문 문구, 1~30자
-  topic: string
+  question: string
   voteSeconds: number
   // 한 사람이 여러 명을 지목할 수 있는지
-  allowMultipleTargets: boolean
-  // 결과에서 누가 누구를 찍었는지 공개할지
-  revealVoters: boolean
+  multiVote: boolean
 }
 
-// 눈치게임: 동시입력 판정 폭과 서브라운드 제한시간
+// 눈치게임: 동시입력 판정 폭과 라운드 제한시간
 export interface NunchiConfig {
   topic: string
-  // 이 시간(ms) 안에 몰린 클릭은 동시 입력으로 간주 (300 = 기본, 500 = 하드)
-  decisionWindowMs: number
-  subRoundTimeoutMs: number
+  // 이 시간(ms) 안에 겹친 입력은 동시 입력으로 본다
+  windowMs: 300 | 500
+  roundSeconds: 10 | 15 | 20
 }
 
 export type GameConfig =
@@ -212,50 +236,44 @@ export type ConfigOf<G extends GameId> = ConfigByGame[G]
 
 /* ────────────────────────── configSchema (설정 UI 자동 생성용) ────────────────────────── */
 
-// 자유 입력 문자열 필드 (주제 등)
-export interface TextField {
-  type: 'text'
-  label: string
-  minLength: number
-  maxLength: number
-  default: string
+// 설정 항목 하나 — 서버는 라벨을 내려주지 않으므로 화면 문구는 클라가 붙인다.
+// kind별로 채워지는 필드가 다르다: enum은 choices, string/string_list는 maxLength, int는 min·max.
+export interface ConfigField {
+  name: string
+  type: 'string' | 'string_list' | 'int' | 'enum' | 'boolean'
+  default: unknown
+  choices?: (string | number | boolean)[]
+  maxLength?: number
+  min?: number
+  max?: number
 }
 
-// 정해진 값 중 하나를 고르는 필드 — 세그먼트 버튼으로 그린다
-export interface EnumField {
-  type: 'enum'
-  label: string
-  // 실제 저장값과 화면 표기를 함께 넘겨 클라가 라벨을 하드코딩하지 않게 한다
-  options: { value: string | number | boolean; label: string }[]
-  default: string | number | boolean
-}
+// 한 게임의 설정 규격 — 순서가 곧 화면 표시 순서다 (객체가 아니라 배열이다)
+export type ConfigSchema = ConfigField[]
 
-// 문자열 목록 필드 (사다리 결과 항목) — 칩 추가/삭제 UI로 그린다
-export interface ListField {
-  type: 'list'
-  label: string
-  minItems: number
-  maxItems: number
-  itemMaxLength: number
-  default: string[]
-}
-
-export type ConfigField = TextField | EnumField | ListField
-
-// 게임 하나의 설정 스키마 — 키는 config의 필드명과 일치한다
-export type ConfigSchema = Record<string, ConfigField>
-
-// GET /api/games 응답의 항목 하나
-export interface GameMeta {
+// GET /api/games 목록 항목 하나
+export interface GameSummary {
   gameId: GameId
   name: string
   // 대기방 게임 카드에 들어가는 한 줄 설명
-  tagline: string
+  description: string
   minMembers: number
   maxMembers: number
+  resultVariant: ResultVariant
   configSchema: ConfigSchema
-  // 시작 직후 3초 가이드 팝업에 표시할 진행 방법 (순서대로)
-  guide: string[]
+}
+
+// GET /api/games/{gameId} — 가이드 팝업이 쓰는 규칙·단계가 여기에만 있다
+export interface GameDetail {
+  gameId: GameId
+  name: string
+  minMembers: number
+  resultVariant: ResultVariant
+  // 가이드의 규칙 요약
+  rules: string[]
+  // 가이드의 진행 단계. 게임마다 2~4단계다
+  steps: string[]
+  configSchema: ConfigSchema
 }
 
 /* ────────────────────────── REST 요청/응답 ────────────────────────── */
@@ -278,7 +296,6 @@ export interface CreateRoomResponse {
   memberToken: string
   memberStatus: 'PENDING'
   isHost: true
-  // 10분 무활동 만료 시각
   expiresAt: string
 }
 
@@ -343,284 +360,500 @@ export interface ConfirmProfileResponse {
   joinOrder: number
 }
 
-/* ────────────────────────── 소켓: C→S ────────────────────────── */
+/* ────────────────────────── 소켓: 게임별 phase ────────────────────────── */
 
-// 클라이언트가 보내는 이벤트 이름 → payload 매핑
-export interface ClientToServerEvents {
-  'member:ready': (p: { ready: boolean }) => void
-  'member:kick': (p: { memberId: MemberId }) => void
-  'chat:send': (p: { text: string }) => void
-  'chat:typing': (p: { typing: boolean }) => void
-  'game:select': (p: { gameId: GameId }) => void
-  'game:config': (p: { gameId: GameId; config: Partial<GameConfig> }) => void
-  'game:random': (p: Record<string, never>) => void
-  'game:start': (p: Record<string, never>) => void
-  'game:replay': (p: Record<string, never>) => void
-  'game:action': (p: GameActionPayload) => void
-  'round:close': (p: { roundId: RoundId }) => void
+// 게임마다 phase 집합이 다르다. 공통 phase는 READY·GUIDE·RESULT·ABORTED뿐이다.
+// **모든 라운드는 READY로 시작한다** — game:started 직후 서버가 곧바로 보낸다
+// (`app/services/round_service.py`). 게임의 첫 단계는 그 다음에 온다.
+// ABORTED는 방장 이탈로 끝난 흡수 상태, VOID는 방장이 「대기방으로」를 골라 결과 없이 끝난 상태다.
+
+export type RoulettePhase = 'READY' | 'GUIDE' | 'ARMED' | 'SPINNING' | 'REVEAL' | 'RESULT' | 'ABORTED'
+export type LadderPhase = 'READY' | 'GUIDE' | 'ARMED' | 'DRAWING' | 'REVEAL' | 'RESULT' | 'ABORTED'
+export type KingmakerPhase =
+  | 'READY'
+  | 'GUIDE'
+  | 'SUBMIT'
+  | 'VOTE'
+  | 'TIE_NOTICE'
+  | 'RUNOFF'
+  | 'TALLY'
+  | 'DEADLOCK'
+  | 'RESULT'
+  | 'VOID'
+  | 'ABORTED'
+export type TimerPhase =
+  | 'READY'
+  | 'GUIDE'
+  | 'RUNNING'
+  | 'TIE_NOTICE'
+  | 'REMATCH'
+  | 'REVEAL'
+  | 'DEADLOCK'
+  | 'RESULT'
+  | 'VOID'
+  | 'ABORTED'
+export type SnipePhase =
+  | 'READY'
+  | 'GUIDE'
+  | 'VOTE'
+  | 'TIE_NOTICE'
+  | 'RUNOFF'
+  | 'REVEAL'
+  | 'DEADLOCK'
+  | 'RESULT'
+  | 'VOID'
+  | 'ABORTED'
+export type NunchiPhase =
+  | 'READY'
+  | 'GUIDE'
+  | 'ROUND'
+  | 'ROUND_RESULT'
+  | 'VOID_ROUND'
+  | 'REVEAL'
+  | 'RESULT'
+  | 'VOID'
+  | 'ABORTED'
+
+export interface PhaseByGame {
+  roulette: RoulettePhase
+  ladder: LadderPhase
+  kingmaker: KingmakerPhase
+  timer: TimerPhase
+  snipe: SnipePhase
+  nunchi: NunchiPhase
 }
 
-// 인게임 입력은 이벤트를 늘리지 않고 game:action 하나에 type으로 분기한다 (API-03)
-export type GameActionPayload =
-  | { roundId: RoundId; type: 'roulette.pick'; payload: Record<string, never> }
-  | { roundId: RoundId; type: 'ladder.start'; payload: Record<string, never> }
-  | { roundId: RoundId; type: 'king.opinion'; payload: { text: string } }
-  | { roundId: RoundId; type: 'king.vote'; payload: { optionIds: OptionId[] } }
-  | { roundId: RoundId; type: 'timer.start'; payload: Record<string, never> }
-  | { roundId: RoundId; type: 'timer.stop'; payload: Record<string, never> }
-  | { roundId: RoundId; type: 'snipe.vote'; payload: { targetMemberIds: MemberId[] } }
-  | { roundId: RoundId; type: 'nunchi.up'; payload: Record<string, never> }
-  | { roundId: RoundId; type: 'nunchi.invalid_decision'; payload: { decision: 'RESTART' | 'ABORT' } }
+// 어느 게임의 것인지 좁히기 전의 phase 전량
+export type GamePhase = PhaseByGame[GameId]
+
+/* ────────────────────────── 소켓: C→S ────────────────────────── */
+
+// 클라이언트가 보내는 이벤트 이름 → payload 매핑. 서버가 받는 것은 이 11종뿐이다.
+// **「다시 하기」 전용 이벤트가 없다** — 결과 화면에서 보낸 game:start를 서버가 방 상태로 가려 처리한다.
+export interface ClientToServerEvents {
+  'conn:auth': { protocolVersion: number; roomCode: string; memberToken: string }
+  'member:ready': { ready: boolean }
+  'member:kick': { memberId: MemberId }
+  'chat:send': { text: string }
+  'chat:typing': { typing: boolean }
+  'game:select': { gameId: GameId }
+  // 부분 갱신이다 — 보낸 필드만 덮어쓴다. 모르는 필드를 넣으면 game.invalid_config로 거절된다
+  'game:config': { gameId: GameId; config: Record<string, unknown> }
+  'game:random': Record<string, never>
+  'game:start': Record<string, never>
+  'game:action': GameActionRequest
+  'game:decide': GameDecideRequest
+  'round:close': { roundId: RoundId }
+}
+
+// 인게임 입력은 이벤트를 늘리지 않고 game:action 하나에 type으로 분기한다.
+// **phaseSeq를 되싣는다** — 서버의 현재 값과 다르면 지난 단계의 입력이라 game.stale_phase로 버려진다.
+export interface GameActionRequest {
+  roundId: RoundId
+  phaseSeq: number
+  type: GameActionType
+  requestId?: string
+  payload?: Record<string, unknown>
+}
+
+// game:action의 type 8종. 각각 허용되는 phase가 정해져 있고 어긋나면 game.invalid_action이다.
+export type GameActionType =
+  // 방장만. ARMED에서 룰렛을 돌린다. 30초 동안 안 누르면 서버가 자동 실행한다
+  | 'roulette.pick'
+  // 방장만. ARMED에서 사다리를 실행한다. 30초 자동 실행은 같다
+  | 'ladder.start'
+  // SUBMIT에서 안건 1건을 익명 제출한다
+  | 'king.opinion'
+  // VOTE·RUNOFF에서 후보에 투표한다
+  | 'king.vote'
+  // RUNNING·REMATCH에서 각자 타이머를 시작·정지한다
+  | 'timer.start'
+  | 'timer.stop'
+  // VOTE·RUNOFF에서 익명 지목한다. 빈 배열은 기권이다
+  | 'snipe.vote'
+  // ROUND에서 누른다
+  | 'nunchi.up'
+
+// 방장의 교착 해소 선택 — game:decision_required에 대한 응답
+export interface GameDecideRequest {
+  roundId: RoundId
+  phaseSeq: number
+  // RETRY = 같은 조건으로 다시, ABORT = 결과 없이 대기방으로
+  choice: 'RETRY' | 'ABORT'
+  requestId?: string
+}
+
+// type별 payload 모양. game:action을 보낼 때 이 표로 좁혀 쓴다.
+export interface ActionPayloadByType {
+  'roulette.pick': Record<string, never>
+  'ladder.start': Record<string, never>
+  'king.opinion': { text: string }
+  // 후보 식별자. 서버는 candidateIds라는 이름으로 읽는다
+  'king.vote': { candidateIds: OptionId[] }
+  'timer.start': Record<string, never>
+  // **클라가 잰 경과 시간을 같이 보낸다.** 안 보내면 서버가 자기 관측값으로 판정하면서
+  // 보낸 사람에게 game.elapsed_rejected를 통지한다 — 정상 조작인데 매번 오류가 뜬다.
+  // 서버 관측값과 0.4초 안에서 맞고 0 초과 개인 제한 이하일 때만 채택된다.
+  'timer.stop': { elapsedMs: number }
+  'snipe.vote': { targetMemberIds: MemberId[] }
+  'nunchi.up': Record<string, never>
+}
 
 /* ────────────────────────── 소켓: S→C ────────────────────────── */
 
-// 모든 S→C 이벤트가 공통으로 싣는 방 버전 — 받은 값이 보관 중인 값보다 작거나 같으면 무시한다 (API-02)
+// 모든 S→C 이벤트가 공통으로 싣는 방 버전.
+// **상태 이벤트에만 버전 게이트를 건다** — 통지(chat·tick·error)에 걸면 직전 상태 이벤트와
+// 같은 번호를 달고 나간 프레임이 전부 버려진다.
 export interface Versioned {
   roomVersion: number
 }
 
-// 연결 직후 딱 한 번 오는 초기 렌더용 전체 상태
-export interface RoomSnapshot extends Versioned {
+// 인증 직후 딱 한 번 오는 초기 렌더용 전체 상태.
+// 채팅과 진행 중인 라운드는 담기지 않는다 — 게임이 시작되면 새 소켓을 받지 않으므로
+// 소켓이 붙는 시점의 방은 언제나 대기 상태다.
+export interface SnapshotData extends Versioned {
+  serverTime: string
   room: Room
-  // active인 사람만 포함 (pending은 아직 명단에 안 보임)
+  me: Me
   members: Member[]
   game: GameSelection | null
-  // 현재 인원으로 시작 가능한 게임들 — 최소인원 판단 근거를 서버에 둔다 (API-06)
-  selectableGameIds: GameId[]
-  // 재접속 직후 진행 중인 라운드가 있으면 그 요약 (없으면 null)
-  round: RoundState | null
-  me: MemberId
 }
 
-// 게임 진행 단계 — 게임마다 쓰는 값이 다르다
-export type GamePhase =
-  | 'GUIDE'
-  | 'READY'
-  | 'PLAYING'
-  | 'SUBMIT'
-  | 'VOTE'
-  | 'TIE'
-  | 'INVALID'
-  | 'RESULT'
+// 프로필 확정 시점에 나간다 — 소켓 연결 시점이 아니다
+export interface MemberJoinedData extends Versioned {
+  member: Member
+}
 
-// 라운드 하나의 진행 상태 — game:started 이후 화면이 계속 참조한다
-export interface RoundState {
-  roundId: RoundId
+// 방장이 나간 경우는 이 이벤트가 아니라 room:closed다
+export interface MemberLeftData extends Versioned {
+  memberId: MemberId
+  reason: 'LEAVE' | 'KICK' | 'DISCONNECT'
+  activeCount: number
+}
+
+// readyCount·activeCount는 서버가 세어 내려준다 — 클라가 명단을 세면 화면마다 값이 갈린다.
+// 방장은 activeCount에 포함되지만 readyCount의 모수에서는 빠져, 목표치가 activeCount - 1이다.
+export interface MemberReadyChangedData extends Versioned {
+  memberId: MemberId
+  ready: boolean
+  readyCount: number
+  activeCount: number
+}
+
+// 유예 진입·취소. **이 이벤트가 이탈을 뜻하지 않는다** — 이탈은 member:left나 room:closed로만 확정된다
+export interface MemberConnectionData extends Versioned {
+  memberId: MemberId
+  state: ConnectionState
+  // ONLINE으로 돌아오면 null
+  graceEndsAt: string | null
+}
+
+// 보낸 본인을 포함한 전원에게 간다. 닉네임·아바타는 실리지 않으므로 명단에서 찾아 붙인다
+export interface ChatMessageData extends Versioned {
+  messageId: string
+  memberId: MemberId
+  text: string
+  sentAt: string
+}
+
+export interface ChatTypingData extends Versioned {
+  memberId: MemberId
+  typing: boolean
+}
+
+// game:select · game:random 양쪽의 응답. configSchemaVersion으로 클라가 캐시한 규격과 대조한다
+export interface GameSelectedData extends Versioned {
   gameId: GameId
   config: GameConfig
-  // 시작 시점에 고정된 참가자 명단. 도중 이탈해도 제거하지 않고 departed만 켠다
-  roundMembers: RoundMember[]
-  phase: GamePhase
-  // 현재 phase의 마감 시각 (없는 phase면 null)
-  deadlineAt: string | null
-  // 킹메이커 VOTE phase에서만 채워지는 익명 안건 목록
-  options?: KingmakerOption[]
-  // 눈치게임에서 현재 몇 번째 서브라운드인지 (1부터)
-  subRound?: number
-  // 눈치게임 생존자 — 서브라운드마다 갱신
-  aliveMemberIds?: MemberId[]
+  configSchemaVersion: number
 }
 
-// 라운드에 고정된 참가자 한 명
-export interface RoundMember {
+// 참여자 화면도 함께 바뀐다. 읽기 전용일 뿐이다
+export interface GameConfigChangedData extends Versioned {
+  gameId: GameId
+  config: GameConfig
+}
+
+// 라운드에 고정된 참가자 한 명 — game:started의 roster 항목.
+// **이 배열이 그 판의 후보 전량이며 도중 이탈해도 바뀌지 않는다.** joinOrder 순으로 정렬돼 있다.
+export interface RosterEntry {
   memberId: MemberId
   nickname: string
   avatarId: string
-  // 라운드 도중 소켓이 끊겨 나간 사람. 명단에는 남되 새 입력만 막는다
-  departed: boolean
+  joinOrder: number
 }
 
-// 킹메이커 안건 하나 — 제시자는 revealAuthors가 true인 결과 화면에서만 채워진다
-export interface KingmakerOption {
-  optionId: OptionId
-  text: string
-  authorMemberId?: MemberId
-  authorNickname?: string
-}
-
-// 서버가 1초마다 쏘는 시각 동기화 — 클라 타이머는 이 값을 기준으로 보정한다 (API-07)
-export interface ServerTick extends Versioned {
-  // 서버 기준 현재 시각 (epoch ms)
-  serverTime: number
-  // 현재 phase 남은 시간 (ms). phase에 마감이 없으면 null
-  phaseRemainMs: number | null
-  roomExpiresInMs: number
-}
-
-// 중간 집계 — 누가 냈는지만 알린다 (API-04)
-export interface GameProgress extends Versioned {
+export interface GameStartedData extends Versioned {
   roundId: RoundId
-  entries: { memberId: MemberId; state: 'COMPLETE' | 'WAITING' }[]
-  // 킹메이커 투표 단계에서만 채워지는 항목별 익명 득표수 (`878:684`의 실시간 득표 현황이 요구한다).
-  // 누가 어디에 넣었는지는 여전히 알 수 없어 "투표자 비공개" 규칙과 어긋나지 않는다.
-  optionVotes?: { optionId: OptionId; votes: number }[]
+  gameId: GameId
+  config: GameConfig
+  roster: RosterEntry[]
 }
 
-// 결과 형태 4종 — 화면이 어떤 연출을 쓸지 이 값으로 고른다
-export type ResultVariant = 'winner' | 'assign' | 'tally' | 'record'
-
-// 눈치게임 한 라운드에서 누가 왜 살고 죽었는지 — 결과 화면(542:2619)의 "라운드별 판정 기록" 표가 그대로 쓴다.
-// 기본 계약(detail 문자열)만으로는 시각·사유·인물을 갈라 그릴 수 없어 넓힌 필드다.
-export interface NunchiRoundLog {
-  subRound: number
-  // 이 라운드를 시작한 인원
-  entered: number
-  // 혼자 눌러 살아남은 사람들, 누른 순서대로. elapsedMs는 라운드 시작부터의 경과
-  passed: { memberId: MemberId; nickname: string; avatarId: string; elapsedMs: number }[]
-  // 이 라운드에서 탈락한 사람들. elapsedMs가 null이면 제한시간까지 아예 안 누른 것
-  eliminated: { memberId: MemberId; nickname: string; avatarId: string; elapsedMs: number | null }[]
-  // 탈락 사유 — 겹쳐 누름 / 시간 초과 / 마지막 한 명만 남음 / 남은 전원이 눌러버림 / 연결 끊김
-  reason: 'SIMULTANEOUS' | 'TIMEOUT' | 'LAST_ONE' | 'ALL_PRESSED' | 'DISCONNECTED'
-  // 겹쳐 누름일 때 가장 가까웠던 두 입력의 간격(ms)
-  gapMs?: number
+// 단계 전이. **클라이언트는 이 이벤트만 보고 화면을 전환한다** — 자체 타이머가 0에 닿았다는 이유로 넘기지 않는다.
+// deadlineAt이 null이면 제한 시간이 없는 단계이며 그동안 game:tick도 흐르지 않는다.
+export interface GamePhaseData extends Versioned {
+  roundId: RoundId
+  // 단계마다 1씩 오르는 일련번호. game:action에 그대로 되실어야 한다
+  phaseSeq: number
+  phase: GamePhase
+  // 결선·재대결 회차 (본선은 0)
+  tieRound: number
+  deadlineAt: string | null
+  serverTime: string
+  // 연출 시작 값 (룰렛 목표 각도, 사다리 가로줄 등). 단계마다 모양이 다르다
+  payload?: Record<string, unknown> | null
 }
 
-// 단독 당첨자 1명 (룰렛·저격·눈치)
+// 룰렛 SPINNING 단계의 payload — 어느 조각에서 멈추는지. 결과 이벤트는 연출이 끝난 뒤라 늦다
+export interface RouletteSpinPayload {
+  // 명단 스냅샷 순서 기준 조각 번호
+  winnerIndex: number
+}
+
+// 사다리 DRAWING 단계의 payload — 가로줄 배치와 최종 배정이 함께 온다.
+// rungs는 row 칸에서 leftLane과 leftLane+1을 잇는다. 칸 수는 최대 row + 1이다.
+export interface LadderDrawPayload {
+  assignments: { memberId: MemberId; slot: number; label: string }[]
+  ladderRungs: { row: number; leftLane: number }[]
+}
+
+// 킹메이커 VOTE·RUNOFF 단계의 payload — 투표 화면이 그릴 후보 목록.
+// **제출 순서(sort_order)도 제시자도 실리지 않는다** — 제출 완료 표시와 대조해 작성자를 추정할 수 있어서다.
+export interface KingmakerBallotPayload {
+  candidates: { optionId: OptionId; label: string }[]
+}
+
+// 입력이 몇 건 도착했는가. **누가 무엇을 골랐는지는 어떤 경우에도 실리지 않는다.**
+// payload의 모양이 게임마다 다르므로 게임 화면이 좁혀 읽는다.
+export interface GameProgressData extends Versioned {
+  roundId: RoundId
+  phaseSeq: number
+  payload: ProgressPayload
+}
+
+// 게임별 game:progress payload.
+// 눈치만 라운드가 마감된 뒤에 보낸다 — 그 게임에서는 "누가 이미 눌렀다"는 사실이 곧 정답이기 때문이다.
+export type ProgressPayload =
+  | { submittedCount: number; totalCount: number }
+  | { votedCount: number; totalCount: number }
+  | { startedCount: number; stoppedCount: number; totalCount: number }
+  | NunchiRoundProgress
+
+// 눈치 한 라운드의 판정 결과 — 라운드가 끝난 뒤에만 온다
+export interface NunchiRoundProgress {
+  round: number
+  verdicts: { memberId: MemberId; verdict: NunchiVerdict; elapsedMs: number | null }[]
+  // 이 라운드에 혼자 눌러 빠져나간 사람들
+  safeMemberIds: MemberId[]
+}
+
+// 눈치 라운드 판정 4값. **「탈락」이 없다** — 안전 확정으로 빠지거나 후보로 남거나 둘 중 하나다
+export type NunchiVerdict =
+  // 혼자 눌러 안전 확정. 후보에서 빠진다
+  | 'SAFE'
+  // 판정창 안에 겹쳐 눌러 남는다
+  | 'OVERLAP'
+  // 누르지 않아 남는다
+  | 'NO_INPUT'
+  // 최후 1인으로 뽑힌다
+  | 'LAST'
+
+// 동점이라 다음 회차가 열린다. 결선은 새 라운드가 아니라 같은 roundId 안의 회차다.
+// **득표 수는 싣지 않는다** — 다음 회차의 전략이 되기 때문이다.
+export interface GameTieData extends Versioned {
+  roundId: RoundId
+  phaseSeq: number
+  tieRound: number
+  tieRoundMax: number
+  candidateKind: 'MEMBER' | 'OPTION'
+  candidateIds: string[]
+  deadlineAt: string | null
+}
+
+// 자동 진행을 멈추고 방장이 고른다. **모든 반복 규칙의 탈출구다.**
+// deadlineAt까지 응답이 없으면 서버가 ABORT로 처리한다.
+export interface GameDecisionRequiredData extends Versioned {
+  roundId: RoundId
+  phaseSeq: number
+  reason: 'TIE_EXHAUSTED' | 'VOID_ROUND' | 'NO_OPTION'
+  options: ('RETRY' | 'ABORT')[]
+  candidateKind: 'MEMBER' | 'OPTION'
+  candidateIds: string[]
+  deadlineAt: string
+}
+
+export interface GameResultData extends Versioned {
+  roundId: RoundId
+  gameId: GameId
+  variant: ResultVariant
+  result: GameResult
+  finishedAt: string
+}
+
+// 1초 주기. **표시 전용이며 판정 근거가 아니다.**
+export interface GameTickData extends Versioned {
+  roundId: RoundId
+  phaseSeq: number
+  remainMs: number
+  serverTime: string
+}
+
+// 대기방 복귀. 참여자 준비가 전부 해제된다
+export interface RoundClosedData extends Versioned {
+  roomStatus: RoomStatus
+}
+
+export interface RoomClosedData extends Versioned {
+  reason: 'HOST_LEFT' | 'LAST_MEMBER_LEFT' | 'EXPIRED'
+}
+
+// error 프레임의 data — 코드와 문구는 봉투 쪽(code·message)에 있고 여기는 무엇에 대한 실패인지만 담는다
+export interface ErrorData {
+  event: string | null
+  requestId: string | null
+  roomVersion?: number
+}
+
+/* ────────────────────────── 소켓: 결과 payload ────────────────────────── */
+
+// 결과 화면의 형태 4종. **게임과 1:1이 아니다** — 룰렛·시간초·저격이 모두 WINNER다.
+export type ResultVariant = 'WINNER' | 'ASSIGN' | 'TALLY' | 'RECORD'
+
+// 결과 화면 하단의 요약 수치. **서버가 문구까지 확정해 내려보내므로 클라가 계산하지 않는다.**
+export interface ResultStat {
+  label: string
+  value: string
+}
+
+// 사람 1인이 뽑히는 형태 — 룰렛 · 시간초 · 저격.
+// detail의 모양이 게임마다 다르므로 gameId로 좁혀 읽는다.
 export interface WinnerResult {
-  variant: 'winner'
   topic: string
-  winner: RoundMember
-  // 눈치게임 라운드별 탈락 순서 등, 게임별 부가 설명 줄
-  detail?: string[]
-  // 눈치게임 전용 — 라운드별 판정 기록. 없으면 당첨자 카드(542:1119)로 발표한다
-  rounds?: NunchiRoundLog[]
+  // 명단이 비는 예외 상황에서만 null이다
+  winnerMemberId: MemberId | null
+  detail: RouletteDetail | TimerDetail | SnipeDetail
+  stats: ResultStat[]
 }
 
-// 참가자 ↔ 항목 1:1 배정 (사다리)
-export interface AssignResult {
-  variant: 'assign'
-  topic: string
-  assignments: { member: RoundMember; item: string }[]
-  // 사다리 애니메이션을 서버 확정 경로대로 재생하기 위한 구조
-  ladder?: LadderStructure
+// 룰렛 — 조각 배치와 시드. 재현·검증용이라 화면은 연출에만 쓴다
+export interface RouletteDetail {
+  seed: number
+  // 조각 배치 순서 = 입장 순서
+  sliceOrder: MemberId[]
 }
 
-// 득표 집계 (킹메이커·저격)
-export interface TallyResult {
-  variant: 'tally'
-  topic: string
-  // 득표순 정렬. 익명 모드면 voters는 비어 있다
-  rows: {
-    label: string
-    votes: number
-    rank: number
-    optionId?: OptionId
-    memberId?: MemberId
-    authorNickname?: string
-    voterNicknames?: string[]
-  }[]
-  winnerLabel: string
-}
-
-// 기록 경쟁 (시간초 잡기)
-export interface RecordResult {
-  variant: 'record'
-  topic: string
+// 시간초 — 목표와 전원의 기록
+export interface TimerDetail {
   targetMs: number
-  winnerRule: 'closest' | 'farthest'
-  rows: {
-    member: RoundMember
-    // 서버가 잰 경과 시간. START를 안 눌러 실격이면 null
-    elapsedMs: number | null
-    // 표시용 부호 포함 시간차 (목표보다 빠르면 음수)
-    diffMs: number | null
-    // 판정용 절대 오차
-    absErrorMs: number | null
-    rank: number
-  }[]
-  winnerMemberId: MemberId
+  criterion: 'CLOSEST' | 'FARTHEST'
+  records: TimerRecord[]
+}
+
+export interface TimerRecord {
+  memberId: MemberId
+  // 유효 기록이 없으면 null
+  elapsedMs: number | null
+  // 부호 있는 오차 (목표보다 빠르면 음수)
+  diffMs: number | null
+  // 값의 출처. 서버가 잰 것인지 대체값인지 가른다
+  source: string
+  // recorded = 유효, no_start = START 미도달, no_stop = STOP 미도달
+  status: 'recorded' | 'no_start' | 'no_stop'
+}
+
+// 저격 — 사람별 피격 수. **지목자는 어떤 설정에서도 실리지 않는다.**
+export interface SnipeDetail {
+  tally: { memberId: MemberId; hits: number }[]
+  abstainCount: number
+  // 전원 동표 등으로 무작위 확정된 판인지
+  randomFallback: boolean
+}
+
+// 전원 1:1 배정 — 사다리. optionId는 화면에 나가지 않는다
+export interface AssignResult {
+  topic: string
+  pairs: { memberId: MemberId; itemLabel: string }[]
+  seed: number
+  stats: ResultStat[]
+}
+
+// 개표 — 킹메이커. **투표자는 어느 설정에서도 나가지 않는다.**
+export interface TallyResult {
+  topic: string
+  winnerCandidateId: OptionId | null
+  rows: TallyRow[]
+  reveal: { authors: boolean }
+  stats: ResultStat[]
+}
+
+export interface TallyRow {
+  candidateId: OptionId
+  text: string
+  votes: number
+  // revealAuthors가 켜진 판에만 이 자리가 생긴다. 익명이면 키 자체가 없다
+  authorMemberId?: MemberId
+}
+
+// 라운드 기록 — 눈치. pickedMemberId가 최후 1인(뽑힌 사람)이다
+export interface RecordResult {
+  topic: string
+  pickedMemberId: MemberId | null
+  rounds: RecordRound[]
+  stats: ResultStat[]
+}
+
+export interface RecordRound {
+  round: number
+  rows: { memberId: MemberId; verdict: NunchiVerdict; elapsedMs: number | null }[]
 }
 
 export type GameResult = WinnerResult | AssignResult | TallyResult | RecordResult
 
-// 사다리 구조 — 서버가 확정한 가로줄 위치와 각 참가자의 최종 경로
-export interface LadderStructure {
-  laneCount: number
-  // 세로로 몇 칸인지
-  rowCount: number
-  // 가로줄: row 번째 칸에서 lane과 lane+1을 잇는다
-  rungs: { row: number; lane: number }[]
-  // 참가자별 도착 레인 (출발 레인 인덱스 순서)
-  arrivals: number[]
-}
-
-// 서버가 이벤트로 보내는 이름 → payload 매핑
+// 서버가 보내는 이벤트 이름 → payload 매핑. S→C는 이 19종이 전량이다.
 export interface ServerToClientEvents {
-  'room:snapshot': (p: RoomSnapshot) => void
-  // 인원이 바뀌면 최소인원을 만족하는 게임 목록도 함께 갱신된다
-  'member:joined': (p: Versioned & { member: Member; selectableGameIds: GameId[] }) => void
-  'member:left': (
-    p: Versioned & {
-      memberId: MemberId
-      reason: 'LEAVE' | 'KICKED' | 'DISCONNECT'
-      selectableGameIds: GameId[]
-    },
-  ) => void
-  'member:kicked': (p: Versioned & { reason: 'KICKED' }) => void
-  'member:ready_changed': (
-    p: Versioned & {
-      memberId: MemberId
-      ready: boolean
-      readyCount: number
-      activeCount: number
-    },
-  ) => void
-  'chat:message': (p: Versioned & ChatMessage) => void
-  'chat:typing': (p: Versioned & { memberId: MemberId; typing: boolean }) => void
-  'game:selected': (
-    p: Versioned & { gameId: GameId; config: GameConfig; configSchema: ConfigSchema },
-  ) => void
-  'game:config_changed': (p: Versioned & { gameId: GameId; config: GameConfig }) => void
-  'game:started': (
-    p: Versioned & {
-      roundId: RoundId
-      gameId: GameId
-      roundMembers: RoundMember[]
-      config: GameConfig
-      // 최초 시작이면 3초 가이드가 끝나는 시각, "다시 하기"면 null (가이드 생략)
-      guideEndsAt: string | null
-    },
-  ) => void
-  'game:phase': (
-    p: Versioned & {
-      roundId: RoundId
-      phase: GamePhase
-      deadlineAt: string | null
-      options?: KingmakerOption[]
-      subRound?: number
-      aliveMemberIds?: MemberId[]
-    },
-  ) => void
-  'server:tick': (p: ServerTick) => void
-  'game:progress': (p: GameProgress) => void
-  'game:tie': (
-    p: Versioned & {
-      roundId: RoundId
-      // 동점으로 남은 후보들 (킹메이커는 안건, 나머지는 사람)
-      candidates: { id: string; label: string }[]
-      deadlineAt: string | null
-    },
-  ) => void
-  'game:result': (
-    p: Versioned & {
-      roundId: RoundId
-      variant: ResultVariant
-      result: GameResult
-      // 전원이 동시에 결과 화면으로 넘어가는 절대 시각 (API-05)
-      resultScreenAt: string
-    },
-  ) => void
-  'round:closed': (
-    p: Versioned & {
-      roundId: RoundId
-      reason: 'COMPLETED' | 'NO_OPTIONS' | 'NUNCHI_ABORTED'
-    },
-  ) => void
-  'room:closed': (p: Versioned & { reason: 'HOST_LEFT' | 'EMPTY' | 'INACTIVE' }) => void
-  error: (p: { code: ErrorCode; message: string }) => void
+  'room:snapshot': SnapshotData
+  'room:closed': RoomClosedData
+  'member:joined': MemberJoinedData
+  'member:left': MemberLeftData
+  'member:ready_changed': MemberReadyChangedData
+  'member:connection': MemberConnectionData
+  'chat:message': ChatMessageData
+  'chat:typing': ChatTypingData
+  'game:selected': GameSelectedData
+  'game:config_changed': GameConfigChangedData
+  'game:started': GameStartedData
+  'game:phase': GamePhaseData
+  'game:tick': GameTickData
+  'game:progress': GameProgressData
+  'game:tie': GameTieData
+  'game:decision_required': GameDecisionRequiredData
+  'game:result': GameResultData
+  'round:closed': RoundClosedData
+  error: ErrorData
 }
 
-// 채팅 한 줄 — 서버가 저장하지 않으므로 클라가 로컬스토리지에 쌓는다
+// 버전 게이트를 적용하는 상태 이벤트 — 이 목록에 없는 것은 게이트를 타지 않는다
+export const STATE_EVENTS = [
+  'room:snapshot',
+  'room:closed',
+  'member:joined',
+  'member:left',
+  'member:ready_changed',
+  'member:connection',
+  'game:selected',
+  'game:config_changed',
+  'game:started',
+  'game:phase',
+  'game:progress',
+  'game:tie',
+  'game:decision_required',
+  'game:result',
+  'round:closed',
+] as const
+
+// 채팅 한 줄 — 서버가 보관하지 않으므로 클라가 로컬스토리지에 쌓는다.
+// 와이어에는 닉네임·아바타가 없어 명단에서 찾아 채운 뒤 저장한다.
 export interface ChatMessage {
   messageId: string
   memberId: MemberId

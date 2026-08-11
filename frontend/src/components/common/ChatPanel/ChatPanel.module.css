@@ -80,6 +80,11 @@
   border-radius: 50%;
 }
 
+/* 나간 사람의 자리 — 캐릭터 없이 회색 바탕만 남긴다 */
+.avatarGone {
+  background: var(--color-avatar-taken);
+}
+
 .avatar img {
   position: absolute;
   left: 1.06px;

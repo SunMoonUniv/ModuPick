@@ -1,6 +1,6 @@
 import { avatarSrc } from '../../assets/avatars'
-import { useRoomStore } from '../../store/roomStore'
-import type { TallyResult } from '../../protocol/types'
+import type { ResultStat } from '../../protocol/types'
+import type { TallyView } from './adapters'
 import { ConfettiPiece, type ConfettiSpec } from './confetti'
 import styles from './TallyResultView.module.css'
 
@@ -27,29 +27,20 @@ const PAGE_CONFETTI: ConfettiSpec[] = [
 ]
 
 interface TallyResultViewProps {
-  result: TallyResult
-  // 투표자를 공개하는 판인지 — 서버가 voterNicknames를 실어 보냈는지로 가른다
-  reveal: boolean
-  // 킹메이커에서만 "제안자는 항상 비공개" 알림을 띄운다 (저격은 제안자 개념이 없다)
-  kingmaker: boolean
+  view: TallyView
+  // 아래 통계 타일 줄. 문구까지 서버가 확정해 내려준다
+  stats: ResultStat[]
 }
 
 // 득표로 하나를 확정하는 결과 화면 (S-07b · Figma 878:2320 익명 / 878:5221 실명).
-// 킹메이커와 익명 저격이 같은 판을 쓴다.
-export function TallyResultView({ result, reveal, kingmaker }: TallyResultViewProps) {
-  const members = useRoomStore((s) => s.members)
-  const round = useRoomStore((s) => s.round)
-
-  const rows = [...result.rows].sort((a, b) => a.rank - b.rank)
+// 킹메이커 전용이다 — 저격은 결과 형태가 WINNER라 다른 화면을 쓴다.
+//
+// **공개되는 것은 제시자이고 투표자가 아니다.** 누가 어디에 넣었는지는 어느 설정에서도 나오지 않아
+// 프레임의 「투표한 사람」 칸을 「제안자」로 바꿔 채웠다.
+export function TallyResultView({ view, stats }: TallyResultViewProps) {
+  const rows = view.rows
   const total = rows.reduce((sum, r) => sum + r.votes, 0)
-  const top = rows[0]
-  const share = total > 0 ? ((top?.votes ?? 0) / total) * 100 : 0
-
-  // 투표자 칩에 얼굴을 붙이려면 닉네임으로 참가자를 되찾아야 한다 (서버는 닉네임만 보낸다)
-  const avatarOf = (nickname: string) =>
-    round?.roundMembers.find((m) => m.nickname === nickname)?.avatarId ??
-    members.find((m) => m.nickname === nickname)?.avatarId ??
-    null
+  const reveal = view.revealAuthors
 
   return (
     <>
@@ -59,24 +50,26 @@ export function TallyResultView({ result, reveal, kingmaker }: TallyResultViewPr
 
       {/* ── 1위 발표 카드 ── */}
       <section className={styles.hero}>
-        <div className={styles.strip}>🏆&nbsp;&nbsp;최다 득표 {result.topic} 확정&nbsp;&nbsp;🏆</div>
-        {kingmaker && <span className={styles.stripChip}>🔒 아이디어 제안자는 항상 비공개</span>}
+        <div className={styles.strip}>🏆&nbsp;&nbsp;최다 득표 {view.topic} 확정&nbsp;&nbsp;🏆</div>
+        {/* 투표자는 어느 설정에서도 공개되지 않는다 */}
+        <span className={styles.stripChip}>🔒 누가 어디에 넣었는지는 항상 비공개</span>
 
         <div className={styles.heroBody}>
-          <h1 className={styles.heroName}>{result.winnerLabel}</h1>
+          <h1 className={styles.heroName}>{view.winnerLabel}</h1>
           <p className={styles.heroCaption}>
-            {total}표 중 {top?.votes ?? 0}표 획득 · 1위로 {result.topic} 확정!
+            {total}표 중 {rows[0]?.votes ?? 0}표 획득 · 1위로 {view.topic} 확정!
           </p>
           <div className={styles.stats}>
-            <span className={`${styles.stat} ${styles.statCyan}`}>
-              <b>{total}표</b>총 투표 수
-            </span>
-            <span className={`${styles.stat} ${styles.statPink}`}>
-              <b>{share.toFixed(1)}%</b>1위 득표율
-            </span>
-            <span className={`${styles.stat} ${styles.statYellow}`}>
-              <b>{reveal ? '👀 실명' : '🤐 익명'}</b>투표 공개 방식
-            </span>
+            {/* 요약 수치는 서버가 문구까지 확정해 내려준다 */}
+            {stats.map((stat, i) => (
+              <span
+                key={stat.label}
+                className={`${styles.stat} ${[styles.statCyan, styles.statPink, styles.statYellow][i % 3]}`}
+              >
+                <b>{stat.value}</b>
+                {stat.label}
+              </span>
+            ))}
           </div>
         </div>
       </section>
@@ -88,7 +81,7 @@ export function TallyResultView({ result, reveal, kingmaker }: TallyResultViewPr
             ◆ 개표 결과 · 후보 {rows.length}개 · 총 {total}표
           </h2>
           <span className={styles.modeChip}>
-            {reveal ? '👀 실명 모드 · 누가 뭘 뽑았는지 공개' : '🤐 익명 모드 · 누가 뭘 뽑았는지 비공개'}
+            {reveal ? '👀 제시자 공개 · 누가 낸 안건인지 표시' : '🤐 익명 모드 · 제시자도 비공개'}
           </span>
         </div>
 
@@ -98,7 +91,7 @@ export function TallyResultView({ result, reveal, kingmaker }: TallyResultViewPr
             <div className={styles.colHead}>
               <em className={styles.colName}>후보</em>
               <em className={styles.colVotes}>득표수</em>
-              <em className={styles.colVoters}>투표한 사람</em>
+              <em className={styles.colVoters}>제안자</em>
             </div>
           )}
 
@@ -106,13 +99,13 @@ export function TallyResultView({ result, reveal, kingmaker }: TallyResultViewPr
             const empty = row.votes === 0
             return (
               <div
-                key={row.optionId ?? row.memberId ?? `${row.label}-${i}`}
+                key={row.candidateId}
                 className={`${styles.row} ${empty ? styles.rowEmpty : ''}`}
               >
                 <span className={`${styles.rank} ${row.rank === 1 ? styles.rankTop : ''}`}>
                   {row.rank}
                 </span>
-                <span className={styles.label}>{row.label}</span>
+                <span className={styles.label}>{row.text}</span>
                 <span className={styles.track}>
                   {!empty && (
                     <i
@@ -127,18 +120,13 @@ export function TallyResultView({ result, reveal, kingmaker }: TallyResultViewPr
 
                 {reveal && (
                   <span className={styles.voters}>
-                    {row.voterNicknames?.length ? (
-                      row.voterNicknames.map((nickname) => {
-                        const avatarId = avatarOf(nickname)
-                        return (
-                          <span key={nickname} className={styles.voter}>
-                            {avatarId && <img src={avatarSrc(avatarId)} alt="" />}
-                            {nickname}
-                          </span>
-                        )
-                      })
+                    {row.author ? (
+                      <span className={styles.voter}>
+                        <img src={avatarSrc(row.author.avatarId)} alt="" />
+                        {row.author.nickname}
+                      </span>
                     ) : (
-                      <em className={styles.noVoter}>— 아무도 안 뽑았어요</em>
+                      <em className={styles.noVoter}>— 제안자 없음</em>
                     )}
                   </span>
                 )}

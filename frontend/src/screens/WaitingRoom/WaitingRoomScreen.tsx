@@ -7,9 +7,8 @@ import { api } from '../../api/rest'
 import { controllerIcon, crownIcon, diceIcon, hourglassIcon, playIcon } from '../../assets/icons'
 import { GAME_ACCENTS, GAME_ICONS } from '../../constants/gameVisuals'
 import { useLeaveWarning } from '../../hooks/useLeaveWarning'
-import { selectIsHost, useRoomStore } from '../../store/roomStore'
+import { selectIsHost, selectableGameIds, useRoomStore } from '../../store/roomStore'
 import { clearSession, loadSession } from '../../store/session'
-import type { GameMeta } from '../../protocol/types'
 import styles from './WaitingRoomScreen.module.css'
 
 // game:config를 매 타건마다 보내면 방송이 과해지므로 잠깐 모아서 보낸다
@@ -24,9 +23,8 @@ export function WaitingRoomScreen() {
   const navigate = useNavigate()
   const room = useRoomStore((s) => s.room)
   const members = useRoomStore((s) => s.members)
-  const me = useRoomStore((s) => s.me)
+  const me = useRoomStore((s) => s.me?.memberId ?? null)
   const game = useRoomStore((s) => s.game)
-  const selectableGameIds = useRoomStore((s) => s.selectableGameIds)
   const connection = useRoomStore((s) => s.connection)
   const lastError = useRoomStore((s) => s.lastError)
   const clearError = useRoomStore((s) => s.clearError)
@@ -40,19 +38,14 @@ export function WaitingRoomScreen() {
   const startGame = useRoomStore((s) => s.startGame)
   const reset = useRoomStore((s) => s.reset)
 
-  const [catalog, setCatalog] = useState<GameMeta[]>([])
+  const catalog = useRoomStore((s) => s.catalog)
   const [leaveOpen, setLeaveOpen] = useState(false)
+
+  // 인원이 모자라 못 고르는 게임을 가린다. **스토어 셀렉터로 두면 매번 새 배열이라 무한 렌더가 된다**
+  const selectable = useMemo(() => selectableGameIds(catalog, members.length), [catalog, members.length])
 
   // 새로고침·창 닫기는 곧 퇴장이라 확인창을 띄운다 (재접속 경로가 없다)
   useLeaveWarning(connection === 'connected')
-
-  // 게임 이름·최소인원 같은 메타데이터는 서버가 정본이다
-  useEffect(() => {
-    api
-      .games()
-      .then((res) => setCatalog(res.games))
-      .catch(() => undefined)
-  }, [])
 
   // 서버가 거절 사유를 보내면 잠깐 보여주고 스스로 지운다
   useEffect(() => {
@@ -67,7 +60,7 @@ export function WaitingRoomScreen() {
   }, [connection, navigate])
 
   const myMember = members.find((m) => m.memberId === me) ?? null
-  const guests = members.filter((m) => m.role === 'guest')
+  const guests = members.filter((m) => !m.isHost)
   const readyCount = guests.filter((m) => m.ready).length
   const selectedMeta = catalog.find((g) => g.gameId === game?.gameId) ?? null
 
@@ -130,11 +123,11 @@ export function WaitingRoomScreen() {
               key={member.memberId}
               nickname={member.nickname}
               avatarId={member.avatarId}
-              bio={member.bio}
-              isHost={member.role === 'host'}
+              bio={member.bio ?? undefined}
+              isHost={member.isHost}
               isMe={member.memberId === me}
               isReady={member.ready}
-              onKick={isHost && member.role === 'guest' ? () => kick(member.memberId) : undefined}
+              onKick={isHost && !member.isHost ? () => kick(member.memberId) : undefined}
             />
           ))}
           {emptySeats > 0 && <EmptySeat count={emptySeats} />}
@@ -155,7 +148,7 @@ export function WaitingRoomScreen() {
         {!isHost && <span className={styles.lockChip}>방장만 변경 가능</span>}
 
         {catalog.map((meta, i) => {
-          const locked = !selectableGameIds.includes(meta.gameId)
+          const locked = !selectable.includes(meta.gameId)
           const selected = game?.gameId === meta.gameId
           const classes = [
             styles.gameCard,
@@ -181,7 +174,7 @@ export function WaitingRoomScreen() {
                   <span className={styles.gameRequire}>{meta.minMembers}명 이상</span>
                 )}
               </span>
-              <span className={styles.gameTagline}>{meta.tagline}</span>
+              <span className={styles.gameTagline}>{meta.description}</span>
               {selected && <span className={styles.gameCheck}>✓</span>}
             </div>
           )
@@ -205,7 +198,7 @@ export function WaitingRoomScreen() {
             <div className={styles.settingsBody}>
               <GameConfigForm
                 gameId={game.gameId}
-                schema={game.configSchema}
+                schema={selectedMeta?.configSchema ?? []}
                 config={shownConfig}
                 memberCount={members.length}
                 editable={isHost}

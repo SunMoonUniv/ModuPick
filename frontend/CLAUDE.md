@@ -18,7 +18,7 @@ Until the real backend exists, `local-server/` (Express + raw WebSocket, in-memo
 
 The socket transport matches the real backend: the client connects to `/ws/rooms/{code}`, sends a `conn:auth` frame within 3 seconds, and every S→C frame is the common envelope (`{event, success, code, message, data, timestamp}`). Close codes follow the backend's `CloseCode` (4002 protocol, 4401 unauthorized, 4408 auth timeout, 4413 too large). Run `node local-server/ws.js --selfcheck` to exercise the frame parser without booting the server.
 
-**REST has not been migrated with it.** `local-server` still answers with bare bodies (`{code, token, …}`), lowercase statuses and SCREAMING_CASE error codes, while `src/protocol/types.ts` and `src/api/rest.ts` already expect the real backend's envelope, `memberToken`, `PENDING`/`ACTIVE`, and dotted error codes — so room creation fails against it today.
+**`local-server/` no longer works with this frontend.** The frontend has been migrated to the real backend's contract, and the two differ from the event names up (`server:tick` → `game:tick`, no `game:replay`, `game:decide` added, `phaseSeq` echoed on every action, per-game phase names, uppercase result variants, different config field names). Run `backend/` to exercise the app; treat `local-server/` as a historical artifact until someone deletes it.
 
 All judging is server-side; client animations only replay an already-decided outcome. When changing a game rule, change `engines.js` — not the screen.
 
@@ -35,7 +35,8 @@ ModuPick is a **functionally complete, visually provisional** Vite + React 19 + 
 The visual layer is applied **screen by screen** and is not finished. `tokens.css` and the common components now carry the real neo-brutalist system extracted from Figma, and the home, waiting-room and profile screens match their frames. Create/join, the 6 minigame screens, and every result screen still use a guessed layout — right colours and components, wrong composition. Because every rule references tokens rather than raw values, a token fix propagates on its own; a layout fix does not.
 
 Key modules:
-- `src/protocol/types.ts` — the full REST + socket contract as TypeScript types. Screens should read this, not the spec markdown.
+- `src/protocol/types.ts` — the full REST + socket contract as TypeScript types, mirrored from the **real backend** (`backend/app/schemas/`, `app/domain/game_config.py`, `app/domain/games/*.py`), not from `local-server/`. Screens should read this, not the spec markdown.
+- `src/screens/Result/adapters.ts` — result payloads name people by `memberId` only, so every result screen has to join them against the `game:started` roster snapshot. That join lives here.
 - `src/constants/avatarTiles.ts` — per-avatar tile background colours (A01–A30), extracted from the Figma character-tile sheet (`618:5799`). Kept out of `tokens.css` on purpose: it's per-avatar data, not a reusable design token. **The sheet's listing order does not match `a01`–`a30`** (sheet slot 25 is a bat; `a25.png` is a seal clown), so anything taken from that sheet must be paired by *character*, not by index — each entry carries the character name in a comment for that reason.
 - `src/store/roomStore.ts` — single zustand store holding all room state; applies the `roomVersion` ordering guard. Components never touch the socket directly.
 - `src/App.tsx` — routing is driven by store state, not clicks, so a host action moves every participant's screen at once.

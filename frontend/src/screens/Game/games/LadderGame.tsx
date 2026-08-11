@@ -4,8 +4,8 @@ import { GameHud, HudPill } from '../../../components/common'
 import { avatarSrc } from '../../../assets/avatars'
 import { GAME_ICONS } from '../../../constants/gameVisuals'
 import { useRemainMs } from '../../../hooks/useServerClock'
-import { useRoomStore } from '../../../store/roomStore'
-import type { AssignResult, LadderConfig } from '../../../protocol/types'
+import { selectIsHost, useRoomStore } from '../../../store/roomStore'
+import type { LadderConfig, LadderDrawPayload } from '../../../protocol/types'
 import styles from './LadderGame.module.css'
 
 // 레인 색 — 참가자 수만큼 순환한다. 기둥·도착 칩·이름표·꼬리가 모두 같은 색을 쓴다.
@@ -50,25 +50,40 @@ const runnerSpeed = (memberId: string) => {
 // 랜덤 사다리. 서버가 확정한 사다리 구조와 최종 배정을 그대로 그려 화면 경로와 결과가 어긋날 수 없게 한다.
 export function LadderGame() {
   const round = useRoomStore((s) => s.round)!
-  const result = useRoomStore((s) => s.result)
+  const isHost = useRoomStore(selectIsHost)
+  const sendAction = useRoomStore((s) => s.sendAction)
 
   const config = round.config as LadderConfig
-  const members = round.roundMembers
+  const members = round.roster
   const laneCount = members.length || 1
   const laneWidth = Math.min(BOARD_SPAN / laneCount, LANE_MAX)
   // 판이 좁아지면 남는 폭만큼 가운데로 민다
   const boardLeft = BOARD_LEFT + (BOARD_SPAN - laneWidth * laneCount) / 2
   const chipWidth = Math.min(186, laneWidth - 21)
 
-  const assign = result?.variant === 'assign' ? (result.result as AssignResult) : null
-  const structure = assign?.ladder ?? null
-  const revealRemain = useRemainMs(result?.resultScreenAt ?? null)
+  // 방장이 누른 뒤 서버 응답을 기다리는 동안 버튼을 잠근다 — 연타는 서버가 멱등 처리한다
+  const [started, setStarted] = useState(false)
+  const phaseRemain = useRemainMs(round.deadlineAt)
 
-  // 결과가 도착하면 주자가 위에서 아래로 내려가는 진행률(0→1)을 시간에 맞춰 올린다
-  const [progress, setProgress] = useState(0)
+  // 가로줄과 배정은 DRAWING 단계의 payload로만 온다. 다음 단계에서 payload가 비므로 붙잡아 둔다.
+  const [draw, setDraw] = useState<LadderDrawPayload | null>(null)
   useEffect(() => {
-    if (!result) return
-    const endAt = new Date(result.resultScreenAt).getTime()
+    if (round.phase !== 'DRAWING' || !round.payload) return
+    setDraw(round.payload as unknown as LadderDrawPayload)
+  }, [round.phase, round.payload])
+
+  const structure = useMemo(() => {
+    if (!draw) return null
+    const rungs = draw.ladderRungs.map((r) => ({ row: r.row, lane: r.leftLane }))
+    return { rungs, rowCount: Math.max(1, ...draw.ladderRungs.map((r) => r.row + 1)) }
+  }, [draw])
+
+  // 주자가 위에서 아래로 내려가는 진행률(0→1)을 DRAWING 마감에 맞춰 올린다
+  const [progress, setProgress] = useState(0)
+  const drawing = round.phase === 'DRAWING'
+  useEffect(() => {
+    if (!drawing || !round.deadlineAt) return
+    const endAt = Date.parse(round.deadlineAt)
     const startAt = Date.now()
     const total = Math.max(1, endAt - startAt)
     let raf = 0
@@ -79,7 +94,12 @@ export function LadderGame() {
     }
     raf = requestAnimationFrame(step)
     return () => cancelAnimationFrame(raf)
-  }, [result])
+  }, [drawing, round.deadlineAt])
+
+  // 연출이 끝난 REVEAL 이후에는 주자를 바닥에 붙여 둔다
+  useEffect(() => {
+    if (round.phase === 'REVEAL' || round.phase === 'RESULT') setProgress(1)
+  }, [round.phase])
 
   // 레인 i의 중심 x — 주자·꼬리는 레인 사이를 건너가느라 정수가 아닌 레인 값도 넣는다
   const laneX = (lane: number) => boardLeft + lane * laneWidth + laneWidth / 2
@@ -143,12 +163,10 @@ export function LadderGame() {
     return path.points[path.points.length - 1]
   }
 
-  // 도착 레인에 놓인 항목 — 배정 결과를 역으로 찾아 채운다
+  // 도착 칸에 놓인 항목 — 배정의 slot이 곧 도착 레인 번호다
   const bottomItem = (lane: number) => {
-    if (!assign) return '???'
-    const arrivals = assign.ladder?.arrivals ?? []
-    const index = arrivals.findIndex((arrival) => arrival === lane)
-    return index >= 0 ? (assign.assignments[index]?.item ?? 'X') : 'X'
+    if (!draw) return '???'
+    return draw.assignments.find((a) => a.slot === lane)?.label ?? 'X'
   }
 
   return (
@@ -162,7 +180,11 @@ export function LadderGame() {
         GO GO! <img className={styles.emblem} src={GAME_ICONS.ladder} alt="" />
       </span>
       <span className={styles.tracePill}>
-        {assign ? `◷ 경로 추적 중… ${Math.max(0, Math.ceil(revealRemain / 1000))}s` : '◷ 곧 출발'}
+        {drawing
+          ? `◷ 경로 추적 중… ${Math.max(0, Math.ceil(phaseRemain / 1000))}s`
+          : round.phase === 'ARMED'
+            ? `◷ 출발 대기 ${Math.max(0, Math.ceil(phaseRemain / 1000))}s`
+            : '◷ 곧 출발'}
       </span>
 
       {/* ── 사다리판 ── */}
@@ -191,7 +213,7 @@ export function LadderGame() {
         ))}
 
       {/* 주자 뒤로 남는 꼬리 */}
-      {result &&
+      {draw &&
         members.map((member, i) => {
           const color = LANE_COLORS[i % LANE_COLORS.length]
           const { x, y } = runnerAt(i, runnerSpeed(member.memberId))
@@ -250,7 +272,7 @@ export function LadderGame() {
         <span className={styles.panelRule} />
         <div className={`${styles.panelList} scroll-thin`}>
           {members.map((member, i) => {
-            const item = assign?.assignments.find((a) => a.member.memberId === member.memberId)?.item
+            const item = draw?.assignments.find((a) => a.memberId === member.memberId)?.label
             return (
               <div
                 key={member.memberId}
@@ -282,11 +304,30 @@ export function LadderGame() {
       </aside>
 
       <GameHud
-        title={assign ? '◷ 사다리 타는 중…' : '◷ 곧 출발합니다'}
+        title={drawing ? '◷ 사다리 타는 중…' : '◷ 곧 출발합니다'}
         note={
-          assign
-            ? `${members.length}명의 경로를 동시에 추적 · ${config.items[0]} 역할이 한 번에 배분돼요`
-            : `가이드가 끝나면 ${members.length}명이 동시에 출발해요`
+          drawing
+            ? `${members.length}명의 경로를 동시에 추적 · ${config.topic} 역할이 한 번에 배분돼요`
+            : `방장이 실행하면 ${members.length}명이 동시에 출발해요`
+        }
+        // 방장만 누를 수 있고, 30초 안에 안 누르면 서버가 대신 실행한다
+        center={
+          round.phase === 'ARMED' &&
+          (isHost ? (
+            <button
+              type="button"
+              className={styles.startButton}
+              disabled={started}
+              onClick={() => {
+                setStarted(true)
+                sendAction('ladder.start')
+              }}
+            >
+              사다리 타기
+            </button>
+          ) : (
+            <span className={styles.startWaiting}>방장이 실행하기를 기다리는 중</span>
+          ))
         }
         right={<HudPill>★ 결과는 모두에게 똑같이 · 공정</HudPill>}
       />

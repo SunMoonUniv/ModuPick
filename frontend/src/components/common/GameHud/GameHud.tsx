@@ -12,12 +12,14 @@ interface GameHudProps {
   note: string
   // 보충 설명을 20px로 키운다 — 킹메이커 프레임들이 다른 게임보다 한 단계 큰 글씨를 쓴다
   largeNote?: boolean
+  // 밴드 한가운데. 방장이 눌러야 진행되는 버튼(룰렛·사다리 시작)이 여기 들어간다
+  center?: ReactNode
   // 오른쪽 끝에 붙는 알약·버튼. 게임마다 다르다
   right?: ReactNode
 }
 
 // 인게임 화면 아래에 항상 깔리는 상태 밴드(1803×108). 6종 게임이 모두 같은 자리에 같은 모양으로 쓴다.
-export function GameHud({ badge, bareBadge, largeNote, title, note, right }: GameHudProps) {
+export function GameHud({ badge, bareBadge, largeNote, title, note, center, right }: GameHudProps) {
   // 배지가 없으면 글이 왼쪽 끝으로, 노란 원 없이 아이콘만 쓰면 그만큼 덜 밀려난다
   const offset = badge === undefined ? styles.flush : bareBadge ? styles.bare : ''
 
@@ -30,6 +32,7 @@ export function GameHud({ badge, bareBadge, largeNote, title, note, right }: Gam
       )}
       <span className={`${styles.title} ${offset}`}>{title}</span>
       <span className={`${styles.note} ${offset} ${largeNote ? styles.noteLarge : ''}`}>{note}</span>
+      {center && <div className={styles.center}>{center}</div>}
       {right && <div className={styles.right}>{right}</div>}
     </footer>
   )
