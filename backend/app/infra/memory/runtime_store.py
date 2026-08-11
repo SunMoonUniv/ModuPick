@@ -150,6 +150,11 @@ class RoundState:
     #: 제출된 후보(Candidate). 킹메이커만 쓴다 — 다른 게임은 후보가 사람이라 명단
     #: 스냅샷이 곧 후보다. **author_id를 들고 있으므로 그대로 내보내지 않는다.**
     candidates: list = field(default_factory=list)
+    #: 아직 뽑히지 않은 사람. 눈치게임만 쓰며 라운드마다 줄어든다.
+    #: **명단 스냅샷과 다르다** — 스냅샷은 그 판의 후보 전량이고 이쪽은 남은 사람이다.
+    survivors: tuple[str, ...] | None = None
+    #: 지난 라운드 기록. 눈치게임만 쓴다 — 저장 형식이 전 라운드의 판정을 담는다.
+    history: list = field(default_factory=list)
 
 
 @dataclass(slots=True)
