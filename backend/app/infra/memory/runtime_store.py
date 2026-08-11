@@ -150,6 +150,11 @@ class RoundState:
     #: 제출된 후보(Candidate). 킹메이커만 쓴다 — 다른 게임은 후보가 사람이라 명단
     #: 스냅샷이 곧 후보다. **author_id를 들고 있으므로 그대로 내보내지 않는다.**
     candidates: list = field(default_factory=list)
+    #: 아직 뽑히지 않은 사람. 눈치게임만 쓰며 라운드마다 줄어든다.
+    #: **명단 스냅샷과 다르다** — 스냅샷은 그 판의 후보 전량이고 이쪽은 남은 사람이다.
+    survivors: tuple[str, ...] | None = None
+    #: 지난 라운드 기록. 눈치게임만 쓴다 — 저장 형식이 전 라운드의 판정을 담는다.
+    history: list = field(default_factory=list)
 
 
 @dataclass(slots=True)
@@ -295,6 +300,15 @@ class RuntimeStore:
             _cancel(state.tick_task)
             _cancel(state.deadline_task)
         return state
+
+    def end_all_rounds(self) -> int:
+        """진행 중인 라운드를 전부 걷어낸다. 걷어낸 수를 돌려준다.
+
+        **마감 타이머는 라운드보다 오래 살 수 있다.** 교착 해소 대기(60초)처럼 긴
+        마감이 걸린 채 방이 사라지면 그 태스크가 한참 뒤에 깨어나 없는 방을 두고
+        다음 단계로 밀어 올린다. 기동 정리와 테스트 뒷정리가 이 경로를 쓴다.
+        """
+        return sum(1 for room_id in list(self._rounds) if self.end_round(room_id))
 
     # ── 핸드셰이크 흔적 ────────────────────────────────────────────────────
 

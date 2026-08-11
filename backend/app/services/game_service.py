@@ -345,6 +345,27 @@ async def emit_progress(room_pk: int, payload: dict) -> None:
     )
 
 
+async def notify(
+    room_pk: int, participant_pk: int, spec, *, event: str = "game:action"
+) -> None:
+    """한 사람에게만 알린다. **브로드캐스트하지 않는다.**
+
+    시간초의 game.elapsed_rejected가 이 경로를 쓴다 — 어느 참가자의 신고값이
+    서버 관측값으로 대체됐는지는 그 사람만 알면 되고, 남에게 보내면 그것이 곧
+    "누가 회선이 튀었는가"를 방 전체에 알리는 일이 된다.
+    """
+    from app.ws.connection import registry
+    from app.ws.envelope import outgoing_error
+
+    conn = registry.find(room_pk, participant_pk)
+    if conn is None:
+        return
+    await registry.send(
+        conn,
+        outgoing_error(spec, source_event=event, room_version=store.version(room_pk)),
+    )
+
+
 # ── 회차와 교착 ────────────────────────────────────────────────────────────
 
 

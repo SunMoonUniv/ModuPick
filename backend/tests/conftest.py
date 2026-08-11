@@ -70,6 +70,27 @@ def _fresh_rate_limit():
     yield
 
 
+@pytest.fixture(autouse=True)
+def _clean_between():
+    """테스트가 남긴 진행 중 라운드와 방을 걷어낸다.
+
+    **남은 것이 다음 테스트를 멈춘다.** 두 갈래로 샜다.
+
+        인메모리 라운드   교착 대기(60초)·제출 마감(120초) 타이머가 살아남아
+                        한참 뒤 다른 테스트가 도는 중에 깨어난다
+        방 행            소켓이 닫힐 때마다 이탈 처리가 백그라운드로 떨어지는데,
+                        방이 쌓이면 그 작업도 함께 쌓여 DB를 붙든다
+
+    세션 시작·끝에만 비우던 것을 테스트마다로 옮긴다. 게임이 늘어날수록 한 파일의
+    테스트 수가 늘고, 그만큼 누적이 커져 무관한 테스트가 산발적으로 멈췄다.
+    """
+    from app.infra.memory.runtime_store import store
+
+    yield
+    store.end_all_rounds()
+    _truncate()
+
+
 @pytest.fixture
 def clean():
     """방이 남아 있으면 안 되는 테스트가 쓴다."""
