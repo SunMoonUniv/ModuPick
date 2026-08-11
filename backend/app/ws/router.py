@@ -29,6 +29,7 @@ from app.schemas.events import (
     ChatSendRequest,
     GameActionRequest,
     GameConfigRequest,
+    GameDecideRequest,
     GameSelectRequest,
     KickRequest,
     ReadyRequest,
@@ -240,7 +241,19 @@ async def _handle_game_config(conn: SocketConn, data: dict) -> None:
 
 
 async def _handle_game_start(conn: SocketConn, data: dict) -> None:
+    """게임 시작과 「다시 하기」가 같은 이벤트로 들어온다(07_api/03 §9).
+
+    **전용 이벤트를 두지 않는다** — C→S 12종이 고정 기준이고, 방장이 하는 일도
+    「같은 게임·같은 설정으로 판을 연다」로 같다. 다른 것은 어디서 눌렀는가뿐이라
+    방 상태로 가른다.
+    """
     del data  # 페이로드가 없다. 현재 선택과 설정으로 라운드를 만든다
+
+    if _phase_of(conn.room_id) is state_machine.RoomPhase.RESULT:
+        await round_service.play_again(
+            participant_pk=conn.participant_id, room_pk=conn.room_id
+        )
+        return
     await round_service.start(participant_pk=conn.participant_id, room_pk=conn.room_id)
 
 
@@ -260,6 +273,18 @@ async def _handle_game_action(conn: SocketConn, data: dict) -> None:
         round_id=req.roundId,
         phase_seq=req.phaseSeq,
         action_type=req.type,
+        payload=req.payload,
+    )
+
+
+async def _handle_game_decide(conn: SocketConn, data: dict) -> None:
+    req = GameDecideRequest(**data)
+    await game_service.handle_decide(
+        participant_pk=conn.participant_id,
+        room_pk=conn.room_id,
+        round_id=req.roundId,
+        phase_seq=req.phaseSeq,
+        choice=req.choice,
     )
 
 
@@ -274,6 +299,7 @@ _HANDLERS = {
     "game:config": _handle_game_config,
     "game:start": _handle_game_start,
     "game:action": _handle_game_action,
+    "game:decide": _handle_game_decide,
     "round:close": _handle_round_close,
 }
 
@@ -289,8 +315,21 @@ _ACTIONS = {
     "game:config": state_machine.Action.GAME_CONFIG,
     "game:start": state_machine.Action.GAME_START,
     "game:action": state_machine.Action.GAME_ACTION,
+    "game:decide": state_machine.Action.HOST_DECIDE,
     "round:close": state_machine.Action.ROUND_CLOSE,
 }
+
+
+def _action_of(event: str, phase: state_machine.RoomPhase) -> state_machine.Action | None:
+    """이 이벤트가 전표의 어느 행인가. 여기 없는 것은 상태 게이트를 타지 않는다.
+
+    **game:start만 방 상태에 따라 두 행으로 갈린다.** 대기에서 오면 게임 시작(8행),
+    결과에서 오면 다시 하기(14행)다. 두 행의 판정이 서로 반대라 — 결과에서 시작은
+    거부, 대기에서 다시 하기는 거부 — 하나로 묶으면 어느 쪽이든 막힌다.
+    """
+    if event == "game:start" and phase is state_machine.RoomPhase.RESULT:
+        return state_machine.Action.PLAY_AGAIN
+    return _ACTIONS.get(event)
 
 
 def _phase_of(room_pk: int) -> state_machine.RoomPhase:
@@ -324,9 +363,10 @@ async def _dispatch(conn: SocketConn, event: str, data: dict) -> None:
         return
 
     try:
-        action = _ACTIONS.get(event)
+        phase = _phase_of(conn.room_id)
+        action = _action_of(event, phase)
         if action is not None:
-            state_machine.ensure(action, _phase_of(conn.room_id))
+            state_machine.ensure(action, phase)
         await handler(conn, data)
     except errors.DomainError as exc:
         await _send_error(conn, exc.spec, event, message=exc.message)

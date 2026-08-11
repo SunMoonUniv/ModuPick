@@ -21,7 +21,7 @@
 
 import asyncio
 import logging
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 
 from sqlalchemy import select
 
@@ -52,6 +52,17 @@ GUIDE_MS = 3_000
 ARMED_MS = 30_000
 #: 확정된 결과를 강조하는 연출. 지나면 결과 화면으로 넘어간다(G-11).
 REVEAL_MS = 3_000
+#: 동점자 명단만 보여 주는 구간. **기록 값은 아직 감춘다**(G-10).
+TIE_NOTICE_MS = 3_000
+
+#: 결선·재대결 상한. 상한을 세는 것은 판정 모듈이지만(MAX_RUNOFFS · MAX_REMATCHES)
+#: 화면이 "결선 2/3"을 그리려면 뼈대도 알아야 한다. 05_game_rules/01_common.md.
+TIE_ROUND_MAX = 3
+
+#: 방장이 교착 해소를 고르는 시간. **정본에 수치가 없어 정한 값이다** — 상의할
+#: 시간은 되면서 판이 오래 열려 있지 않은 폭으로 킹메이커 투표와 같은 60초를 쓴다.
+#: 지나면 서버가 ABORT로 처리한다(07_api/03 §16).
+DECISION_MS = 60_000
 
 
 # ── 진입 ───────────────────────────────────────────────────────────────────
@@ -129,6 +140,52 @@ async def handle_action(
         action_type=action_type,
         payload=payload,
     )
+
+
+async def handle_decide(
+    *,
+    participant_pk: int,
+    room_pk: int,
+    round_id: str,
+    phase_seq: int,
+    choice: str,
+) -> None:
+    """game:decide 하나를 받는다. **방장의 교착 해소 선택이다.**
+
+    검사 순서는 game:action과 같다 — 라운드 · 단계 · 요구 여부 · 값 · 권한.
+    권한을 맨 뒤에 두는 이유도 같다: 지난 단계의 입력에 member.not_host를 돌려주면
+    방장이 "권한이 없다"로 읽는다.
+
+    ABORT는 게임과 무관하게 라운드를 닫는다. RETRY는 어디로 되돌아가는지가 게임마다
+    달라 진행 모듈이 맡는다 — 저격은 VOTE, 킹메이커는 SUBMIT, 눈치는 같은 생존자의
+    다음 ROUND다.
+    """
+    from app.domain.enums import EndedReason
+    from app.services.games import flow_of
+
+    state = store.round_of(room_pk)
+    if state is None or state.round_id != round_id:
+        raise errors.DomainError(errors.GAME_ROUND_NOT_FOUND)
+    if state.phase_seq != phase_seq:
+        raise errors.DomainError(errors.GAME_STALE_PHASE)
+    if state.decision is None:
+        raise errors.DomainError(errors.GAME_DECISION_NOT_REQUIRED)
+    if choice not in state.decision["options"]:
+        raise errors.DomainError(errors.GAME_INVALID_ACTION)
+    await ensure_host(participant_pk)
+
+    # **먼저 지운다.** 되돌아간 뒤에도 요구가 남아 있으면 두 번째 game:decide가
+    # 다음 단계를 건드린다.
+    state.decision = None
+
+    if choice == "ABORT":
+        await round_service.finish(room_pk, reason=EndedReason.COMPLETED)
+        return
+
+    flow = flow_of(state.game_id)
+    if flow is None:
+        return
+    await flow.on_retry(room_pk)
 
 
 async def ensure_host(participant_pk: int) -> None:
@@ -255,6 +312,177 @@ async def settle(room_pk: int, verdict: Verdict) -> bool:
         verdict.winner,
     )
     return True
+
+
+# ── 진행 상황 ──────────────────────────────────────────────────────────────
+
+
+async def emit_progress(room_pk: int, payload: dict) -> None:
+    """입력이 몇 건 도착했는지 알린다.
+
+    **누가 무엇을 골랐는지는 어떤 경우에도 넣지 않는다**(07_api/03 §14). 호출부가
+    수치만 담은 payload를 만들어 넘긴다.
+    """
+    from app.schemas.events import GameProgressData
+    from app.ws.connection import registry
+    from app.ws.envelope import outgoing
+
+    state = store.round_of(room_pk)
+    if state is None:
+        return
+
+    await registry.broadcast(
+        room_pk,
+        outgoing(
+            "game:progress",
+            GameProgressData(
+                roomVersion=store.bump_version(room_pk),
+                roundId=state.round_id,
+                phaseSeq=state.phase_seq,
+                payload=payload,
+            ).model_dump(),
+        ),
+    )
+
+
+async def notify(
+    room_pk: int, participant_pk: int, spec, *, event: str = "game:action"
+) -> None:
+    """한 사람에게만 알린다. **브로드캐스트하지 않는다.**
+
+    시간초의 game.elapsed_rejected가 이 경로를 쓴다 — 어느 참가자의 신고값이
+    서버 관측값으로 대체됐는지는 그 사람만 알면 되고, 남에게 보내면 그것이 곧
+    "누가 회선이 튀었는가"를 방 전체에 알리는 일이 된다.
+    """
+    from app.ws.connection import registry
+    from app.ws.envelope import outgoing_error
+
+    conn = registry.find(room_pk, participant_pk)
+    if conn is None:
+        return
+    await registry.send(
+        conn,
+        outgoing_error(spec, source_event=event, room_version=store.version(room_pk)),
+    )
+
+
+# ── 회차와 교착 ────────────────────────────────────────────────────────────
+
+
+async def open_tie(
+    room_pk: int,
+    *,
+    phase: str,
+    candidate_kind: str,
+    candidate_ids: Sequence[str],
+    handler: Callable[[int], Awaitable[None]],
+    duration_ms: int = TIE_NOTICE_MS,
+) -> None:
+    """동점을 알리고 다음 회차 안내 구간으로 넘긴다.
+
+    **회차를 세는 것이 여기다.** 판정 모듈은 repeat를 읽기만 하고 올리지 않으므로,
+    이 자리가 빠지면 결선이 영원히 1회차로 돌아 상한이 발화하지 않는다.
+
+    득표 수는 싣지 않는다 — 다음 회차의 전략이 되기 때문이다(G-10). 명단만 보인다.
+    """
+    from app.schemas.events import GameTieData
+    from app.ws.connection import registry
+    from app.ws.envelope import outgoing
+
+    state = store.round_of(room_pk)
+    if state is None:
+        return
+
+    state.repeat += 1
+    state.tie_pool = tuple(candidate_ids)
+
+    seq = await round_service.emit_phase(
+        room_pk, phase=phase, duration_ms=duration_ms, tie_round=state.repeat
+    )
+    await registry.broadcast(
+        room_pk,
+        outgoing(
+            "game:tie",
+            GameTieData(
+                roomVersion=store.bump_version(room_pk),
+                roundId=state.round_id,
+                phaseSeq=seq,
+                tieRound=state.repeat,
+                tieRoundMax=TIE_ROUND_MAX,
+                candidateKind=candidate_kind,
+                candidateIds=list(candidate_ids),
+                deadlineAt=iso_z(state.deadline_at) if state.deadline_at else None,
+            ).model_dump(),
+        ),
+    )
+    arm(room_pk, seq, duration_ms, handler)
+
+
+async def require_decision(
+    room_pk: int,
+    *,
+    phase: str,
+    reason: str,
+    candidate_kind: str,
+    candidate_ids: Sequence[str],
+    options: Sequence[str] = ("RETRY", "ABORT"),
+) -> None:
+    """자동 진행을 멈추고 방장의 선택을 기다린다.
+
+    **모든 반복 규칙의 탈출구다.** 이 자리가 없으면 종료가 보장되지 않는 반복이
+    생긴다. 마감까지 응답이 없으면 서버가 ABORT로 처리해 판이 열린 채 남지 않는다.
+
+    선택지는 RETRY · ABORT 둘이다. 05_game_rules/01_common.md 「교착 해소 선택」이
+    무작위 확정을 명시적으로 배제한다 — 붙이면 룰렛과 구분되지 않기 때문이다.
+    """
+    from app.schemas.events import GameDecisionRequiredData
+    from app.ws.connection import registry
+    from app.ws.envelope import outgoing
+
+    state = store.round_of(room_pk)
+    if state is None:
+        return
+
+    state.decision = {
+        "reason": reason,
+        "options": list(options),
+        "candidateIds": list(candidate_ids),
+    }
+
+    seq = await round_service.emit_phase(room_pk, phase=phase, duration_ms=DECISION_MS)
+    await registry.broadcast(
+        room_pk,
+        outgoing(
+            "game:decision_required",
+            GameDecisionRequiredData(
+                roomVersion=store.bump_version(room_pk),
+                roundId=state.round_id,
+                phaseSeq=seq,
+                reason=reason,
+                options=list(options),
+                candidateKind=candidate_kind,
+                candidateIds=list(candidate_ids),
+                deadlineAt=iso_z(state.deadline_at) if state.deadline_at else "",
+            ).model_dump(),
+        ),
+    )
+    arm(room_pk, seq, DECISION_MS, _decision_timeout)
+
+
+async def _decision_timeout(room_pk: int) -> None:
+    """방장이 마감까지 고르지 않았다. **ABORT로 처리한다.**
+
+    방장이 유예 중이거나 화면을 떠난 경우가 여기로 온다. 판을 무한정 열어 두지
+    않는다는 규약이 이 경로다(07_api/03 §16).
+    """
+    from app.domain.enums import EndedReason
+
+    state = store.round_of(room_pk)
+    if state is None or state.decision is None:
+        return
+    state.decision = None
+    log.info("방장 결정 마감 — room=%s round=%s ABORT로 처리한다", room_pk, state.round_id)
+    await round_service.finish(room_pk, reason=EndedReason.COMPLETED)
 
 
 # ── 결과 ───────────────────────────────────────────────────────────────────
