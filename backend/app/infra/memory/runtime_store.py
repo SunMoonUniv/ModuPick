@@ -296,6 +296,15 @@ class RuntimeStore:
             _cancel(state.deadline_task)
         return state
 
+    def end_all_rounds(self) -> int:
+        """진행 중인 라운드를 전부 걷어낸다. 걷어낸 수를 돌려준다.
+
+        **마감 타이머는 라운드보다 오래 살 수 있다.** 교착 해소 대기(60초)처럼 긴
+        마감이 걸린 채 방이 사라지면 그 태스크가 한참 뒤에 깨어나 없는 방을 두고
+        다음 단계로 밀어 올린다. 기동 정리와 테스트 뒷정리가 이 경로를 쓴다.
+        """
+        return sum(1 for room_id in list(self._rounds) if self.end_round(room_id))
+
     # ── 핸드셰이크 흔적 ────────────────────────────────────────────────────
 
     def mark_handshake(self, room_id: int, participant_id: int) -> None:
