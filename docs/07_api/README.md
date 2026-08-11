@@ -13,12 +13,12 @@ ModuPick의 통신 표면은 **둘**이다. 대기방에 들어가기 전의 요
 
 | 표면 | 규모 | 정본 문서 | 상태 |
 |------|:----:|-----------|:----:|
-| REST — 제품 | **8본** | [02_rest.md](./02_rest.md) | ⬜ |
+| REST — 제품 | **8본** | [02_rest.md](./02_rest.md) | ✅ |
 | REST — 운영 | **1본** — GET /health | [02_rest.md](./02_rest.md) | ✅ |
-| WebSocket — C→S | **12종** | [03_socket_events.md](./03_socket_events.md) | ⬜ |
-| WebSocket — S→C | **19종** | [03_socket_events.md](./03_socket_events.md) | ⬜ |
-| game:action type | **8종** | [03_socket_events.md](./03_socket_events.md) | ⬜ |
-| 에러 코드 후보 | **41종** | [04_error_mapping.md](./04_error_mapping.md) · 채번 정본은 10_glossary | ⬜ |
+| WebSocket — C→S | **12종** | [03_socket_events.md](./03_socket_events.md) | ✅ |
+| WebSocket — S→C | **19종** | [03_socket_events.md](./03_socket_events.md) | ✅ |
+| game:action type | **8종** | [03_socket_events.md](./03_socket_events.md) | ✅ |
+| 에러 코드 후보 | **41종** | [04_error_mapping.md](./04_error_mapping.md) · 채번 정본은 10_glossary | ✅ |
 
 구현 상태는 backend/ 실제 코드 기준이다. backend/app/main.py에는 GET /health와 소켓 배선 확인용 WS /ws/echo만 있고 제품 표면은 미착수다.
 

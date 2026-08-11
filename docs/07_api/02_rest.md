@@ -23,14 +23,14 @@
 
 | # | Method | 경로 | 역할 | 인증 | 멱등 키 | 상태 |
 |:-:|:------:|------|------|:----:|:------:|:----:|
-| 1 | POST | /api/rooms | 방 생성 + 방장 가입(PENDING) | — | 필수 | ⬜ |
-| 2 | GET | /api/rooms/{code} | 초대 코드 검증 | — | — | ⬜ |
-| 3 | POST | /api/rooms/{code}/members | 가입 — 슬롯 선점 + 토큰 발급 | — | 필수 | ⬜ |
-| 4 | GET | /api/rooms/{code}/avatars | 아바타 30종 + 선점 현황 | Bearer | — | ⬜ |
-| 5 | PATCH | /api/rooms/{code}/members/me | 프로필 확정 → ACTIVE | Bearer | 필수 | ⬜ |
-| 6 | DELETE | /api/rooms/{code}/members/me | **소켓 연결 이전** 이탈 | Bearer | — | ⬜ |
-| 7 | GET | /api/games | 게임 메타 목록 6종 | — | — | ⬜ |
-| 8 | GET | /api/games/{gameId} | 게임 상세 · 가이드 | — | — | ⬜ |
+| 1 | POST | /api/rooms | 방 생성 + 방장 가입(PENDING) | — | 필수 | ✅ |
+| 2 | GET | /api/rooms/{code} | 초대 코드 검증 | — | — | ✅ |
+| 3 | POST | /api/rooms/{code}/members | 가입 — 슬롯 선점 + 토큰 발급 | — | 필수 | ✅ |
+| 4 | GET | /api/rooms/{code}/avatars | 아바타 30종 + 선점 현황 | Bearer | — | ✅ |
+| 5 | PATCH | /api/rooms/{code}/members/me | 프로필 확정 → ACTIVE | Bearer | 필수 | ✅ |
+| 6 | DELETE | /api/rooms/{code}/members/me | **소켓 연결 이전** 이탈 | Bearer | — | ✅ |
+| 7 | GET | /api/games | 게임 메타 목록 6종 | — | — | ✅ |
+| 8 | GET | /api/games/{gameId} | 게임 상세 · 가이드 | — | — | ✅ |
 
 **제품 표면은 이 8본 전량이다.** 이 밖의 기능을 REST로 올리지 않는다. 운영 표면 GET /health는 아래 「운영 표면」 절에서 따로 다루며 8본에 포함하지 않는다.
 
