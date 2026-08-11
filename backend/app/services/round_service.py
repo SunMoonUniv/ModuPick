@@ -230,12 +230,16 @@ def _initial_options(game_id: GameId, config: dict, rows) -> list[tuple[int | No
     | 게임 | 선택지 | participant_id |
     |------|--------|----------------|
     | 룰렛 | 참가자 후보 1인 1행 — 조각 배치가 곧 입장 순서다 | 참가자 |
+    | 저격 | 지목 후보 1인 1행 — 표가 이 행을 가리킨다 | 참가자 |
     | 사다리 | 도착 항목 — 사람을 가리키지 않는다 | **NULL** |
 
-    킹메이커의 안건은 제출 단계에서 도착하므로 여기서 만들지 않는다. 저격의 후보는
-    룰렛과 같은 모양이지만 그 게임을 만들 때 함께 검증한다.
+    킹메이커의 안건은 제출 단계에서 도착하므로 여기서 만들지 않는다.
+
+    **저격의 후보는 결선에서도 줄지 않는다.** 결선은 후보 집합을 좁히지만 그것은
+    인메모리 축(tie_pool)이고, votes가 가리키는 행은 본선 전원 그대로여야 회차를
+    건너 표를 세어 볼 수 있다.
     """
-    if game_id is GameId.ROULETTE:
+    if game_id in (GameId.ROULETTE, GameId.SNIPE):
         return [(r.id, r.nickname) for r in rows]
     if game_id is GameId.LADDER:
         # **개수를 참가자 수에 맞추는 일은 판정 모듈이 공개한 함수가 한다.** 뼈대가

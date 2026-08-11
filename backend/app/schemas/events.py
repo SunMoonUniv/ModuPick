@@ -258,6 +258,78 @@ class GameActionRequest(BaseModel):
     payload: dict | None = None
 
 
+class GameProgressData(BaseModel):
+    """S->C game:progress — 입력이 몇 건 도착했는가.
+
+    **누가 무엇을 선택했는지는 어떤 경우에도 넣지 않는다.** 익명 저격과 킹메이커는
+    익명성이 기획 의도라 중간에 새면 안 되고, 다른 게임도 중간 집계를 아무에게도
+    보여주지 않는다. 담는 것은 수치뿐이다.
+
+    **눈치게임만 라운드가 마감된 뒤에 보낸다** — 그 게임에서는 "누가 이미 눌렀다"는
+    사실 자체가 정답을 알려주기 때문이다.
+    """
+
+    roomVersion: int
+    roundId: str
+    phaseSeq: int
+    payload: dict
+
+
+class GameTieData(BaseModel):
+    """S->C game:tie — 동점이라 다음 회차가 열린다.
+
+    **tieRound와 tieRoundMax가 함께 실린다.** 화면이 "결선 2/3"을 그릴 수 있어야
+    하고, 무엇보다 반복이 끝난다는 사실이 참가자에게 보여야 한다.
+
+    결선은 새 라운드가 아니라 **같은 roundId 안의 회차**다. 득표 수는 싣지 않는다 —
+    다음 회차의 전략이 되기 때문이다(G-10).
+    """
+
+    roomVersion: int
+    roundId: str
+    phaseSeq: int
+    tieRound: int
+    tieRoundMax: int
+    candidateKind: str            # MEMBER · OPTION
+    candidateIds: list[str]
+    deadlineAt: str | None
+
+
+class GameDecisionRequiredData(BaseModel):
+    """S->C game:decision_required — 자동 진행을 멈추고 방장이 고른다.
+
+    **모든 반복 규칙의 탈출구다.** 상한 없는 반복을 두지 않는다는 규약이 API 표면에서
+    이 이벤트로 구현된다. reason은 TIE_EXHAUSTED · VOID_ROUND · NO_OPTION 3값이다.
+
+    deadlineAt까지 응답이 없으면 서버가 ABORT로 처리한다. 방장이 유예 중이면 이
+    경로로 판이 정리된다.
+    """
+
+    roomVersion: int
+    roundId: str
+    phaseSeq: int
+    reason: str
+    options: list[str]            # RETRY · ABORT
+    candidateKind: str
+    candidateIds: list[str]
+    deadlineAt: str
+
+
+class GameDecideRequest(BaseModel):
+    """C->S game:decide — 방장의 교착 해소 선택.
+
+    **choice는 RETRY · ABORT 2종이다.** 05_game_rules/01_common.md 「교착 해소 선택」이
+    다시 시작과 대기방으로 둘만 두고 무작위 확정을 명시적으로 배제한다 — 난수 확정을
+    붙이면 룰렛과 구분되지 않기 때문이다. 방장이 후보를 직접 지목하는 선택지도 두지
+    않는다. 팀의 뜻으로 정하겠다는 게임에 방장 단독 결정을 넣을 자리가 아니다.
+    """
+
+    roundId: str
+    phaseSeq: int
+    choice: str
+    requestId: str | None = None
+
+
 class GameResultData(BaseModel):
     """S->C game:result — 확정된 결과.
 

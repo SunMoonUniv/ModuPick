@@ -35,6 +35,7 @@ CLIENT_EVENTS = {
     "game:random": None,
     "game:start": None,
     "game:action": "GameActionRequest",
+    "game:decide": "GameDecideRequest",
     "round:close": "RoundCloseRequest",
 }
 
@@ -53,6 +54,9 @@ SERVER_EVENTS = {
     "game:started": "GameStartedData",
     "game:phase": "GamePhaseData",
     "game:tick": "GameTickData",
+    "game:progress": "GameProgressData",
+    "game:tie": "GameTieData",
+    "game:decision_required": "GameDecisionRequiredData",
     "game:result": "GameResultData",
     "round:closed": "RoundClosedData",
 }

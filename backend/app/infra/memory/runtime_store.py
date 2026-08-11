@@ -131,6 +131,23 @@ class RoundState:
     #: 같은 밀리초에 도착한 입력들 사이의 결정론적 보조 축. 단계마다 0에서 시작한다.
     input_seq: int = 0
 
+    # ── 회차 축 ────────────────────────────────────────────────────────────
+    #
+    # **단계가 바뀌어도 지우지 않는다.** inputs와 달리 회차를 건너 이월돼야 하는
+    # 값들이라 emit_phase가 손대지 않으며, 진행 모듈이 명시적으로 갱신한다.
+
+    #: 결선·재대결·무효 재시작 회차. 0이 본선이고 판정이 TIE를 낼 때마다 1 오른다.
+    #: 상한은 판정 모듈이 들고 있다(MAX_RUNOFFS · MAX_REMATCHES).
+    repeat: int = 0
+    #: 직전 회차의 동점자 집합. 다음 회차의 후보가 이것으로 좁혀진다.
+    tie_pool: tuple[str, ...] = ()
+    #: 요구 중인 방장 결정. game:decision_required를 보낸 뒤 응답까지 들고 있다.
+    #: **None이면 game:decide를 받지 않는다** — game.decision_not_required다.
+    decision: dict | None = None
+    #: 외부 식별자 -> game_options.id. 표를 votes에 넣을 때 대상 행을 가리킨다.
+    #: 키가 무엇인지는 게임이 정한다 — 저격은 memberId, 킹메이커는 optionId다.
+    option_pks: dict = field(default_factory=dict)
+
 
 @dataclass(slots=True)
 class IdempotencyEntry:
