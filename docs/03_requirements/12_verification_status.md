@@ -75,7 +75,7 @@
 | AC-24 | ✅ | 게임별 두 번째 입력 거절 6종 — 룰렛 연타해도 판정은 한 번만 돈다 · 킹메이커 · 저격 · 시간초 · 눈치 |
 | AC-25 | ✅ | test_game_play.py TestPick — 지난 단계의 입력은 stale_phase다. **에러 코드가 기준과 다르다(아래 갭 4)** |
 | AC-26 | ✅ | 같은 클래스 — 다른 판의 입력은 round_not_found다 |
-| AC-27 | ✅ | test_game_snipe.py 집계에 지목 내용이 실리지 않는다 · test_game_nunchi.py 진행 중에는 집계가 나가지 않는다 · test_game_kingmaker.py 투표 집계에 후보별 득표가 실린다 · 집계에 투표자가 실리지 않는다(D-09 예외) |
+| AC-27 | ✅ | test_game_kingmaker.py 제출 집계가 수치만 담는다 · test_game_snipe.py 집계에 지목 내용이 실리지 않는다 · test_game_nunchi.py 진행 중에는 집계가 나가지 않는다 |
 | AC-28 | ✅ | test_game_kingmaker.py — 전원이 제출하면 마감 전에 투표로 간다 |
 | AC-29 | 🔶 | test_round.py 명단 스냅샷은 이탈해도 바뀌지 않는다. **결과의 이탈 표시는 F-RESULT-09 미착수** |
 | AC-30 | ✅ | test_socket.py 방장 이탈은 room_closed와 소켓 종료 · test_rest.py 방장이 나가면 방이 사라진다 |

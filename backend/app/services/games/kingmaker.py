@@ -310,12 +310,7 @@ async def _accept_vote(
 
     voted = _count(state, rules.VOTE_KIND)
     await game_service.emit_progress(
-        room_pk,
-        {
-            "votedCount": voted,
-            "totalCount": len(state.roster),
-            "optionVotes": _live_votes(state),
-        },
+        room_pk, {"votedCount": voted, "totalCount": len(state.roster)}
     )
 
     if voted >= len(state.roster):
@@ -335,30 +330,6 @@ def _picks_of(payload: dict | None) -> tuple[str, ...]:
 
 def _count(state: RoundState, kind: str) -> int:
     return sum(1 for i in state.inputs if i.kind == kind)
-
-
-def _live_votes(state: RoundState) -> list[dict]:
-    """지금까지 도착한 표를 후보별로 센다. **킹메이커에만 있는 경로다.**
-
-    D-09는 진행 중 중간 집계를 아무에게도 보여주지 않는다고 정했고 저격·시간초·
-    눈치는 그대로다. 킹메이커만 예외로 뺐다 — 안건에 표가 붙는 것을 실시간으로
-    보는 편이 낫다는 기획 결정이다(2026-08-12).
-
-    **누가 무엇에 넣었는지는 여기서도 나가지 않는다.** 익명은 D-09와 별개 축이며
-    그쪽은 바뀌지 않았다.
-
-    후보 전체를 매번 싣는다 — 0표인 후보를 빼면 화면이 이전 값을 남기고, 표가
-    처음 붙는 순간에만 나타나 목록이 흔들린다. 순서는 VOTE 전이에서 내려보낸
-    candidates와 같다(제출 순서가 아니라 섞인 순서다).
-    """
-    counts = {c.id: 0 for c in _current_candidates(state)}
-    for item in state.inputs:
-        if item.kind != rules.VOTE_KIND:
-            continue
-        for option_id in item.payload or ():
-            if option_id in counts:
-                counts[option_id] += 1
-    return [{"optionId": k, "votes": v} for k, v in counts.items()]
 
 
 async def _store_votes(

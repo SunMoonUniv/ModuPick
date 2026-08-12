@@ -609,13 +609,10 @@ game:decision_required가 나간 뒤에만 받는다.
 
 **누가 무엇을 선택했는지는 어떤 경우에도 넣지 않는다.** 익명 저격과 킹메이커는 익명성이 기획 의도라 중간에 새면 안 되고, 다른 게임도 중간 집계를 아무에게도 보여주지 않는다.
 
-**킹메이커의 투표·결선만 후보별 득표 수를 함께 싣는다**(D-09 예외, 2026-08-12). 그 경우에도 실리는 것은 후보와 표 수뿐이며 투표자는 나가지 않는다. optionVotes는 **후보 전체를 매번 싣고 0표인 후보도 votes 0으로 포함한다** — 빠지면 표가 처음 붙는 순간에만 나타나 목록이 흔들린다. 순서는 같은 단계의 game:phase가 내려보낸 candidates와 같다.
-
 | 게임 · 단계 | payload | 시점 |
 |------------|---------|------|
 | 킹메이커 제출 | submittedCount · totalCount | 입력이 도착할 때마다 |
-| 킹메이커 투표 · 결선 | votedCount · totalCount · optionVotes[{ optionId, votes }] | 입력이 도착할 때마다 |
-| 익명 저격 | votedCount · totalCount | 입력이 도착할 때마다 |
+| 킹메이커 투표 · 익명 저격 | votedCount · totalCount | 입력이 도착할 때마다 |
 | 시간초 잡기 | startedCount · stoppedCount · totalCount | 입력이 도착할 때마다 |
 | 룰렛 · 사다리 | 보내지 않는다 | — |
 | **눈치게임** | round · verdicts · safeMemberIds · remainingMemberIds · nextRoundStartsAt | **라운드가 마감된 뒤에만** |
