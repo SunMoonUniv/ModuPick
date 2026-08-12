@@ -76,6 +76,16 @@ export function NunchiGame() {
   const limitSec = config.roundSeconds
   const gaugeRatio = Math.max(0, Math.min(1, remainMs / (config.roundSeconds * 1000)))
 
+  // 카드 줄 자체가 눌린 순서표가 된다 — 누른 사람이 순번대로 왼쪽으로 당겨지고 아직 안 누른 사람은 뒤로 밀린다
+  // 지난 라운드에 이미 빠진 사람은 이번 라운드 순번이 없으므로 맨 앞에 그대로 쌓아 둔다
+  const rankOf = (id: MemberId) => {
+    const order = orderOf.get(id)
+    if (order) return 1000 + order
+    return outIds.includes(id) ? 0 : 2000
+  }
+  // sort가 안정 정렬이라 같은 순위끼리는 명단 순서를 지킨다
+  const lineup = [...members].sort((a, b) => rankOf(a.memberId) - rankOf(b.memberId))
+
   // 카드가 6장을 넘으면 폭을 줄여서 한 줄에 다 들어가게 한다 (방 정원이 10명이라서)
   const cardW = Math.min(CARD_W, (BOARD_W - (members.length - 1) * MIN_GAP) / members.length)
   const cardGap = members.length > 1 ? (BOARD_W - members.length * cardW) / (members.length - 1) : 0
@@ -137,7 +147,7 @@ export function NunchiGame() {
 
       {/* ── 참가자 카드 줄 ── */}
       <div className={styles.board}>
-        {members.map((member, i) => {
+        {lineup.map((member, i) => {
           // out은 「빠져나갔다」는 뜻이다 — 눌러서 후보에서 빠졌으니 더 이상 뽑힐 일이 없다
           const out = outIds.includes(member.memberId)
           const order = orderOf.get(member.memberId)
