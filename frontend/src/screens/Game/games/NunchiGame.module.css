@@ -154,6 +154,8 @@
   border: 4.219px solid var(--color-ink);
   border-radius: 16.875px;
   box-shadow: 6.328px 6.328px 0 var(--color-ink);
+  /* 누른 사람이 앞으로 당겨지는 것이 보이도록 자리 이동을 미끄러뜨린다 */
+  transition: left 0.25s ease;
 }
 
 /* 이미 누른 사람 */
