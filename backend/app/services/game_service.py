@@ -317,6 +317,28 @@ async def settle(room_pk: int, verdict: Verdict) -> bool:
 # ── 진행 상황 ──────────────────────────────────────────────────────────────
 
 
+def _went_backwards(state: RoundState, payload: dict) -> bool:
+    """이 집계가 이미 내보낸 것보다 뒤로 간 값인지 본다.
+
+    **거의 동시에 도착한 입력들의 순서가 뒤집힌다.** 호출부는 몇 번째 입력인지를
+    동기 구간에서 확정하지만 그 뒤 DB 왕복이 끼면 먼저 센 쪽이 나중에 전송된다.
+    셋이 같이 제출하면 3 → 1 → 2로 나가고, game:progress는 버전 게이트를 적용받는
+    상태 이벤트라(07_api/03 §12) 클라이언트가 셋을 순서대로 반영해 **2에서 멈춘다.**
+
+    여기서 버리면 roomVersion을 소모하기 전이라 번호에 갭이 생기지 않는다 — 갭은
+    서버 결함의 신호라는 규약을 깨지 않는다.
+    """
+    if state.progress is None:
+        return False
+    seq, prev = state.progress
+    if seq != state.phase_seq:
+        return False  # 단계가 바뀌면 집계가 0부터 다시 센다
+    return any(
+        isinstance(value, int) and isinstance(prev.get(key), int) and value < prev[key]
+        for key, value in payload.items()
+    )
+
+
 async def emit_progress(room_pk: int, payload: dict) -> None:
     """입력이 몇 건 도착했는지 알린다.
 
@@ -330,6 +352,9 @@ async def emit_progress(room_pk: int, payload: dict) -> None:
     state = store.round_of(room_pk)
     if state is None:
         return
+    if _went_backwards(state, payload):
+        return
+    state.progress = (state.phase_seq, payload)
 
     await registry.broadcast(
         room_pk,
