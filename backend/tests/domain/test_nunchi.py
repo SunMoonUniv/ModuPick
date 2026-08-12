@@ -1,4 +1,8 @@
-"""눈치게임 판정 — docs/05_game_rules/07_nunchi.md 의 인수 기준 후보·경계값·반례"""
+"""눈치게임 판정 — docs/05_game_rules/07_nunchi.md 의 인수 기준 후보·경계값·반례
+
+**누르면 빠지고 못 누른 사람만 남는다.** 혼자냐 겹쳤냐는 결과를 가르지 않으며
+표시에만 쓴다. 끝까지 못 누른 한 명이 뽑힌다.
+"""
 
 import pytest
 
@@ -43,149 +47,125 @@ def verdicts_of(verdict) -> dict[str, str]:
     return {row["memberId"]: row["verdict"] for row in verdict.detail["round"]["presses"]}
 
 
-# ── 고립 판정 ──────────────────────────────────────────────────────────────
+# ── 누르면 빠진다 ──────────────────────────────────────────────────────────
 
 
-def test_혼자_누르면_안전_확정된다():
+def test_혼자_눌러도_탈락이다():
+    """혼자 누른 것은 안전이 아니라 후보에서 빠지는 것이다."""
     result = judge_round(("a", "b"), {"a": 1000, "b": 5000}, W)
-    assert result["safe"] == ("a", "b")
-    assert result["remain"] == ()
+    assert result["alone"] == ("a", "b")
+    assert result["eliminated"] == ("a", "b")
+    assert result["surviving"] == ()
 
 
-def test_판정창_안에_겹치면_남는다():
+def test_겹쳐_눌러도_탈락이다():
     result = judge_round(("a", "b"), {"a": 1000, "b": 1200}, W)
-    assert result["safe"] == ()
-    assert set(result["remain"]) == {"a", "b"}
+    assert set(result["overlapped"]) == {"a", "b"}
+    assert set(result["eliminated"]) == {"a", "b"}
+    assert result["surviving"] == ()
+
+
+def test_못_누른_사람만_생존한다():
+    result = judge_round(("a", "b", "c"), {"a": 1000, "b": 1200}, W)
+    assert result["surviving"] == ("c",)
+    assert result["verdicts"]["c"] == Judgment.NO_INPUT
+
+
+def test_탈락자는_혼자와_겹침의_합집합이다():
+    result = judge_round(("a", "b", "c"), {"a": 1000, "b": 1200, "c": 9000}, W)
+    assert set(result["overlapped"]) == {"a", "b"}
+    assert result["alone"] == ("c",)
+    assert set(result["eliminated"]) == {"a", "b", "c"}
+
+
+def test_탈락자가_누른_순서를_유지한다():
+    result = judge_round(("a", "b", "c"), {"c": 9000, "a": 1000, "b": 1200}, W)
+    assert result["eliminated"] == ("a", "b", "c")
+
+
+# ── 혼자와 겹침을 가르는 경계 ──────────────────────────────────────────────
+
+
+def test_간격이_판정창과_정확히_같으면_겹침이다():
+    """비교는 이하(≤)가 겹침이다."""
+    result = judge_round(("a", "b"), {"a": 1000, "b": 1500}, 500)
+    assert set(result["overlapped"]) == {"a", "b"}
+    assert result["alone"] == ()
+
+
+def test_간격이_판정창보다_1밀리초_크면_둘_다_혼자다():
+    result = judge_round(("a", "b"), {"a": 1000, "b": 1501}, 500)
+    assert set(result["alone"]) == {"a", "b"}
+
+
+def test_같은_밀리초에_누르면_겹침이다():
+    result = judge_round(("a", "b"), {"a": 1000, "b": 1000}, W)
+    assert set(result["overlapped"]) == {"a", "b"}
 
 
 def test_연쇄로_겹치면_가운데도_끝도_전부_겹침이다():
-    """앵커 방식이면 C가 단독이 되지만 고립 판정은 대칭이다."""
+    """앞뒤 간격 중 하나라도 판정창 이하면 겹침이다. 도착 순서에 의존하지 않는다."""
     result = judge_round(("a", "b", "c"), {"a": 2000, "b": 2200, "c": 2400}, W)
-    assert result["safe"] == ()
-    assert set(result["remain"]) == {"a", "b", "c"}
+    assert set(result["overlapped"]) == {"a", "b", "c"}
+    assert result["alone"] == ()
 
 
-def test_고립_판정은_도착_순서에_의존하지_않는다():
-    """같은 간격이면 먼저 누른 쪽과 나중에 누른 쪽의 판정이 같아야 한다."""
+def test_혼자_겹침_구분은_도착_순서에_의존하지_않는다():
     forward = judge_round(("a", "b", "c"), {"a": 2000, "b": 2200, "c": 2400}, W)
     backward = judge_round(("c", "b", "a"), {"c": 2400, "b": 2200, "a": 2000}, W)
     assert forward["verdicts"] == backward["verdicts"]
 
 
-def test_간격이_판정창과_정확히_같으면_겹침이다():
-    """비교는 초과(>)이지 이상(≥)이 아니다."""
-    result = judge_round(("a", "b"), {"a": 1000, "b": 1500}, 500)
-    assert result["safe"] == ()
-
-
-def test_간격이_판정창보다_1밀리초_크면_둘_다_안전_확정이다():
-    result = judge_round(("a", "b"), {"a": 1000, "b": 1501}, 500)
-    assert set(result["safe"]) == {"a", "b"}
-
-
-def test_미입력자는_남는다():
-    """안전 확정되지 못했을 뿐 탈락이 아니다."""
-    result = judge_round(("a", "b"), {"a": 1000}, W)
-    assert result["safe"] == ("a",)
-    assert result["remain"] == ("b",)
-    assert result["verdicts"]["b"] == Judgment.NO_INPUT
-
-
-def test_같은_밀리초에_눌러도_동점이_아니라_겹침이다():
-    """간격이 0이라 판정창 안이다. 동점이라는 상태가 정의되지 않는다."""
-    result = judge_round(("a", "b"), {"a": 1000, "b": 1000}, W)
-    assert set(result["remain"]) == {"a", "b"}
-
-
-def test_원천_판정_예시와_8행이_일치한다():
-    """docs_legacy §3.5.6 — 판정창 0.3초 · 5명. 원천의 판정과 같은 결과가 나온다."""
-    survivors = ("지호", "서연", "민준", "하늘", "도윤")
-    presses = {"지호": 2100, "서연": 5400, "민준": 7000, "하늘": 7120}
-    result = judge_round(survivors, presses, W)
-    assert set(result["safe"]) == {"지호", "서연"}
-    assert result["verdicts"] == {
-        "지호": Judgment.SAFE,
-        "서연": Judgment.SAFE,
-        "민준": Judgment.OVERLAP,
-        "하늘": Judgment.OVERLAP,
-        "도윤": Judgment.NO_INPUT,
-    }
-
-
-def test_원천_2라운드도_일치한다():
-    result = judge_round(("민준", "하늘", "도윤"), {"민준": 1800, "하늘": 4000}, W)
-    assert set(result["safe"]) == {"민준", "하늘"}
-    assert result["remain"] == ("도윤",)
-
-
-def test_games_문서_예시도_일치한다():
-    """git 529e312 docs/games.md §7.4 — A 2.00 · B 2.12 · C 2.62 · 판정창 0.3초."""
-    result = judge_round(("A", "B", "C"), {"A": 2000, "B": 2120, "C": 2620}, W)
-    assert result["safe"] == ("C",)
-    assert set(result["remain"]) == {"A", "B"}
-
-
-# ── 표시용 연결 성분 ───────────────────────────────────────────────────────
-
-
-def test_연결_성분이_인접_간격으로_묶인다():
-    result = judge_round(("a", "b", "c"), {"a": 1000, "b": 1200, "c": 5000}, W)
-    assert result["groups"] == (("a", "b"), ("c",))
-
-
-def test_원소가_1개인_성분이_안전_확정자와_정확히_일치한다():
-    """표시와 판정이 어긋나지 않는다는 성질이다."""
-    presses = {"a": 1000, "b": 1200, "c": 5000, "d": 9000, "e": 9100}
-    result = judge_round(("a", "b", "c", "d", "e"), presses, W)
-    singles = {g[0] for g in result["groups"] if len(g) == 1}
-    assert singles == set(result["safe"])
+def test_판정창_설정이_혼자와_겹침을_가른다():
+    presses = {"a": 1000, "b": 1400}
+    assert judge_round(("a", "b"), presses, 300)["alone"] == ("a", "b")
+    assert set(judge_round(("a", "b"), presses, 500)["overlapped"]) == {"a", "b"}
 
 
 # ── 라운드 결과의 네 갈래 ──────────────────────────────────────────────────
 
 
-def test_안전_확정자가_없으면_무효_라운드다():
-    verdict = judge(ctx(("a", "b", "c")), [up("a", 2000), up("b", 2200), up("c", 2400)])
+def test_생존자가_둘_이상이면_다음_라운드로_간다():
+    verdict = judge(ctx(), [up("m1", 1000), up("m2", 5000)])
+    assert verdict.outcome is Outcome.TIE
+    assert set(verdict.survivors) == {"m3", "m4", "m5"}
+    assert verdict.persist is None  # 아직 결과가 아니다
+
+
+def test_생존자가_하나면_그_사람이_최후_1인이다():
+    verdict = judge(ctx(("a", "b", "c")), [up("a", 1000), up("b", 5000)])
+    assert verdict.outcome is Outcome.DECIDED
+    assert verdict.winner == "c"
+
+
+def test_겹쳐서_끝난_라운드도_생존자가_하나면_끝난다():
+    verdict = judge(ctx(("a", "b", "c")), [up("a", 2000), up("b", 2100)])
+    assert verdict.outcome is Outcome.DECIDED
+    assert verdict.winner == "c"
+
+
+def test_아무도_누르지_않으면_무효_라운드다():
+    """미입력을 후보 제외로 쳐 주면 가만히 있는 것이 우세 전략이 된다."""
+    verdict = judge(ctx(("a", "b", "c")), [])
     assert verdict.outcome is Outcome.VOID
     assert verdict.next_phase == Phase.VOID_ROUND
     assert verdict.next_deadline is None  # 타이머가 없는 정지 상태다
     assert verdict.survivors == ("a", "b", "c")  # 다시 시작하면 같은 생존자다
 
 
-def test_전원_미입력도_무효_라운드다():
-    """구 스펙이 정의하지 않았던 경우를 안전 확정자 0으로 일반화했다."""
-    verdict = judge(ctx(("a", "b", "c")), [])
-    assert verdict.outcome is Outcome.VOID
-
-
-def test_겹침과_미입력이_섞여도_무효_라운드다():
-    verdict = judge(ctx(("a", "b", "c")), [up("a", 2000), up("b", 2100)])
-    assert verdict.outcome is Outcome.VOID
-
-
-def test_잔류자가_둘_이상이면_다음_라운드로_간다():
-    verdict = judge(ctx(), [up("m1", 1000), up("m2", 5000), up("m3", 5100)])
-    assert verdict.outcome is Outcome.TIE
-    assert set(verdict.survivors) == {"m2", "m3", "m4", "m5"}
-    assert verdict.persist is None  # 아직 결과가 아니다
-
-
-def test_잔류자가_하나면_그_사람이_최후_1인이다():
-    verdict = judge(ctx(("a", "b", "c")), [up("a", 1000), up("b", 5000)])
-    assert verdict.outcome is Outcome.DECIDED
-    assert verdict.winner == "c"
-
-
-def test_전원이_고립되면_가장_늦게_누른_사람이_최후_1인이다():
-    """무효로 되돌리지 않는다 — 그 라운드에는 실제로 진전이 있었다."""
+def test_전원이_누르면_뽑을_사람이_없어_무효_라운드다():
     verdict = judge(ctx(("a", "b", "c")), [up("a", 1000), up("b", 5000), up("c", 9000)])
-    assert verdict.outcome is Outcome.DECIDED
-    assert verdict.winner == "c"
+    assert verdict.outcome is Outcome.VOID
+
+
+def test_전원이_겹쳐도_무효_라운드다():
+    verdict = judge(ctx(("a", "b", "c")), [up("a", 2000), up("b", 2100), up("c", 2200)])
+    assert verdict.outcome is Outcome.VOID
 
 
 def test_생존자_수가_줄면_라운드가_유한하게_끝난다():
     """종료 증명 — 자동 진행 갈래는 생존자 수를 반드시 줄인다."""
-    verdict = judge(ctx(), [up("m1", 1000), up("m2", 5000), up("m3", 5100)])
+    verdict = judge(ctx(), [up("m1", 1000), up("m2", 5000)])
     assert len(verdict.survivors) < len(MEMBERS)
 
 
@@ -197,11 +177,12 @@ def test_최후_1인의_판정이_LAST로_바뀐다():
     assert verdicts_of(verdict)["c"] == Judgment.LAST
 
 
-def test_가장_늦은_안전_확정자도_LAST로_표시된다():
-    verdict = judge(ctx(("a", "b")), [up("a", 1000), up("b", 5000)])
-    assert verdict.winner == "b"
-    assert verdicts_of(verdict)["b"] == Judgment.LAST
-    assert verdicts_of(verdict)["a"] == Judgment.SAFE
+def test_최후_1인_외의_판정은_그대로다():
+    verdict = judge(ctx(("a", "b", "c")), [up("a", 2000), up("b", 2100)])
+    labels = verdicts_of(verdict)
+    assert labels["a"] == Judgment.OVERLAP
+    assert labels["b"] == Judgment.OVERLAP
+    assert labels["c"] == Judgment.LAST
 
 
 # ── 멱등과 결정성 ──────────────────────────────────────────────────────────
@@ -209,22 +190,22 @@ def test_가장_늦은_안전_확정자도_LAST로_표시된다():
 
 def test_같은_라운드에_두_번_누르면_최초_1회만_센다():
     """G-9 — 두 번째는 버린다."""
-    doubled = [up("m1", 1000), up("m1", 1100, seq=1), up("m2", 5000), up("m3", 5100)]
+    doubled = [up("m1", 1000), up("m1", 1100, seq=1), up("m2", 5000)]
     assert judge(ctx(), doubled).survivors == judge(
-        ctx(), [up("m1", 1000), up("m2", 5000), up("m3", 5100)]
+        ctx(), [up("m1", 1000), up("m2", 5000)]
     ).survivors
 
 
 def test_생존자가_아닌_사람의_입력은_보지_않는다():
-    """안전 확정자의 추가 입력은 판정을 바꾸지 않는다."""
+    """이미 빠진 사람의 추가 입력은 판정을 바꾸지 않는다."""
     alive = ("m3", "m4", "m5")
-    with_ghost = judge(ctx(alive=alive), [up("m1", 1000), up("m3", 2000), up("m4", 9000)])
-    without = judge(ctx(alive=alive), [up("m3", 2000), up("m4", 9000)])
-    assert with_ghost.winner == without.winner
+    with_ghost = judge(ctx(alive=alive), [up("m1", 1000), up("m3", 2000)])
+    without = judge(ctx(alive=alive), [up("m3", 2000)])
+    assert with_ghost.survivors == without.survivors
 
 
 def test_같은_입력이면_판정이_언제나_같다():
-    presses = [up("m1", 1000), up("m2", 5000), up("m3", 5100)]
+    presses = [up("m1", 1000), up("m2", 5000)]
     assert judge(ctx(), presses) == judge(ctx(), presses)
 
 
@@ -237,17 +218,32 @@ def test_같은_밀리초의_순서를_명단_인덱스로_고정한다():
 # ── 라운드 기록 ────────────────────────────────────────────────────────────
 
 
+def test_기록이_명단_4종을_담는다():
+    verdict = judge(ctx(), [up("m1", 1000), up("m2", 2000), up("m3", 2100)])
+    record = verdict.detail["round"]
+    assert record["aloneMemberIds"] == ["m1"]
+    assert record["overlappedMemberIds"] == ["m2", "m3"]
+    assert record["eliminatedMemberIds"] == ["m1", "m2", "m3"]
+    assert record["survivingMemberIds"] == ["m4", "m5"]
+
+
 def test_기록이_생존자_전원의_판정을_담는다():
-    """겹쳐서 남은 사람과 누르지 않아 남은 사람을 결과 화면이 구분해야 한다."""
-    verdict = judge(ctx(("a", "b", "c")), [up("a", 2000), up("b", 2100)])
+    """혼자 빠진 사람과 겹쳐 빠진 사람을 결과 화면이 구분해야 한다.
+
+    생존자를 둘 남겨 라운드가 이어지게 한다 — 하나만 남으면 그 판정이 LAST로 덮인다.
+    """
+    roster = ("a", "b", "c", "d", "e")
+    verdict = judge(ctx(roster), [up("a", 1000), up("b", 5000), up("c", 5100)])
     assert verdicts_of(verdict) == {
-        "a": Judgment.OVERLAP,
+        "a": Judgment.ALONE,
         "b": Judgment.OVERLAP,
-        "c": Judgment.NO_INPUT,
+        "c": Judgment.OVERLAP,
+        "d": Judgment.NO_INPUT,
+        "e": Judgment.NO_INPUT,
     }
 
 
-def test_미입력자의_입력_시각이_비어_있다():
+def test_못_누른_사람의_입력_시각이_비어_있다():
     verdict = judge(ctx(("a", "b", "c")), [up("a", 2000), up("b", 2100)])
     rows = {r["memberId"]: r["offsetMs"] for r in verdict.detail["round"]["presses"]}
     assert rows["c"] is None
@@ -255,13 +251,13 @@ def test_미입력자의_입력_시각이_비어_있다():
 
 
 def test_기록이_누른_순으로_정렬된다():
-    verdict = judge(ctx(("a", "b", "c")), [up("b", 5000), up("a", 1000)])
-    assert [r["memberId"] for r in verdict.detail["round"]["presses"]] == ["a", "b", "c"]
+    verdict = judge(ctx(("a", "b", "c", "d")), [up("b", 5000), up("a", 1000)])
+    assert [r["memberId"] for r in verdict.detail["round"]["presses"]] == ["a", "b", "c", "d"]
 
 
 def test_라운드_번호가_지난_기록_수에서_나온다():
-    past = ({"roundNo": 1, "safeMemberIds": ["x"]}, {"roundNo": 2, "safeMemberIds": ["y"]})
-    verdict = judge(ctx(("a", "b", "c"), history=past), [up("a", 2000), up("b", 2100)])
+    past = ({"roundNo": 1, "eliminatedMemberIds": ["x"]}, {"roundNo": 2, "eliminatedMemberIds": ["y"]})
+    verdict = judge(ctx(("a", "b", "c", "d"), history=past), [up("a", 2000), up("b", 2100)])
     assert verdict.detail["round"]["roundNo"] == 3
 
 
@@ -280,14 +276,13 @@ def test_저장_형식이_result_data_스키마를_따른다():
 
 
 def test_저장이_지난_라운드를_모두_담는다():
-    past = ({"roundNo": 1, "safeMemberIds": ["x"], "presses": [], "remainingMemberIds": []},)
+    past = ({"roundNo": 1, "eliminatedMemberIds": ["x"], "presses": []},)
     verdict = judge(ctx(("a", "b", "c"), history=past), [up("a", 1000), up("b", 5000)])
-    rounds = verdict.persist["rounds"]
-    assert [r["roundNo"] for r in rounds] == [1, 2]
+    assert [r["roundNo"] for r in verdict.persist["rounds"]] == [1, 2]
 
 
 def test_무효_라운드가_있었으면_표시한다():
-    past = ({"roundNo": 1, "safeMemberIds": [], "presses": [], "remainingMemberIds": []},)
+    past = ({"roundNo": 1, "eliminatedMemberIds": [], "presses": []},)
     verdict = judge(ctx(("a", "b", "c"), history=past), [up("a", 1000), up("b", 5000)])
     assert verdict.persist["voidRound"] is True
 
@@ -303,36 +298,33 @@ def test_확정이면_라운드_판정_공개로_넘어간다():
     assert verdict.next_deadline == ROUND_RESULT_MS
 
 
-# ── 판정창 설정 ────────────────────────────────────────────────────────────
-
-
-def test_판정창_설정이_판정을_바꾼다():
-    presses = [up("a", 1000), up("b", 1400), up("c", 9000)]
-    assert judge(ctx(("a", "b", "c"), window_ms=300), presses).winner == "c"
-    # 0.5초 판정창에서는 a와 b가 겹쳐 남고 c만 안전해진다
-    assert judge(ctx(("a", "b", "c"), window_ms=500), presses).outcome is Outcome.TIE
-
-
 # ── 경계값 ────────────────────────────────────────────────────────────────
 
 
-def test_최소_인원_3에서_둘이_안전하면_남은_하나가_바로_뽑힌다():
+def test_최소_인원_3에서_둘이_누르면_남은_하나가_바로_뽑힌다():
     """라운드를 한 번 더 열지 않는다."""
     verdict = judge(ctx(("a", "b", "c")), [up("a", 1000), up("b", 5000)])
     assert verdict.outcome is Outcome.DECIDED
     assert verdict.winner == "c"
 
 
+def test_생존자_2명에서_한_명이_누르면_다른_한_명이_뽑힌다():
+    """2인 구간은 한 라운드로 끝난다 — 먼저 누른 쪽이 빠진다."""
+    verdict = judge(ctx(("a", "b")), [up("a", 1000)])
+    assert verdict.outcome is Outcome.DECIDED
+    assert verdict.winner == "b"
+
+
 def test_최대_인원_10에서_판정한다():
     roster = tuple(f"p{i}" for i in range(10))
-    presses = [up(m, 1000 + i * 1000) for i, m in enumerate(roster)]
+    presses = [up(m, 1000 + i * 1000) for i, m in enumerate(roster[:9])]
     verdict = judge(ctx(roster), presses)
     assert verdict.outcome is Outcome.DECIDED
-    assert verdict.winner == "p9"  # 가장 늦게 누른 사람
+    assert verdict.winner == "p9"  # 끝까지 누르지 못한 사람
 
 
 def test_이탈자만_남으면_그_사람이_최후_1인이다():
-    """이탈자는 매 라운드 미입력으로 남는다. 원천 예시의 도윤과 같은 경로다."""
+    """이탈자는 매 라운드 미입력으로 남는다."""
     verdict = judge(ctx(("a", "b", "gone")), [up("a", 1000), up("b", 5000)])
     assert verdict.winner == "gone"
 
