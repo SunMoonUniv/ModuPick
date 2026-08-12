@@ -11,9 +11,11 @@
 **누르면 빠지고 못 누른 사람만 남는다.** 그래서 라운드를 끊는 것이 겹침이다 — 겹치는
 순간 마감해야 아직 누르지 못한 사람들이 기회를 잃고 다음 라운드로 밀린다.
 
-**진행 중에는 집계를 내보내지 않는다.** 다른 게임에서 "몇 명이 냈다"는 기다림을
-가늠하게 할 뿐이지만, 이 게임에서는 **누가 이미 눌렀다는 사실 자체가 정답**이다.
-집계는 라운드가 마감된 뒤에만 나간다(07_api/03 §14).
+**누른 사람은 그 자리에서 통과가 확정이다.** 혼자였든 겹쳤든 후보에서 빠지므로
+판정을 기다릴 것이 없다. 그래서 UP이 도착할 때마다 **마감 때와 같은 모양의 라운드
+기록을** 그대로 내보내고, 그중 무엇을 그릴지는 화면이 고른다. 누구인지까지 밝혀도
+되는 이유는 누르면 무조건 빠지는 구조라(D-38) 남이 이미 눌렀다는 것을 알아도 얻을
+것이 없기 때문이다 — 혼자 눌러야 안전하던 종전 규칙에서는 그것이 곧 정답이라 가렸다.
 
 규칙의 정본은 docs/05_game_rules/07_nunchi.md다.
 """
@@ -105,8 +107,11 @@ async def on_action(
     game_service.record_input(state, member_id=member_id, kind=action_type)
     ups = [i for i in state.inputs if i.kind == rules.UP_KIND]
 
-    # **진행 집계를 보내지 않는다.** 남은 사람이 몇 명 눌렀는지가 곧 정답이다.
-    #
+    # **지금까지의 라운드 기록을 마감 때와 같은 모양으로 내보낸다.** 누른 사람은
+    # 통과가 확정이므로 라운드가 끝나기를 기다릴 이유가 없다. 화면은 두 경로를 같은
+    # 코드로 그린다.
+    await _emit_pressed(room_pk, state, survivors, ups)
+
     # **겹치면 그 자리에서 라운드가 끝난다.** 직전에 받은 입력과의 간격이 판정창
     # 이하이면 겹침이며, 아직 누르지 못한 사람들은 기회를 잃고 다음 라운드로 밀린다.
     window_ms = int(state.config.get("windowMs", 300))
@@ -169,13 +174,40 @@ async def _judge(room_pk: int) -> None:
         game_service.arm(room_pk, seq, rules.ROUND_RESULT_MS, _enter_reveal)
 
 
-async def _emit_round(room_pk: int, record: dict) -> None:
-    """그 라운드의 판정을 알린다. **라운드가 마감된 뒤에만 나간다.**
+async def _emit_pressed(
+    room_pk: int, state: RoundState, survivors: tuple[str, ...], ups: list
+) -> None:
+    """UP이 도착할 때마다 그 시점까지의 라운드 기록을 내보낸다.
+
+    **마감 때와 완전히 같은 모양이다.** 무엇을 그릴지는 화면이 고르므로 서버가 미리
+    골라 줄이지 않는다.
+
+    판정은 마감과 같은 순수 함수를 쓴다. 뒤에 오는 입력이 앞 사람의 혼자 판정을
+    겹침으로 뒤집을 수 있으나, **뒤집는 그 입력이 곧 라운드를 끊는 겹침이므로**
+    화면에 남는 마지막 값은 마감 판정과 같다.
+    """
+    presses = {i.participant_id: i.arrived_ms for i in ups}
+    result = rules.judge_round(
+        survivors,
+        presses,
+        int(state.config.get("windowMs", 300)),
+        order=[m["memberId"] for m in state.roster],
+    )
+    record = rules.build_record(len(state.history) + 1, survivors, presses, result)
+    await _emit_round(room_pk, record, closed=False)
+
+
+async def _emit_round(room_pk: int, record: dict, *, closed: bool = True) -> None:
+    """한 라운드의 지금 판정을 알린다. **라운드 도중과 마감 뒤가 같은 모양을 쓴다.**
 
     명단을 4종으로 나눠 보낸다 — 혼자 누름·겹쳐 누름은 결과가 같지만(둘 다 탈락)
     화면이 다르게 그려야 하고, 탈락자 전원은 그 둘의 합집합이라 프론트가 다시 계산하지
     않게 함께 싣는다. elapsedMs는 라운드 시작을 0으로 한 **서버 도착 시각**이며,
     누르지 못한 사람은 null이다.
+
+    pressedCount는 **순서 역전을 막는 축이다** — 거의 동시에 도착한 두 입력의 전송
+    순서가 뒤집혀도 game_service가 이 수치로 늦게 온 작은 프레임을 버린다(AC-118).
+    closed는 마감 프레임인지를 가른다. 마감 전에는 다음 라운드 시작 시각이 없다.
     """
     state = store.round_of(room_pk)
     if state is None:
@@ -184,6 +216,7 @@ async def _emit_round(room_pk: int, record: dict) -> None:
         room_pk,
         {
             "round": record.get("roundNo"),
+            "pressedCount": len(record.get("eliminatedMemberIds", ())),
             "verdicts": [
                 {
                     "memberId": row["memberId"],
@@ -196,7 +229,9 @@ async def _emit_round(room_pk: int, record: dict) -> None:
             "overlappedMemberIds": list(record.get("overlappedMemberIds", ())),
             "eliminatedMemberIds": list(record.get("eliminatedMemberIds", ())),
             "survivingMemberIds": list(record.get("survivingMemberIds", ())),
-            "nextRoundStartsAt": iso_z(state.deadline_at) if state.deadline_at else None,
+            "nextRoundStartsAt": (
+                iso_z(state.deadline_at) if closed and state.deadline_at else None
+            ),
         },
     )
 

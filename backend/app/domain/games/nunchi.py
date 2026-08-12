@@ -141,7 +141,7 @@ def judge_round(
     }
 
 
-def _record(
+def build_record(
     round_no: int,
     survivors: Sequence[str],
     presses: Mapping[str, int],
@@ -151,6 +151,9 @@ def _record(
 
     **명단 4종을 그대로 담는다.** 진행 중 페이로드와 최종 결과가 같은 모양을 쓰므로
     결과 화면이 라운드별 판정을 진행 화면과 같은 코드로 그릴 수 있다.
+
+    진행 모듈이 라운드 도중에도 이 모양을 만들어 내보내므로 공개 함수다 — 마감 전에
+    부르면 그 시점까지 도착한 입력만 담긴 같은 모양이 나온다.
     """
     verdicts = result["verdicts"]
     rows = [
@@ -246,7 +249,7 @@ def judge(ctx: JudgeContext, inputs: Sequence[JudgeInput] = ()) -> Verdict:
     eliminated, surviving = result["eliminated"], result["surviving"]
 
     round_no = len(ctx.history) + 1
-    record = _record(round_no, survivors, presses, result)
+    record = build_record(round_no, survivors, presses, result)
 
     # 연출과 저장이 같은 값을 본다. ROUND_RESULT가 이 기록을 그대로 그린다.
     detail = {"round": record}
