@@ -148,7 +148,8 @@ export function NunchiGame() {
               className={`${styles.card} ${styles[`card_${state}`]}`}
               style={{ left: i * (cardW + cardGap), width: cardW }}
             >
-              <span className={styles.cardBadge}>{state === 'out' ? '✓' : (order ?? '?')}</span>
+              {/* 이번 라운드에 눌렀으면 몇 번째였는지를 남긴다 — 지난 라운드에 빠진 사람은 순번이 없어 ✓만 뜬다 */}
+              <span className={styles.cardBadge}>{order ?? (out ? '✓' : '?')}</span>
               <span className={styles.cardRing} style={{ background: tileColor(member.avatarId) }} />
               <img className={styles.cardFace} src={avatarSrc(member.avatarId)} alt="" />
               <span className={styles.cardName}>
