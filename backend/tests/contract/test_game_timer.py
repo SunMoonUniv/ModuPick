@@ -70,6 +70,17 @@ def _stop(ws, started, phase_seq: int, elapsed_ms: int | None) -> None:
     })
 
 
+def _decide(ws, started, phase_seq: int, choice: str) -> None:
+    ws.send_json({
+        "event": "game:decide",
+        "data": {
+            "roundId": started["data"]["roundId"],
+            "phaseSeq": phase_seq,
+            "choice": choice,
+        },
+    })
+
+
 def _to_running(host_ws) -> dict:
     _drain(host_ws, "game:phase")  # READY
     assert _drain(host_ws, "game:phase")["data"]["phase"] == "GUIDE"
@@ -367,6 +378,80 @@ class TestRematch:
 
             _start(guests[1], started, rematch["data"]["phaseSeq"])
             assert _drain(guests[1], "error", tries=40)["code"] == "game.not_eligible"
+
+    def test_재대결_3회를_소진하면_교착이다(self, client, fast):
+        """같은 값을 네 번 반복 신고한다 — 본판 1 + 재대결 3.
+
+        저격과 같은 결선 부품을 쓰므로 소진 경로도 같다(test_game_snipe.py
+        TestRunoff). 여기서는 **시간초 고유의 값**을 본다 — 후보 종류가 안건이
+        아니라 사람이라는 것과, 회차마다 game:tie가 오고 tieRound가 1·2·3으로
+        오른다는 것.
+        """
+        with playing(client, 2, "timer") as (_r, _m, host_ws, guests, started):
+            seq = _to_running(host_ws)["data"]["phaseSeq"]
+            _catch_up(guests)
+            members = [m["memberId"] for m in started["data"]["roster"]]
+
+            for expected_round in (1, 2, 3):
+                for ws in _sockets(host_ws, guests):
+                    _start(ws, started, seq)
+                    _stop(ws, started, seq, 200)
+
+                tie = _drain(host_ws, "game:tie", tries=20)["data"]
+                assert tie["tieRound"] == expected_round
+                assert tie["candidateKind"] == "MEMBER"
+                assert sorted(tie["candidateIds"]) == sorted(members)
+
+                rematch = _drain(host_ws, "game:phase", tries=8)
+                assert rematch["data"]["phase"] == "REMATCH"
+                seq = rematch["data"]["phaseSeq"]
+
+            # 네 번째 동점 신고는 재대결 상한(3)을 넘겨 방장에게 넘어간다
+            for ws in _sockets(host_ws, guests):
+                _start(ws, started, seq)
+                _stop(ws, started, seq, 200)
+
+            decision = _drain(host_ws, "game:decision_required", tries=20)["data"]
+            assert decision["reason"] == "TIE_EXHAUSTED"
+            assert decision["options"] == ["RETRY", "ABORT"]
+            assert decision["candidateKind"] == "MEMBER"
+            assert decision["deadlineAt"] is not None
+
+
+# ── 교착 해소 ──────────────────────────────────────────────────────────────
+
+
+class TestDecide:
+    def _deadlock(self, host_ws, guests, started, seq: int) -> int:
+        """같은 값을 네 번 반복 신고해 재대결을 소진한다. 마지막 phaseSeq를 돌려준다."""
+        for _round in range(4):
+            for ws in _sockets(host_ws, guests):
+                _start(ws, started, seq)
+                _stop(ws, started, seq, 200)
+            frame = _drain(host_ws, "game:phase", tries=20)
+            if frame["data"]["phase"] == "DEADLOCK":
+                return frame["data"]["phaseSeq"]
+            assert frame["data"]["phase"] == "TIE_NOTICE"
+            seq = _drain(host_ws, "game:phase", tries=8)["data"]["phaseSeq"]
+        raise AssertionError("교착에 이르지 못했다")
+
+    def test_RETRY는_본판을_다시_연다(self, client, fast):
+        """**회차 카운터가 0으로 돌아가고 가이드는 띄우지 않는다**(G-4)."""
+        with playing(client, 2, "timer") as (_r, _m, host_ws, guests, started):
+            seq = _to_running(host_ws)["data"]["phaseSeq"]
+            _catch_up(guests)
+
+            decide_seq = self._deadlock(host_ws, guests, started, seq)
+            _decide(host_ws, started, decide_seq, "RETRY")
+
+            frame = _drain(host_ws, "game:phase", tries=8)
+            assert frame["data"]["phase"] == "RUNNING"
+            assert frame["data"]["tieRound"] == 0
+
+            # 대상자가 직전 동점자 집합이 아니라 명단 전원으로 돌아왔는지 본다
+            _start(host_ws, started, frame["data"]["phaseSeq"])
+            payload = _drain(host_ws, "game:progress")["data"]["payload"]
+            assert payload == {"startedCount": 1, "stoppedCount": 0, "totalCount": 2}
 
 
 # ── 결과 ───────────────────────────────────────────────────────────────────

@@ -8,6 +8,7 @@
     단계 전이          phaseSeq · phase · 마감 시각 · 틱
 """
 
+import time
 from contextlib import ExitStack, contextmanager
 from functools import partial
 
@@ -15,6 +16,7 @@ import pymysql
 import pytest
 
 from app.domain.enums import EndedReason, RoundStatus
+from app.domain.games import kingmaker, ladder, nunchi, roulette, timer
 from app.services import game_service, round_service
 from tests.conftest import _dsn, confirm, connected, create_room, join, send_auth
 
@@ -466,3 +468,218 @@ class TestExpiryDuringPlay:
             report = client.portal.call(tasks.sweep_once)
             assert report.expired_rooms == 0
             assert _room_status(room["code"]) == "playing"
+
+
+# ── 정원 상한 경계 ─────────────────────────────────────────────────────────
+
+
+def _king_opinion(ws, started, phase_seq: int, text: str) -> None:
+    ws.send_json({
+        "event": "game:action",
+        "data": {
+            "roundId": started["data"]["roundId"],
+            "phaseSeq": phase_seq,
+            "type": "king.opinion",
+            "payload": {"text": text},
+        },
+    })
+
+
+def _timer_start(ws, started, phase_seq: int) -> None:
+    ws.send_json({
+        "event": "game:action",
+        "data": {
+            "roundId": started["data"]["roundId"],
+            "phaseSeq": phase_seq,
+            "type": "timer.start",
+        },
+    })
+
+
+def _timer_stop(ws, started, phase_seq: int, elapsed_ms: int) -> None:
+    ws.send_json({
+        "event": "game:action",
+        "data": {
+            "roundId": started["data"]["roundId"],
+            "phaseSeq": phase_seq,
+            "type": "timer.stop",
+            "payload": {"elapsedMs": elapsed_ms},
+        },
+    })
+
+
+def _nunchi_up(ws, started, phase_seq: int) -> None:
+    ws.send_json({
+        "event": "game:action",
+        "data": {
+            "roundId": started["data"]["roundId"],
+            "phaseSeq": phase_seq,
+            "type": "nunchi.up",
+        },
+    })
+
+
+def _drain_guests(guests, *, tries: int = 40) -> None:
+    """모든 참여자 소켓을 game:result까지 밀어낸다.
+
+    **닫기 전에 비우지 않으면 밀린 미수신 프레임이 남는다.** conftest.py의
+    _clean_between이 이미 적어 둔 대로, 소켓이 닫힐 때마다 이탈 처리가 백그라운드
+    태스크로 떨어져 소켓보다 오래 산다. 10명 방을 그대로 닫으면 안 읽은 채로 쌓인
+    아홉 소켓의 이탈 처리가 한꺼번에 겹쳐 다음 테스트의 방 생성과 DB 락을 다툰다.
+    참여자도 방장과 같은 결과를 받았는지 함께 확인되는 부수 효과도 있다.
+    """
+    for g in guests:
+        _drain(g, "game:result", tries=tries)
+
+
+class TestCapacityBoundary:
+    """AC-35 — 정원 상한 10명으로 게임 6종이 전부 결과까지 도달하는지 본다.
+
+    게임별 계약 테스트(test_game_*.py)는 각자 최소 인원으로만 돈다. 여기서는 그
+    게임들이 이미 본 진행 규칙을 다시 보지 않는다 — **10명 규모에서도 라운드가
+    중간에 끊기지 않고 game:result까지 가는가**만 본다. 그래서 각 게임에서 가장
+    짧은 결과 경로(방장이 누르지 않아도 서버가 대신 실행 · 전원이 기권해도 난수로
+    확정 등, 다른 파일이 이미 검증해 둔 경로)를 그대로 재사용한다.
+    """
+
+    @pytest.fixture(autouse=True)
+    def _settle(self):
+        """다음 테스트가 시작하기 전에 이탈 처리 백그라운드 태스크가 가라앉을
+        시간을 준다. 10명 방을 연달아 여섯 번 닫으면 그 누적만으로 DB 데드락이
+        나는 것을 실제로 봤다(위 _drain_guests의 설명과 같은 성질)."""
+        yield
+        time.sleep(1.0)
+
+    def test_룰렛이_10명_정원에서_끝까지_돈다(self, client, monkeypatch):
+        monkeypatch.setattr(game_service, "GUIDE_MS", 40)
+        monkeypatch.setattr(game_service, "ARMED_MS", 60)  # 자동 실행 마감
+        monkeypatch.setattr(game_service, "REVEAL_MS", 40)
+        monkeypatch.setattr(roulette, "SPIN_MS", 40)
+
+        with playing(client, 10, "roulette") as (_room, _members, host_ws, guests, started):
+            assert len(started["data"]["roster"]) == 10
+            for _ in range(3):
+                _drain(host_ws, "game:phase")  # READY · GUIDE · ARMED
+            # 방장이 PICK을 보내지 않아도 자동 실행 마감이 판정을 연다
+            assert _drain(host_ws, "game:phase", tries=6)["data"]["phase"] == "SPINNING"
+            result = _drain(host_ws, "game:result", tries=12)["data"]
+            assert result["variant"] == "WINNER"
+            _drain_guests(guests)
+
+    def test_사다리가_10명_정원에서_끝까지_돈다(self, client, monkeypatch):
+        monkeypatch.setattr(game_service, "GUIDE_MS", 40)
+        monkeypatch.setattr(game_service, "ARMED_MS", 60)  # 자동 실행 마감
+        monkeypatch.setattr(game_service, "REVEAL_MS", 40)
+        monkeypatch.setattr(ladder, "SPEED_MS", {"FAST": 40, "NORMAL": 40, "SLOW": 40})
+
+        with playing(client, 10, "ladder") as (_room, _members, host_ws, guests, started):
+            assert len(started["data"]["roster"]) == 10
+            for _ in range(3):
+                _drain(host_ws, "game:phase")  # READY · GUIDE · ARMED
+            assert _drain(host_ws, "game:phase", tries=6)["data"]["phase"] == "DRAWING"
+            result = _drain(host_ws, "game:result", tries=12)["data"]
+            assert result["variant"] == "ASSIGN"
+            assert len(result["result"]["pairs"]) == 10
+            _drain_guests(guests)
+
+    def test_킹메이커가_10명_정원에서_끝까지_돈다(self, client, monkeypatch):
+        """안건을 하나만 내고 나머지 아홉이 침묵해도 제출 마감이 확정으로 끝맺는다."""
+        monkeypatch.setattr(game_service, "GUIDE_MS", 40)
+        monkeypatch.setattr(kingmaker, "SUBMIT_MS", 60)  # 조기 마감
+        monkeypatch.setattr(kingmaker, "TALLY_MS", 40)
+
+        with playing(client, 10, "kingmaker") as (_room, _members, host_ws, guests, started):
+            assert len(started["data"]["roster"]) == 10
+            _drain(host_ws, "game:phase")  # READY
+            assert _drain(host_ws, "game:phase")["data"]["phase"] == "GUIDE"
+            submit = _drain(host_ws, "game:phase")
+            assert submit["data"]["phase"] == "SUBMIT"
+
+            _king_opinion(host_ws, started, submit["data"]["phaseSeq"], "유일한 안건")
+
+            tally = _drain(host_ws, "game:phase", tries=12)
+            assert tally["data"]["phase"] == "TALLY"
+            result = _drain(host_ws, "game:result", tries=8)["data"]
+            assert result["variant"] == "TALLY"
+            _drain_guests(guests)
+
+    def test_저격이_10명_정원에서_끝까지_돈다(self, client, monkeypatch):
+        """전원이 기권해도 마감이 난수로 확정해 결과까지 간다."""
+        monkeypatch.setattr(game_service, "GUIDE_MS", 40)
+        monkeypatch.setattr(game_service, "REVEAL_MS", 40)
+
+        with playing(client, 10, "snipe", {"voteSeconds": 5}) as (
+            _room, _members, host_ws, guests, started,
+        ):
+            assert len(started["data"]["roster"]) == 10
+            _drain(host_ws, "game:phase")  # READY
+            assert _drain(host_ws, "game:phase")["data"]["phase"] == "GUIDE"
+            assert _drain(host_ws, "game:phase")["data"]["phase"] == "VOTE"
+            # 아무도 투표하지 않고 마감을 기다린다
+
+            result = _drain(host_ws, "game:result", tries=20)["data"]["result"]
+            assert result["detail"]["randomFallback"] is True
+            assert result["detail"]["abstainCount"] == 10
+            _drain_guests(guests)
+
+    def test_시간초가_10명_정원에서_끝까지_돈다(self, client, monkeypatch):
+        """둘만 기록을 내고 나머지 여덟이 미시작으로 확정되어도 결과가 난다."""
+        monkeypatch.setattr(game_service, "GUIDE_MS", 40)
+        monkeypatch.setattr(game_service, "REVEAL_MS", 40)
+        monkeypatch.setattr(game_service, "TIE_NOTICE_MS", 40)
+        monkeypatch.setattr(timer, "round_deadline_ms", lambda target: 400)
+
+        with playing(client, 10, "timer") as (_room, _members, host_ws, guests, started):
+            assert len(started["data"]["roster"]) == 10
+            _drain(host_ws, "game:phase")  # READY
+            assert _drain(host_ws, "game:phase")["data"]["phase"] == "GUIDE"
+            running = _drain(host_ws, "game:phase")
+            assert running["data"]["phase"] == "RUNNING"
+            seq = running["data"]["phaseSeq"]
+
+            for ws, elapsed in ((host_ws, 200), (guests[0], 60)):
+                _timer_start(ws, started, seq)
+                _timer_stop(ws, started, seq, elapsed)
+            # 나머지 여덟 명은 아무것도 하지 않는다 — 마감이 미시작으로 확정한다
+
+            frame = _drain(host_ws, "game:result", tries=20)["data"]
+            assert frame["variant"] == "WINNER"
+            roster_ids = {m["memberId"] for m in started["data"]["roster"]}
+            assert frame["result"]["winnerMemberId"] in roster_ids
+            _drain_guests(guests)
+
+    def test_눈치가_10명_정원에서_끝까지_돈다(self, client, monkeypatch):
+        """겹쳐 누르면 그 자리에서 둘이 함께 빠진다.
+
+        그 성질을 반복해 10명을 1명까지 줄인다 — 간격을 벌리지 않고 거의 동시에
+        보내면 겹침으로 잡혀 라운드가 즉시 끝나므로, sleep 없이도 여러 라운드를
+        빠르게 통과할 수 있다. 마지막 생존자 둘에서는 한쪽만 누르면(last_one)
+        그 자리에서 끝난다.
+        """
+        monkeypatch.setattr(game_service, "GUIDE_MS", 40)
+        monkeypatch.setattr(game_service, "REVEAL_MS", 40)
+        monkeypatch.setattr(nunchi, "ROUND_RESULT_MS", 40)
+
+        with playing(client, 10, "nunchi") as (_room, _members, host_ws, guests, started):
+            assert len(started["data"]["roster"]) == 10
+            _drain(host_ws, "game:phase")  # READY
+            assert _drain(host_ws, "game:phase")["data"]["phase"] == "GUIDE"
+            seq = _drain(host_ws, "game:phase")["data"]["phaseSeq"]
+
+            # 매 라운드 두 명씩 겹쳐 눌러 뺀다 — 10 → 8 → 6 → 4 → 2
+            pairs = [
+                (host_ws, guests[0]), (guests[1], guests[2]),
+                (guests[3], guests[4]), (guests[5], guests[6]),
+            ]
+            for a, b in pairs:
+                _nunchi_up(a, started, seq)
+                _nunchi_up(b, started, seq)
+                _drain(host_ws, "game:progress", tries=12)
+                seq = _drain(host_ws, "game:phase", tries=8)["data"]["phaseSeq"]
+
+            # 마지막 생존자 둘 중 하나만 누르면 그 자리에서 끝난다
+            _nunchi_up(guests[7], started, seq)
+
+            result = _drain(host_ws, "game:result", tries=16)["data"]["result"]
+            assert result["pickedMemberId"] == started["data"]["roster"][-1]["memberId"]
+            _drain_guests(guests)

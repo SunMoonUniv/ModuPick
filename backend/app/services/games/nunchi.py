@@ -202,7 +202,7 @@ async def _emit_round(room_pk: int, record: dict) -> None:
 
 
 async def _require_decision(room_pk: int) -> None:
-    """무효 라운드. 뽑을 수 있는 상태가 아니므로 방장이 끊는다(D-35).
+    """무효 라운드. 뽑을 수 있는 상태가 아니므로 방장이 끊는다(D-39).
 
     두 경우가 여기로 온다 — **아무도 누르지 않아** 생존자가 그대로이거나, **전원이
     눌러** 남은 사람이 없거나다. 자동으로 다음 라운드를 열면 같은 상태가 반복될 수

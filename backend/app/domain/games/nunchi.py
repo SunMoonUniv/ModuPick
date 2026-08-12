@@ -200,7 +200,7 @@ def _decided(
 
 
 def _void(survivors: tuple[str, ...], detail: dict[str, Any]) -> Verdict:
-    """무효 라운드. 자동으로 다음 라운드를 열지 않고 방장이 끊는다(D-35)."""
+    """무효 라운드. 자동으로 다음 라운드를 열지 않고 방장이 끊는다(D-39)."""
     return Verdict(
         outcome=Outcome.VOID,
         survivors=survivors,  # 다시 시작하면 같은 생존자로 연다

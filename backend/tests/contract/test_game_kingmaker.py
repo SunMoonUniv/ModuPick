@@ -52,6 +52,17 @@ def _vote(ws, started, phase_seq: int, ids: list[str]) -> None:
     })
 
 
+def _decide(ws, started, phase_seq: int, choice: str) -> None:
+    ws.send_json({
+        "event": "game:decide",
+        "data": {
+            "roundId": started["data"]["roundId"],
+            "phaseSeq": phase_seq,
+            "choice": choice,
+        },
+    })
+
+
 def _to_submit(host_ws) -> dict:
     _drain(host_ws, "game:phase")  # READY
     assert _drain(host_ws, "game:phase")["data"]["phase"] == "GUIDE"
@@ -443,3 +454,91 @@ class TestRunoff:
             assert runoff["data"]["phase"] == "RUNOFF"
             # 결선 후보만 남는다
             assert len(runoff["data"]["payload"]["candidates"]) == 3
+
+    def test_결선_3회를_소진하면_교착이다(self, client, fast):
+        """순환 투표를 네 번 반복한다 — 본선 1 + 결선 3.
+
+        저격과 같은 결선 부품을 쓰므로 소진 경로도 같다(test_game_snipe.py
+        TestRunoff). 여기서는 **킹메이커 고유의 값**을 본다 — 후보 종류가
+        사람이 아니라 안건이라는 것과, 회차마다 game:tie가 오고 tieRound가
+        1·2·3으로 오른다는 것.
+        """
+        with playing(client, 3, "kingmaker") as (_r, _m, host_ws, guests, started):
+            seq = _to_submit(host_ws)["data"]["phaseSeq"]
+            _catch_up(guests)
+            vote = _submit_all(host_ws, guests, started, seq, ["가", "나", "다"])
+            cards = {
+                c["label"]: c["optionId"] for c in vote["data"]["payload"]["candidates"]
+            }
+            seq = vote["data"]["phaseSeq"]
+
+            for expected_round in (1, 2, 3):
+                # 각자 자기 것이 아닌 것에 하나씩 — 매 회차 3중 동점을 재생산한다
+                _vote(host_ws, started, seq, [cards["나"]])
+                _vote(guests[0], started, seq, [cards["다"]])
+                _vote(guests[1], started, seq, [cards["가"]])
+
+                tie = _drain(host_ws, "game:tie", tries=16)["data"]
+                assert tie["tieRound"] == expected_round
+                assert tie["candidateKind"] == "OPTION"
+                assert sorted(tie["candidateIds"]) == sorted(cards.values())
+
+                runoff = _drain(host_ws, "game:phase", tries=6)
+                assert runoff["data"]["phase"] == "RUNOFF"
+                seq = runoff["data"]["phaseSeq"]
+
+            # 네 번째 순환 투표는 결선 상한(3)을 넘겨 방장에게 넘어간다
+            _vote(host_ws, started, seq, [cards["나"]])
+            _vote(guests[0], started, seq, [cards["다"]])
+            _vote(guests[1], started, seq, [cards["가"]])
+
+            decision = _drain(host_ws, "game:decision_required", tries=16)["data"]
+            assert decision["reason"] == "TIE_EXHAUSTED"
+            assert decision["options"] == ["RETRY", "ABORT"]
+            assert decision["candidateKind"] == "OPTION"
+            assert decision["deadlineAt"] is not None
+
+
+# ── 교착 해소 ──────────────────────────────────────────────────────────────
+
+
+class TestDecide:
+    def _deadlock(self, host_ws, guests, started, cards, seq: int) -> int:
+        """순환 투표 4회로 결선을 소진해 교착을 만든다. 마지막 phaseSeq를 돌려준다."""
+        for _round in range(4):
+            _vote(host_ws, started, seq, [cards["나"]])
+            _vote(guests[0], started, seq, [cards["다"]])
+            _vote(guests[1], started, seq, [cards["가"]])
+            frame = _drain(host_ws, "game:phase", tries=16)
+            if frame["data"]["phase"] == "DEADLOCK":
+                return frame["data"]["phaseSeq"]
+            assert frame["data"]["phase"] == "TIE_NOTICE"
+            seq = _drain(host_ws, "game:phase", tries=6)["data"]["phaseSeq"]
+        raise AssertionError("교착에 이르지 못했다")
+
+    def test_RETRY는_안건_제출부터_다시_연다(self, client, fast):
+        """**회차 카운터가 0으로 돌아가고 가이드는 띄우지 않는다**(G-4).
+
+        저격의 RETRY는 VOTE로 돌아가지만 킹메이커는 **SUBMIT으로 돌아간다** — 후보가
+        사람이 아니라 제출된 안건이라 안건 자체를 다시 받아야 다음 판이 성립한다.
+        """
+        with playing(client, 3, "kingmaker") as (_r, _m, host_ws, guests, started):
+            seq = _to_submit(host_ws)["data"]["phaseSeq"]
+            _catch_up(guests)
+            vote = _submit_all(host_ws, guests, started, seq, ["가", "나", "다"])
+            cards = {
+                c["label"]: c["optionId"] for c in vote["data"]["payload"]["candidates"]
+            }
+
+            decide_seq = self._deadlock(host_ws, guests, started, cards, vote["data"]["phaseSeq"])
+            _decide(host_ws, started, decide_seq, "RETRY")
+
+            frame = _drain(host_ws, "game:phase", tries=6)
+            assert frame["data"]["phase"] == "SUBMIT"
+            assert frame["data"]["tieRound"] == 0
+
+            # 지난 회차의 안건이 남아 있으면 uq_game_options_round_participant에
+            # 걸려 아무도 다시 낼 수 없다
+            _opinion(host_ws, started, frame["data"]["phaseSeq"], "다시 낸 안건")
+            payload = _drain(host_ws, "game:progress")["data"]["payload"]
+            assert payload == {"submittedCount": 1, "totalCount": 3}
