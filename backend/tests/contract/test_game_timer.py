@@ -389,7 +389,7 @@ class TestResult:
             assert frame["variant"] == "WINNER"
             result = frame["result"]
             assert set(result) == {"topic", "winnerMemberId", "detail", "stats"}
-            assert result["topic"] == "팀장"
+            assert result["topic"] == ""
             assert set(result["detail"]) == {"targetMs", "criterion", "records"}
             assert result["detail"]["targetMs"] == 5_000
             assert result["detail"]["criterion"] == "CLOSEST"

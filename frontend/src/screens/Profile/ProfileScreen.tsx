@@ -260,6 +260,7 @@ export function ProfileScreen() {
               key={slot.avatarId}
               avatarId={slot.avatarId}
               taken={slot.taken}
+              takenBy={slot.takenBy}
               selected={avatarId === slot.avatarId}
               onSelect={() => setAvatarId(slot.avatarId)}
             />

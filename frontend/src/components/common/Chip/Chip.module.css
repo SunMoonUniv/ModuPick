@@ -1,10 +1,11 @@
-/* 칩 — r999 · b4가 스펙. 색·크기·그림자는 prop으로 갈아끼우고 화면마다 복사본을 만들지 않는다. */
+/* 칩 — r999 알약. 색·크기·그림자는 prop으로 갈아끼우고 화면마다 복사본을 만들지 않는다.
+   테두리는 크기와 상관없이 --border-hair다 — 프레임의 칩·뱃지가 전부 같은 두께로 그려져 있다. */
 
 .chip {
   display: inline-flex;
   align-items: center;
   gap: var(--space-2);
-  border: var(--border-control) solid var(--color-ink);
+  border: var(--border-hair) solid var(--color-ink);
   border-radius: var(--radius-pill);
   line-height: 1;
   /* 알약은 한 줄이 전제다 — 좁은 자리(아바타 타일 등)에 놓여도 접히지 않게 한다 */
@@ -18,10 +19,9 @@
   font-size: var(--font-size-meta);
 }
 
-/* 카드·타일 안에 얹히는 작은 알약 — 테두리도 같이 얇아진다 */
+/* 카드·타일 안에 얹히는 작은 알약 — 여백과 글자만 줄고 테두리는 md와 같다 */
 .sm {
   padding: var(--space-1) var(--space-3);
-  border-width: var(--border-hair);
   font-size: var(--font-size-micro);
 }
 

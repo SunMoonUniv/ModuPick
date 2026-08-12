@@ -1,13 +1,14 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 import { Button, Modal, ScreenFrame } from '../../components/common'
+import { TieOverlay } from '../../components/game/TieOverlay/TieOverlay'
 import { api } from '../../api/rest'
 import { GAME_META_LINES, GAME_SUBTITLES } from '../../constants/gameVisuals'
 import { useRemainMs } from '../../hooks/useServerClock'
 import { useLeaveWarning } from '../../hooks/useLeaveWarning'
 import { useRoomStore } from '../../store/roomStore'
 import { isGuideMuted, muteGuide } from '../../store/session'
-import type { GameMeta } from '../../protocol/types'
+import type { GameDetail, KingmakerBallotPayload } from '../../protocol/types'
 
 import { RouletteGame } from './games/RouletteGame'
 import { LadderGame } from './games/LadderGame'
@@ -22,26 +23,35 @@ import styles from './GameScreen.module.css'
 export function GameScreen() {
   const round = useRoomStore((s) => s.round)
   const room = useRoomStore((s) => s.room)
-  const guideEndsAt = useRoomStore((s) => s.guideEndsAt)
+  const catalog = useRoomStore((s) => s.catalog)
   const lastError = useRoomStore((s) => s.lastError)
   const clearError = useRoomStore((s) => s.clearError)
+  const tie = useRoomStore((s) => s.tie)
+  const decision = useRoomStore((s) => s.decision)
 
-  const [catalog, setCatalog] = useState<GameMeta[]>([])
+  // 킹메이커 후보 문구는 투표 단계의 payload에만 실린다. 동점 통지 단계는 payload가 비어 있어
+  // 그때 후보 이름을 붙이려면 직전 단계에서 받아둔 것을 써야 한다 — 그래서 여기 모아 둔다.
+  const candidateLabels = useRef(new Map<string, string>())
+
+  // 가이드의 규칙·단계는 목록이 아니라 상세 응답에만 있다
+  const [detail, setDetail] = useState<GameDetail | null>(null)
   const [guideOpen, setGuideOpen] = useState(false)
   const [muted, setMuted] = useState(false)
 
+  const gameId = round?.gameId
+  // 가이드 단계는 서버가 phase로 알려 준다 — 클라가 시간을 세어 넘기지 않는다
+  const guideEndsAt = round?.phase === 'GUIDE' ? round.deadlineAt : null
   const guideRemain = useRemainMs(guideEndsAt)
 
   useLeaveWarning(true)
 
   useEffect(() => {
+    if (!gameId) return
     api
-      .games()
-      .then((res) => setCatalog(res.games))
+      .gameDetail(gameId)
+      .then(setDetail)
       .catch(() => undefined)
-  }, [])
-
-  const gameId = round?.gameId
+  }, [gameId])
 
   // 최초 시작에는 가이드를 자동으로 띄운다. "다시 하기"는 guideEndsAt이 null이라 뜨지 않는다.
   useEffect(() => {
@@ -66,6 +76,16 @@ export function GameScreen() {
   if (!round || !room) return null
 
   const meta = catalog.find((g) => g.gameId === round.gameId) ?? null
+
+  // 후보 목록이 실려 온 단계마다 갱신해 둔다 (라운드가 바뀌면 game:started가 payload를 비우므로 저절로 낡지 않는다)
+  const ballot = round.payload as unknown as KingmakerBallotPayload | null
+  ballot?.candidates?.forEach((c) => candidateLabels.current.set(c.optionId, c.label))
+
+  // 동점·교착 오버레이에 찍을 문구. 사람은 라운드 명단에서, 킹메이커 후보는 위 캐시에서 찾는다
+  const namesOf = (kind: 'MEMBER' | 'OPTION', ids: string[]) =>
+    kind === 'MEMBER'
+      ? ids.map((id) => round.roster.find((m) => m.memberId === id)?.nickname ?? '알 수 없음')
+      : ids.map((id) => candidateLabels.current.get(id) ?? '후보')
 
   return (
     <ScreenFrame fullBleed>
@@ -101,16 +121,30 @@ export function GameScreen() {
         {lastError && <div className={styles.toast}>{lastError.message}</div>}
       </div>
 
+      {/* 동점 통지(3초)와 교착 시 방장 선택은 6종이 같은 상태를 쓰므로 여기서 한 번만 그린다 */}
+      {decision ? (
+        <TieOverlay
+          mode="decision"
+          names={namesOf(decision.candidateKind, decision.candidateIds)}
+          options={decision.options}
+          reason={decision.reason}
+          deadlineAt={decision.deadlineAt}
+        />
+      ) : (
+        round.phase === 'TIE_NOTICE' &&
+        tie && <TieOverlay mode="notice" names={namesOf(tie.candidateKind, tie.candidateIds)} />
+      )}
+
       <Modal
         open={guideOpen && meta !== null}
         wide
         banner
         title={`${meta?.name ?? ''} · 게임 가이드`}
-        description={meta?.tagline}
+        description={meta?.description}
         onClose={guideEndsAt && guideRemain > 0 ? undefined : () => setGuideOpen(false)}
       >
         <div className={styles.guideList}>
-          {meta?.guide.map((step, i) => (
+          {(detail?.steps ?? []).map((step, i) => (
             <div key={step} className={styles.guideStep}>
               <span className={styles.guideIndex}>{i + 1}</span>
               <span>{step}</span>

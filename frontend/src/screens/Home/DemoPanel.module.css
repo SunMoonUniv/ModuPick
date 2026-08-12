@@ -608,6 +608,7 @@
 }
 
 .tmTrack,
+.tmTrackOutline,
 .tmHazard,
 .tmFill {
   position: absolute;
@@ -616,12 +617,19 @@
   height: 20px;
 }
 
-.tmTrack {
+.tmTrack,
+.tmTrackOutline {
   right: 0;
-  box-sizing: border-box;
-  border: 3px solid var(--color-ink);
   border-radius: var(--radius-pill);
+}
+
+.tmTrack {
   background: var(--color-track-soft);
+}
+
+/* 채움과 빗금 위에 테두리만 덧그린다 — 실제 화면(`TimerGame`)의 `.trackOutline`과 같은 방식 */
+.tmTrackOutline {
+  border: 3px solid var(--color-ink);
 }
 
 /* 목표를 넘긴 구간 — 실제 화면과 같은 빗금으로 위험을 표시한다 */

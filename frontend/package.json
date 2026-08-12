@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "server": "node local-server/server.js"
+    "server": "node local-server/server.js",
+    "bots": "node devtools/bots.mjs"
   },
   "dependencies": {
     "react": "^19.1.1",

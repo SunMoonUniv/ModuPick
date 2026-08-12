@@ -8,6 +8,8 @@ interface AvatarTileProps {
   avatarId: string
   // 다른 사람이 이미 확정(PATCH 성공)해 고를 수 없는 상태
   taken: boolean
+  // 선점한 사람의 닉네임. 서버가 주지 않는 경우에만 비어 있다
+  takenBy?: string | null
   // 지금 내가 고른 상태
   selected: boolean
   onSelect: () => void
@@ -15,7 +17,7 @@ interface AvatarTileProps {
 
 // 프로필 화면 아바타 그리드의 칸 하나. 아바타마다 배경색이 다르고, 선점·선택 상태를 색과 테두리로 구분한다.
 // 사람 정보를 보여주는 MemberTile과 달리 "고를 수 있는 후보"만 담기 때문에 프로필 화면 전용이다.
-export function AvatarTile({ avatarId, taken, selected, onSelect }: AvatarTileProps) {
+export function AvatarTile({ avatarId, taken, takenBy, selected, onSelect }: AvatarTileProps) {
   const classes = [styles.tile, taken ? styles.taken : '', selected ? styles.selected : '']
     .filter(Boolean)
     .join(' ')
@@ -36,8 +38,8 @@ export function AvatarTile({ avatarId, taken, selected, onSelect }: AvatarTilePr
           ★ 내 캐릭터
         </Chip>
       )}
-      {/* 서버가 선점자 닉네임까지는 주지 않아(GET /avatars 응답은 avatarId·taken뿐) 이름 없이 상태만 알린다 */}
-      {taken && <span className={styles.takenLabel}>선점됨</span>}
+      {/* 선점자 닉네임은 GET /avatars의 takenBy로 온다. 못 받은 경우에만 이름 없이 상태만 알린다 */}
+      {taken && <span className={styles.takenLabel}>{takenBy ? `${takenBy} 선점` : '선점됨'}</span>}
     </button>
   )
 }

@@ -564,136 +564,137 @@
   position: absolute;
 }
 
-/* ── 1위 스포트라이트 ── */
+/* ── 왼쪽 세로단 ── 투표 진행 보드와 남은 시간 바가 오른쪽 투표용지(770)와 같은 높이를 나눠 갖는다 */
 
-.spotlight {
+.voteLeft {
   position: absolute;
   left: 59px;
-  top: 145px;
+  top: 143.2px;
+  display: flex;
+  flex-direction: column;
+  gap: 19px;
+  width: 1221px;
+  height: 770px;
+  line-height: 1;
+}
+
+/* 진행 현황 보드 — 남은 시간 바(67)와 간격(19)을 뺀 나머지를 채운다.
+   서버가 항목별 득표를 감추므로 순위 대신 "몇 명이 투표했는가" 하나만 크게 보여준다. */
+.voteBoard {
+  position: relative;
+  flex: 1;
   box-sizing: border-box;
   display: flex;
-  align-items: center;
+  flex-direction: column;
   justify-content: space-between;
-  width: 1221px;
-  height: 237.734px;
-  padding: 22px 37px;
+  gap: 52px;
+  padding: 72px 56px;
   background: var(--color-white);
   border: 4.219px solid var(--color-ink);
   border-radius: 25.313px;
   box-shadow: 8.438px 8.438px 0 var(--color-ink);
-  line-height: 1;
 }
 
-.spotlightMain {
+.boardHead {
   display: flex;
   flex-direction: column;
-  gap: 11px;
-  width: 971px;
+  gap: 12px;
 }
 
-.chipRow {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  height: 43.242px;
-}
-
-/* 두 칩이 공유하는 알약 규격 */
-.chipTop,
-.chipRule {
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  padding: 8.438px 14.766px;
-  border: 2.637px solid var(--color-ink);
-  border-radius: 42.188px;
-  box-shadow: 3.164px 3.164px 0 var(--color-ink);
-  font-size: var(--font-size-micro);
-  color: var(--color-ink);
-  white-space: nowrap;
-}
-
-.chipTop {
-  background: var(--color-pink);
-  font-family: var(--font-chat);
-  font-weight: 700;
-}
-
-.chipTop img {
-  width: 26.367px;
-  height: 26.367px;
-}
-
-.chipRule {
-  background: var(--color-cyan);
-  font-family: var(--font-meta);
-  font-weight: 700;
-}
-
-/* 지금 1위인 안건 이름 — 길면 한 줄 말줄임 */
-.topText {
+.boardHead h2 {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: 56px;
+  font-size: 44px;
   line-height: 1.265;
   color: var(--color-ink);
+}
+
+.boardHead p {
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-sub);
+  color: rgba(14, 13, 20, 0.65);
+}
+
+/* 투표한 사람 수 — 숫자만 크게 세우고 분모는 기준선을 맞춰 옆에 붙인다 */
+.countRow {
+  display: flex;
+  align-items: baseline;
+  gap: 20px;
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.265;
   white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.topBar {
+.countRow b {
+  font-size: 150px;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
+}
+
+.countRow em {
+  font-style: normal;
+  font-size: 60px;
+  color: rgba(14, 13, 20, 0.45);
+}
+
+.progressRow {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.progressGroove {
   box-sizing: border-box;
-  display: block;
-  width: 100%;
-  height: 27.422px;
+  flex: 1;
+  min-width: 0;
+  height: 56px;
   overflow: hidden;
-  background: #ece9f7;
+  background: #ece7f7;
   border: 2.637px solid var(--color-ink);
-  border-radius: 42.188px;
+  border-radius: 28px;
 }
 
-.topBar i {
+.progressGroove i {
   display: block;
   height: 100%;
   background: var(--color-online);
-  border-radius: 42.188px;
+  border-radius: 28px;
   transition: width var(--duration-normal) var(--ease-out);
 }
 
-.topNote {
-  font-family: var(--font-chat);
-  font-weight: 700;
-  font-size: var(--font-size-meta);
-  line-height: 1.25;
-  color: var(--color-band-meta);
+.progressRow b {
+  flex-shrink: 0;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 52px;
+  line-height: 1.265;
+  color: var(--color-ink);
+  font-variant-numeric: tabular-nums;
 }
 
-/* 1위 득표수가 들어가는 노란 원 */
-.topCount {
-  flex-shrink: 0;
-  box-sizing: border-box;
+.boardFoot {
+  font-family: var(--font-meta);
+  font-weight: 700;
+  font-size: var(--font-size-sub);
+  color: rgba(14, 13, 20, 0.6);
+}
+
+/* 기울인 배지는 회전 뒤 바깥 상자가 프레임 자리에 오도록 그 상자를 먼저 놓고 안에서 가운데 맞춘다 */
+.voteBadgeSlot {
+  position: absolute;
+  left: 977.72px;
+  top: -36.22px;
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 132.891px;
-  height: 132.891px;
-  background: var(--color-yellow);
-  border: 4.219px solid var(--color-ink);
-  border-radius: 50%;
-  box-shadow: 5.273px 6.328px 0 var(--color-ink);
-  font-family: var(--font-display);
-  font-weight: 400;
-  font-size: 56px;
-  color: var(--color-ink);
+  width: 194.843px;
+  height: 101.976px;
 }
 
-/* 스포트라이트 오른쪽 위에 삐뚜름하게 걸치는 VOTE! 배지 */
+/* 보드 오른쪽 위 모서리에 삐뚜름하게 걸치는 VOTE! 배지 */
 .voteBadge {
-  position: absolute;
-  left: 1141px;
-  top: 143px;
   box-sizing: border-box;
   display: flex;
   align-items: center;
@@ -717,172 +718,14 @@
   height: 36.914px;
 }
 
-/* ── 2위 아래 순위표 ── */
-
-/* 5줄까지는 그대로 들어가고, 안건이 더 많으면 이 영역 안에서만 세로로 스크롤된다 */
-.ranks {
-  position: absolute;
-  left: 59px;
-  top: 396.73px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 28px;
-  width: 1221px;
-  max-height: 443.16px;
-  overflow-y: auto;
-  line-height: 1;
-}
-
-.rankGroup {
-  display: flex;
-  flex-direction: column;
-  gap: 52px;
-  width: 1189px;
-}
-
-/* 줄 안쪽은 막대 시작 x가 줄마다 흔들리지 않도록 좌표로 고정한다 */
-.rankRow {
-  position: relative;
-  flex-shrink: 0;
-  height: 40.078px;
-}
-
-/* 아직 0표인 줄 */
-.rankDim {
-  opacity: 0.68;
-}
-
-.rankBadge {
-  position: absolute;
-  left: 0;
-  top: 0;
-  box-sizing: border-box;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40.078px;
-  height: 40.078px;
-  background: var(--color-white);
-  border: 2.637px solid var(--color-ink);
-  border-radius: 50%;
-  font-family: var(--font-display);
-  font-weight: 400;
-  font-size: var(--font-size-sub);
-  color: var(--color-ink);
-}
-
-.rankText {
-  position: absolute;
-  left: 80.078px;
-  top: 2.539px;
-  max-width: 370px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  font-family: var(--font-display);
-  font-weight: 400;
-  font-size: var(--font-size-name);
-  line-height: 1.265;
-  color: var(--color-white);
-  white-space: nowrap;
-}
-
-.rankBar {
-  position: absolute;
-  left: 470.078px;
-  top: 3.164px;
-  box-sizing: border-box;
-  width: 646px;
-  height: 33.75px;
-  background: rgba(255, 255, 255, 0.18);
-  border: 2.637px solid var(--color-ink);
-  border-radius: 42.188px;
-}
-
-.rankBar i {
-  position: absolute;
-  left: -2.637px;
-  top: -2.637px;
-  box-sizing: border-box;
-  height: 33.75px;
-  min-width: 14.589px;
-  background: var(--color-yellow);
-  border: 2.637px solid var(--color-ink);
-  border-radius: 42.188px;
-  transition: width var(--duration-normal) var(--ease-out);
-}
-
-/* 0표일 때 막대 옆에 붙는 안내 */
-.rankBar em {
-  position: absolute;
-  left: 21.36px;
-  top: 4.86px;
-  font-family: var(--font-chat);
-  font-style: normal;
-  font-weight: 700;
-  font-size: var(--font-size-micro);
-  line-height: 1.25;
-  color: rgba(255, 255, 255, 0.5);
-}
-
-.rankCount {
-  position: absolute;
-  left: 1140.078px;
-  top: 2.539px;
-  font-family: var(--font-display);
-  font-weight: 400;
-  font-size: var(--font-size-name);
-  line-height: 1.265;
-  color: var(--color-white);
-  white-space: nowrap;
-}
-
-/* 득표한 항목과 아직 0표인 항목을 가르는 선 */
-.cutoff {
-  position: relative;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1221px;
-  height: 30.766px;
-}
-
-.cutoffLine {
-  position: absolute;
-  left: 0;
-  top: 15px;
-  width: 100%;
-  height: 3px;
-  border-radius: 2.109px;
-  background: rgba(255, 255, 255, 0.4);
-}
-
-.cutoffChip {
-  position: relative;
-  box-sizing: border-box;
-  padding: 7.383px 14.766px;
-  background: var(--color-salmon);
-  border: 2.637px solid var(--color-ink);
-  border-radius: 42.188px;
-  box-shadow: 3.164px 3.164px 0 var(--color-ink);
-  font-family: var(--font-meta);
-  font-weight: 700;
-  font-size: var(--font-size-micro);
-  color: var(--color-ink);
-  white-space: nowrap;
-}
-
 /* ── 남은 시간 바 ── */
 
 .timerBar {
-  position: absolute;
-  left: 59px;
-  top: 858.89px;
   box-sizing: border-box;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  width: 1221px;
+  width: 100%;
   height: 67px;
   padding: 0 26.84px;
   background: var(--color-white);

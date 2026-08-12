@@ -21,12 +21,17 @@ const TRACK_WIDTH = 1738.667
 // 시간초 잡기. 화면의 숫자는 참고용 표시일 뿐이고, 판정은 서버가 잰 start~stop 간격으로만 이뤄진다.
 export function TimerGame() {
   const round = useRoomStore((s) => s.round)!
-  const me = useRoomStore((s) => s.me)
+  const me = useRoomStore((s) => s.me?.memberId ?? null)
   const progress = useRoomStore((s) => s.progress)
   const result = useRoomStore((s) => s.result)
   const sendAction = useRoomStore((s) => s.sendAction)
+  const tie = useRoomStore((s) => s.tie)
 
   const config = round.config as TimerConfig
+  // 설정은 초 단위이고 화면 계산은 전부 밀리초라 여기서 한 번만 옮긴다
+  const targetMs = config.targetSeconds * 1000
+  // 서버는 진행 상황을 사람별로 주지 않고 건수만 준다
+  const counts = (progress ?? null) as { stoppedCount?: number; totalCount?: number } | null
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [stoppedMs, setStoppedMs] = useState<number | null>(null)
   const [elapsed, setElapsed] = useState(0)
@@ -34,9 +39,9 @@ export function TimerGame() {
 
   const phase = round.phase
 
-  // 동점 재대결 안내가 뜨면 내 기록을 비워 다시 START부터 하게 한다
+  // 재대결이 열리면 내 기록을 비워 다시 START부터 하게 한다
   useEffect(() => {
-    if (phase !== 'TIE') return
+    if (phase !== 'REMATCH') return
     setStartedAt(null)
     setStoppedMs(null)
     setElapsed(0)
@@ -61,8 +66,10 @@ export function TimerGame() {
   }
 
   const stop = () => {
-    sendAction('timer.stop')
-    setStoppedMs(Date.now() - (startedAt ?? Date.now()))
+    const elapsedMs = Date.now() - (startedAt ?? Date.now())
+    // 내가 잰 값을 같이 보낸다 — 안 보내면 서버가 자기 관측값을 쓰면서 game.elapsed_rejected를 통지한다
+    sendAction('timer.stop', { elapsedMs: Math.max(1, Math.round(elapsedMs)) })
+    setStoppedMs(elapsedMs)
   }
 
   const running = startedAt !== null && stoppedMs === null
@@ -70,14 +77,20 @@ export function TimerGame() {
   // 숫자가 가려진 동안에는 타임라인의 진행 막대·"나" 표시도 같이 감춘다 — 안 그러면 막대로 몇 초인지 읽힌다
   const showTrace = stoppedMs !== null || showNumber
   const shownMs = stoppedMs ?? elapsed
-  const targetSec = config.targetMs / 1000
+  const targetSec = config.targetSeconds
   // 목표선이 트랙의 62.5% 지점에 오도록 눈금 최대값을 잡는다 (프레임과 같은 비율)
-  const trackMaxMs = config.targetMs * 1.6
+  const trackMaxMs = targetMs * 1.6
   const ratio = (ms: number) => Math.min(1, Math.max(0, ms / trackMaxMs))
-  const stoppedCount = round.roundMembers.filter((m) => progress[m.memberId] === 'COMPLETE').length
+  const entrants = counts?.totalCount ?? round.roster.length
+  const stoppedCount = counts?.stoppedCount ?? 0
+
+  // 재대결은 직전 동점자만 겨룬다. 명단은 동점 통지(game:tie)로 한 번 와서 스토어가 들고 있다.
+  // 대상이 아닌 사람이 START를 누르면 서버가 GAME_NOT_ELIGIBLE로 거절하므로 아예 잠근다.
+  const rematchIds = phase === 'REMATCH' && tie ? tie.candidateIds : null
+  const isSpectator = rematchIds !== null && me !== null && !rematchIds.includes(me)
 
   // 내 기록이 확정되기 전에는 남은 시간을 숫자로 알려주지 않는다 (감으로 맞추는 게임이라서)
-  const remainSec = Math.max(0, (config.targetMs - shownMs) / 1000)
+  const remainSec = Math.max(0, (targetMs - shownMs) / 1000)
 
   return (
     <>
@@ -89,8 +102,8 @@ export function TimerGame() {
       </span>
 
       {/* ── 참가자 카드 줄 ── */}
-      {round.roundMembers.map((member, i) => {
-        const done = progress[member.memberId] === 'COMPLETE'
+      {/* 서버가 사람별 진행을 주지 않으므로 카드에는 정지 여부 대신 참가 사실만 그린다 */}
+      {round.roster.map((member, i) => {
         return (
           <div
             key={member.memberId}
@@ -99,8 +112,10 @@ export function TimerGame() {
           >
             <img className={styles.playerAvatar} src={avatarSrc(member.avatarId)} alt="" />
             <span className={styles.playerName}>{member.nickname}</span>
-            <span className={done ? `${styles.playerState} ${styles.stateDone}` : styles.playerState}>
-              {member.departed ? '⏸ 나감' : done ? '✓ 정지 완료' : '▶ 타이머 진행 중'}
+            <span className={styles.playerState}>
+              {rematchIds && !rematchIds.includes(member.memberId)
+                ? '· 이번 판은 관전'
+                : '▶ 타이머 진행 중'}
             </span>
             {member.memberId === me && <span className={styles.playerMe}>나</span>}
           </div>
@@ -148,8 +163,8 @@ export function TimerGame() {
         <span
           className={styles.hazard}
           style={{
-            left: TRACK_LEFT + TRACK_WIDTH * ratio(config.targetMs),
-            width: TRACK_WIDTH * (1 - ratio(config.targetMs)),
+            left: TRACK_LEFT + TRACK_WIDTH * ratio(targetMs),
+            width: TRACK_WIDTH * (1 - ratio(targetMs)),
           }}
         />
         {showTrace && <span className={styles.fill} style={{ width: TRACK_WIDTH * ratio(shownMs) }} />}
@@ -157,11 +172,11 @@ export function TimerGame() {
 
         <span
           className={styles.targetLine}
-          style={{ left: TRACK_LEFT + TRACK_WIDTH * ratio(config.targetMs) - 3.164 }}
+          style={{ left: TRACK_LEFT + TRACK_WIDTH * ratio(targetMs) - 3.164 }}
         />
         <span
           className={styles.targetTag}
-          style={{ left: TRACK_LEFT + TRACK_WIDTH * ratio(config.targetMs) - 88 }}
+          style={{ left: TRACK_LEFT + TRACK_WIDTH * ratio(targetMs) - 88 }}
         >
           🎯 목표 {targetSec.toFixed(2)}s
         </span>
@@ -188,6 +203,8 @@ export function TimerGame() {
       {/* ── 큰 버튼 ── */}
       {result ? (
         <span className={`${styles.bigButton} ${styles.bigDone}`}>기록 집계 완료!</span>
+      ) : isSpectator ? (
+        <span className={`${styles.bigButton} ${styles.bigDone}`}>동점자끼리 겨루는 중…</span>
       ) : stoppedMs !== null ? (
         <span className={`${styles.bigButton} ${styles.bigDone}`}>
           ✓ {(stoppedMs / 1000).toFixed(2)}초 기록
@@ -202,7 +219,7 @@ export function TimerGame() {
           type="button"
           className={`${styles.bigButton} ${styles.bigStart}`}
           onClick={start}
-          disabled={phase !== 'PLAYING'}
+          disabled={phase !== 'RUNNING' && phase !== 'REMATCH'}
         >
           ▶ START
         </button>
@@ -221,8 +238,7 @@ export function TimerGame() {
         note="단 한 번만 누를 수 있어요 · 되돌릴 수 없습니다"
         right={
           <span className={styles.hudPill}>
-            {stoppedCount} / {round.roundMembers.length} 정지 ·{' '}
-            {round.roundMembers.length - stoppedCount}명 STOP 대기
+            {stoppedCount} / {entrants} 정지 · {Math.max(0, entrants - stoppedCount)}명 STOP 대기
           </span>
         }
       />

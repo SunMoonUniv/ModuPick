@@ -19,6 +19,14 @@
   white-space: nowrap;
 }
 
+/* 문구 안에 끼워 넣는 사다리 아이콘 — 글자 크기에 맞춰 따라 커진다.
+   global.css의 `img { display: block }`을 되돌려야 글자와 한 줄에 놓인다 (블록 상자는 nowrap이 안 먹는다) */
+.emblem {
+  display: inline-block;
+  height: 1.05em;
+  vertical-align: -0.15em;
+}
+
 /* 기울어진 시안 카드 — 출발 신호 */
 .goCard {
   position: absolute;
@@ -49,6 +57,36 @@
   font-weight: 700;
   font-size: var(--font-size-meta);
   color: var(--color-ink);
+  white-space: nowrap;
+}
+
+/* ARMED 단계에서만 뜨는 방장 실행 버튼 — 판 위 가운데에 놓아 눌러야 할 것이 하나임을 분명히 한다 */
+/* 방장 실행 버튼 — 상태 밴드 가운데에 놓인다. 프레임에 없는 자리라 위치·크기는 임시값이다 */
+.startButton {
+  padding: 12px 28px;
+  background: var(--color-yellow);
+  border: var(--border-control) solid var(--color-ink);
+  border-radius: var(--radius-pill);
+  box-shadow: var(--shadow-btn);
+  font-family: var(--font-display);
+  font-size: var(--font-size-btn);
+  color: var(--color-ink);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.startButton:disabled {
+  opacity: 0.45;
+  box-shadow: none;
+  cursor: default;
+}
+
+/* 방장이 아닌 참가자에게는 같은 자리에 안내 문구만 남긴다 */
+.startWaiting {
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: var(--font-size-meta);
+  color: var(--color-band-meta);
   white-space: nowrap;
 }
 

@@ -338,7 +338,7 @@ class TestResult:
             assert frame["variant"] == "TALLY"
             result = frame["result"]
             assert set(result) == {"topic", "winnerCandidateId", "rows", "reveal", "stats"}
-            assert result["topic"] == "팀명"
+            assert result["topic"] == ""
             # 저장은 optionId·label·voteCount, 와이어는 candidateId·text·votes다
             assert all(
                 set(r) == {"candidateId", "text", "votes"} for r in result["rows"]

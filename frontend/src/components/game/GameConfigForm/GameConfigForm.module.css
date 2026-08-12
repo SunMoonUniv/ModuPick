@@ -1,4 +1,5 @@
-/* 게임 설정 폼 — 대기방 설정 패널(672×224) 안에 들어가므로 화면 다른 곳보다 글자·여백이 한 단계 작다. */
+/* 게임 설정 폼 — 대기방 설정 패널 안에 들어가므로 화면 다른 곳보다 글자·여백이 한 단계 작다.
+   폭은 패널을 그대로 채운다(고정 px 금지) — 패널 크기를 바꿔도 흰 여백만 늘지 않게 하려는 것이다. */
 
 .form {
   display: flex;
@@ -37,6 +38,8 @@
   font-family: var(--font-chat);
   font-weight: 700;
   font-size: 13px;
+  /* 프레임(542:627)의 칩 높이 32 = 위아래 여백 8 + 텍스트 상자 16 */
+  line-height: 16px;
   color: var(--color-ink);
   white-space: nowrap;
 }
@@ -61,12 +64,24 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  width: 613px;
+  width: 100%;
   height: 44px;
   padding: 0 14px;
   background: var(--color-input);
   border: 2.5px solid var(--color-ink);
   border-radius: 12px;
+}
+
+/* 직접 입력이 아닌 상태 — 회색으로 죽여 읽기 전용임을 보여준다 */
+.textBoxLocked {
+  background: rgba(14, 13, 20, 0.06);
+  border-color: rgba(14, 13, 20, 0.35);
+}
+
+.textBoxLocked .textInput,
+.textBoxLocked .counter {
+  color: rgba(14, 13, 20, 0.45);
+  cursor: default;
 }
 
 .textInput {
@@ -82,6 +97,48 @@
 
 .textInput::placeholder {
   color: rgba(14, 13, 20, 0.45);
+}
+
+/* 목록 항목 한 칸 지우기 */
+.rowRemove {
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  font-size: 12px;
+  line-height: 1;
+  color: rgba(14, 13, 20, 0.6);
+}
+
+/* 칸 추가 버튼 — 아직 채워지지 않은 자리라 점선 테두리다 (Figma 542:1904) */
+.addRow {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 44px;
+  padding: 0 16px;
+  background: var(--color-white);
+  border: 2px dashed var(--color-dashed);
+  border-radius: 12px;
+  font-family: var(--font-chat);
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--color-ink);
+}
+
+.addRowIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: var(--color-white);
+  border: 2px solid var(--color-ink);
+  border-radius: 11px;
+  font-size: 15px;
+  line-height: 1;
 }
 
 .counter {

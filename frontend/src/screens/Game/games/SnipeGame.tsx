@@ -5,7 +5,7 @@ import { avatarSrc } from '../../../assets/avatars'
 import { AVATAR_TILE_COLORS } from '../../../constants/avatarTiles'
 import { toSeconds, useRemainMs } from '../../../hooks/useServerClock'
 import { useRoomStore } from '../../../store/roomStore'
-import type { RoundMember, SnipeConfig } from '../../../protocol/types'
+import type { RosterEntry, SnipeConfig } from '../../../protocol/types'
 import styles from './SnipeGame.module.css'
 
 // 조준경 한 칸의 바깥 링 지름 — 링 안쪽 좌표는 전부 이 값의 절반(=중심)을 기준으로 잡는다
@@ -74,13 +74,15 @@ function tileColor(avatarId: string | null | undefined) {
 // 익명 저격. 질문에 어울리는 사람을 제한시간 안에 지목하고, 누가 찍었는지는 설정에 따라 결과에서만 공개된다.
 export function SnipeGame() {
   const round = useRoomStore((s) => s.round)!
-  const me = useRoomStore((s) => s.me)
+  const me = useRoomStore((s) => s.me?.memberId ?? null)
   const progress = useRoomStore((s) => s.progress)
   const tie = useRoomStore((s) => s.tie)
   const result = useRoomStore((s) => s.result)
   const sendAction = useRoomStore((s) => s.sendAction)
 
   const config = round.config as SnipeConfig
+  // 서버는 사람별 제출 여부를 주지 않고 건수만 준다
+  const counts = (progress ?? null) as { votedCount?: number; totalCount?: number } | null
   const [picked, setPicked] = useState<string[]>([])
   const [voted, setVoted] = useState(false)
 
@@ -88,31 +90,32 @@ export function SnipeGame() {
   useEffect(() => {
     setPicked([])
     setVoted(false)
-  }, [round.phase, tie?.candidates.length])
+  }, [round.phase, round.tieRound])
 
   // 결선이면 동점 후보만 지목할 수 있다
-  const candidateIds = tie
-    ? tie.candidates.map((c) => c.id)
-    : round.roundMembers.map((m) => m.memberId)
+  const candidateIds =
+    tie && round.phase === 'RUNOFF' ? tie.candidateIds : round.roster.map((m) => m.memberId)
 
   const toggle = (memberId: string) => {
     if (voted || memberId === me || result) return
     setPicked((prev) => {
       if (prev.includes(memberId)) return prev.filter((id) => id !== memberId)
-      if (!config.allowMultipleTargets) return [memberId]
+      if (!config.multiVote) return [memberId]
       return [...prev, memberId]
     })
   }
 
-  // 지목 없이 보내면 서버가 기권으로 집계한다 — 프레임의 버튼이 하나뿐이라 같은 자리에서 둘 다 처리한다
+  // **기권은 보내지 않는 것이다.** 빈 배열을 보내면 서버가 vote.limit_exceeded로 거절한다
+  // (`app/domain/games/snipe.py`의 check_ballot). 기권자는 마감 때 명단에서 빠진 수로 집계된다.
+  // 프레임의 버튼이 하나뿐이라 같은 자리에서 지목과 기권을 함께 처리한다.
   const submit = () => {
-    sendAction('snipe.vote', { targetMemberIds: picked })
+    if (picked.length > 0) sendAction('snipe.vote', { targetMemberIds: picked })
     setVoted(true)
   }
 
-  const members = round.roundMembers
-  const firedCount = members.filter((m) => progress[m.memberId] === 'COMPLETE').length
-  const remainSec = toSeconds(useRemainMs(tie ? tie.deadlineAt : round.deadlineAt))
+  const members = round.roster
+  const firedCount = counts?.votedCount ?? 0
+  const remainSec = toSeconds(useRemainMs(round.deadlineAt))
 
   // 6명까지는 프레임 그대로 3×2, 그 이상은 4열로 늘리고 칸을 그만큼 줄인다 (방 정원이 10명이라서)
   const cols = members.length <= 6 ? 3 : 4
@@ -128,7 +131,9 @@ export function SnipeGame() {
       {/* ── 질문 띠 ── */}
       <div className={styles.question}>
         <span className={styles.questionIcon}>🎯</span>
-        <span className={styles.questionText}>{tie ? '동점! 결선 저격' : config.topic}</span>
+        <span className={styles.questionText}>
+          {round.phase === 'RUNOFF' ? '동점! 결선 저격' : config.question}
+        </span>
         <span className={styles.questionPill}>
           🎯 {remainSec}초 · {firedCount}/{members.length} 발사
         </span>
@@ -147,8 +152,8 @@ export function SnipeGame() {
       {members.map((member, i) => {
         const cx = GRID_CX + ((i % cols) - (cols - 1) / 2) * COL_PITCH * scale
         const cy = gridCy + (Math.floor(i / cols) - (rows - 1) / 2) * ROW_PITCH * scale
-        const fired = progress[member.memberId] === 'COMPLETE'
-        const out = member.departed || !candidateIds.includes(member.memberId)
+        // 사람별 제출 여부는 서버가 감추므로 조준경에는 후보 여부만 그린다
+        const out = !candidateIds.includes(member.memberId)
         return (
           <div
             key={member.memberId}
@@ -169,12 +174,7 @@ export function SnipeGame() {
             <span className={styles.disc} style={{ background: tileColor(member.avatarId) }} />
             <img className={styles.face} src={avatarSrc(member.avatarId)} alt="" />
             <span className={styles.targetName}>{member.nickname}</span>
-            <span
-              className={styles.targetState}
-              style={fired && !out ? { background: tileColor(member.avatarId) } : undefined}
-            >
-              {member.departed ? '나감' : out ? '탈락' : fired ? '발사 완료' : '조준 중…'}
-            </span>
+            <span className={styles.targetState}>{out ? '후보 아님' : '조준 중…'}</span>
           </div>
         )
       })}
@@ -206,19 +206,18 @@ export function SnipeGame() {
       <aside className={styles.panel}>
         <h2 className={styles.panelTitle}>🔫 내 저격</h2>
         <span className={styles.panelSub}>
-          {config.revealVoters ? '실명 공개' : '익명'} ·{' '}
-          {config.allowMultipleTargets ? '여러 명' : '1명'} 지목 · {config.voteSeconds}초 안에
+          익명 · {config.multiVote ? '여러 명' : '1명'} 지목 · {config.voteSeconds}초 안에
         </span>
 
         <div className={styles.panelList}>
-          {targets.map((target: RoundMember) => {
+          {targets.map((target: RosterEntry) => {
             const on = picked.includes(target.memberId)
             return (
               <button
                 key={target.memberId}
                 type="button"
                 className={on ? `${styles.pick} ${styles.pickOn}` : styles.pick}
-                disabled={voted || result !== null || target.departed}
+                disabled={voted || result !== null}
                 onClick={() => toggle(target.memberId)}
               >
                 <span
@@ -233,9 +232,8 @@ export function SnipeGame() {
           })}
         </div>
 
-        <span className={styles.panelNote}>
-          {config.revealVoters ? '👀 결과에서 누가 쐈는지 공개돼요' : '🔒 누가 누굴 쐈는지 안 보여요'}
-        </span>
+        {/* 지목자 공개 설정 자체가 없다 — 어느 판에서도 비공개다 */}
+        <span className={styles.panelNote}>🔒 누가 누굴 쐈는지 안 보여요</span>
 
         {result ? (
           <span className={`${styles.fire} ${styles.fireDone}`}>🎯 집계 완료!</span>
@@ -254,9 +252,13 @@ export function SnipeGame() {
 
       <GameHud
         title={
-          result ? '🎯 저격 집계 완료!' : tie ? '🎯 동점! 결선 저격 중…' : '🎯 저격 투표 중…'
+          result
+            ? '🎯 저격 집계 완료!'
+            : round.phase === 'RUNOFF'
+              ? '🎯 동점! 결선 저격 중…'
+              : '🎯 저격 투표 중…'
         }
-        note={`${config.voteSeconds}초 안에 ${config.revealVoters ? '실명' : '익명'} 지목 · 최다 피격자가 당첨! · 결과는 총알 궤적으로 공개`}
+        note={`${config.voteSeconds}초 안에 익명 지목 · 최다 피격자가 당첨! · 결과는 총알 궤적으로 공개`}
         largeNote
         right={<HudPill tone="red">동점이면 동점자끼리 결선 투표</HudPill>}
       />

@@ -17,7 +17,7 @@ function formatTime(iso: string) {
 export function ChatPanel() {
   const chat = useRoomStore((s) => s.chat)
   const members = useRoomStore((s) => s.members)
-  const me = useRoomStore((s) => s.me)
+  const me = useRoomStore((s) => s.me?.memberId ?? null)
   const typingIds = useRoomStore((s) => s.typingIds)
   const sendChat = useRoomStore((s) => s.sendChat)
   const sendTyping = useRoomStore((s) => s.sendTyping)
@@ -69,11 +69,15 @@ export function ChatPanel() {
               key={message.messageId}
               className={mine ? `${styles.row} ${styles.rowMine}` : styles.row}
             >
-              {!mine && (
-                <span className={styles.avatar}>
-                  <img src={avatarSrc(message.avatarId)} alt="" />
-                </span>
-              )}
+              {!mine &&
+                // avatarId가 비어 있으면 나간 사람이다 — 엉뚱한 캐릭터를 붙이지 않고 회색 원만 남긴다
+                (message.avatarId ? (
+                  <span className={styles.avatar}>
+                    <img src={avatarSrc(message.avatarId)} alt="" />
+                  </span>
+                ) : (
+                  <span className={`${styles.avatar} ${styles.avatarGone}`} />
+                ))}
               <div className={styles.bubbleWrap}>
                 {!mine && <span className={styles.author}>{message.nickname}</span>}
                 <div className={styles.bubbleLine}>

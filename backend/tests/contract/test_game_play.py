@@ -234,7 +234,7 @@ class TestResult:
 
             result = frame["data"]["result"]
             assert set(result) == {"topic", "winnerMemberId", "detail", "stats"}
-            assert result["topic"] == "팀장"
+            assert result["topic"] == ""
             assert result["winnerMemberId"].startswith("mbr_")
             assert 0 <= result["detail"]["seed"] < 2**64
             assert len(result["detail"]["sliceOrder"]) == 3

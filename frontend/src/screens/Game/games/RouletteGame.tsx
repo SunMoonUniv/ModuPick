@@ -16,8 +16,8 @@ import {
   sunburstB,
 } from '../../../assets/home'
 import { useRemainMs } from '../../../hooks/useServerClock'
-import { useRoomStore } from '../../../store/roomStore'
-import type { RouletteConfig, WinnerResult } from '../../../protocol/types'
+import { selectIsHost, useRoomStore } from '../../../store/roomStore'
+import type { RouletteConfig } from '../../../protocol/types'
 import styles from './RouletteGame.module.css'
 
 // 당첨 조각에 멈추기 전까지 도는 바퀴 수 (연출용)
@@ -49,35 +49,37 @@ const BULBS = [
 const SEAT_RADIUS = 240
 const SEAT_SIZE = 75.851
 
-// 운명의 룰렛. 가이드가 끝나면 서버가 당첨자를 확정하고, 화면은 그 결과에 맞춰 회전만 재생한다.
+// 운명의 룰렛. 방장이 PICK을 누르면(30초 안에 안 누르면 서버가 대신) 서버가 당첨자를 확정하고,
+// 화면은 SPINNING 단계의 payload가 알려 준 조각으로 회전만 재생한다.
 export function RouletteGame() {
   const round = useRoomStore((s) => s.round)!
-  const result = useRoomStore((s) => s.result)
   const members = useRoomStore((s) => s.members)
+  const isHost = useRoomStore(selectIsHost)
+  const sendAction = useRoomStore((s) => s.sendAction)
 
   const config = round.config as RouletteConfig
-  const seats = round.roundMembers
+  // 조각 배치는 명단 스냅샷 순서(=입장 순서)를 그대로 따른다
+  const seats = round.roster
   const sliceAngle = 360 / seats.length
 
   const [rotation, setRotation] = useState(0)
-  const [spinning, setSpinning] = useState(false)
+  const spinning = round.phase === 'SPINNING' || round.phase === 'REVEAL'
+  // 방장이 누른 뒤 서버 응답을 기다리는 동안 버튼을 잠근다 — 연타는 서버가 멱등 처리한다
+  const [picked, setPicked] = useState(false)
 
-  // 결과가 도착하면 당첨자 조각이 위쪽 바늘에 오도록 각도를 계산해 돌린다
+  // SPINNING 단계의 payload에 당첨 조각 번호가 실려 온다. 결과 이벤트는 연출이 끝난 뒤라 늦다.
+  const winnerIndex = round.phase === 'SPINNING' ? Number(round.payload?.winnerIndex ?? -1) : -1
+
   useEffect(() => {
-    if (!result || result.variant !== 'winner') return
-    const winner = (result.result as WinnerResult).winner
-    const index = seats.findIndex((m) => m.memberId === winner.memberId)
-    if (index < 0) return
+    if (winnerIndex < 0) return
     // 조각의 중앙이 12시 방향에 오도록 — 조각은 12시부터 시계방향으로 배치돼 있다
-    const centerAngle = index * sliceAngle + sliceAngle / 2
+    const centerAngle = winnerIndex * sliceAngle + sliceAngle / 2
     setRotation(SPIN_TURNS * 360 - centerAngle)
-    setSpinning(true)
-  }, [result, seats, sliceAngle])
+  }, [winnerIndex, sliceAngle])
 
-  const spinMs = result
-    ? Math.max(0, new Date(result.resultScreenAt).getTime() - Date.now())
-    : 4500
-  const revealRemain = useRemainMs(result?.resultScreenAt ?? null)
+  // 회전 시간은 서버가 준 마감까지다 (룰렛은 5초로 고정돼 있다)
+  const phaseRemain = useRemainMs(round.deadlineAt)
+  const spinMs = round.phase === 'SPINNING' ? Math.max(0, phaseRemain) : 5000
 
   // 조각 이미지는 6칸짜리라 인원이 다르면 색만으로 원을 채운다
   const useSliceImages = seats.length === 6
@@ -107,7 +109,7 @@ export function RouletteGame() {
             </span>
             <span className={styles.playerName}>{member.nickname}</span>
             <span className={styles.playerMeta}>
-              {member.role === 'host' ? (
+              {member.isHost ? (
                 <>
                   <img className={styles.playerCrown} src={crownIcon} alt="" />
                   방장 · 접속
@@ -180,17 +182,47 @@ export function RouletteGame() {
       ))}
 
       <span className={styles.hubGlow} />
+      {/* 원판 중앙은 표시만 한다 — 돌리는 버튼은 아래 상태 밴드 가운데에 있다 */}
       <span className={styles.hub}>PICK!</span>
       <img className={styles.pointer} src={pointer} alt="" />
       <span className={styles.pointerDot} />
 
       <GameHud
-        badge={spinning ? Math.max(0, Math.ceil(revealRemain / 1000)) : '◷'}
-        title={spinning ? '돌리는 중…' : '곧 돌아갑니다'}
+        badge={round.deadlineAt ? Math.max(0, Math.ceil(phaseRemain / 1000)) : '◷'}
+        title={
+          round.phase === 'ARMED'
+            ? isHost
+              ? 'PICK을 눌러주세요'
+              : '방장이 돌리기를 기다리는 중'
+            : spinning
+              ? '돌리는 중…'
+              : '곧 돌아갑니다'
+        }
         note={
-          spinning
-            ? `${members.length}명 화면에서 동시에 회전 중 · 곧 ${config.topic} 공개`
-            : `가이드가 끝나면 ${config.topic}을(를) 뽑는 룰렛이 저절로 돌아가요`
+          round.phase === 'ARMED'
+            ? `제한 시간 안에 아무도 누르지 않으면 저절로 돌아가요`
+            : spinning
+              ? `${members.length}명 화면에서 동시에 회전 중 · 곧 ${config.topic} 공개`
+              : `${config.topic}을(를) 뽑는 룰렛이 곧 열려요`
+        }
+        // 방장만 누를 수 있고, 30초 안에 안 누르면 서버가 대신 돌린다
+        center={
+          round.phase === 'ARMED' &&
+          (isHost ? (
+            <button
+              type="button"
+              className={styles.spinButton}
+              disabled={picked}
+              onClick={() => {
+                setPicked(true)
+                sendAction('roulette.pick')
+              }}
+            >
+              돌리기
+            </button>
+          ) : (
+            <span className={styles.spinWaiting}>방장이 돌리기를 기다리는 중</span>
+          ))
         }
         right={<HudPill>★ 결과는 아무도 못 바꿔요 · 모두 똑같이</HudPill>}
       />

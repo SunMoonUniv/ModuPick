@@ -129,7 +129,8 @@ const ladder = {
 
     ctx.finish(
       'assign',
-      { variant: 'assign', topic: ctx.round.config.topic, assignments, ladder: structure },
+      // 주제 필드가 따로 없다 — 첫 도착 항목이 곧 주제다
+      { variant: 'assign', topic: ctx.round.config.items[0], assignments, ladder: structure },
       LADDER_DURATION_MS[ctx.round.config.speed] ?? LADDER_DURATION_MS.normal,
     )
   },

@@ -216,8 +216,8 @@ class TestResult:
             result = _drain(host_ws, "game:result")["data"]["result"]
 
             assert set(result) == {"topic", "pairs", "seed", "stats"}
-            # 「주제 템플릿 4계열」의 B 계열 기본값이다
-            assert result["topic"] == "조별과제"
+            # 주제를 한 번도 적지 않은 방이라 빈 칸 그대로 실려 온다
+            assert result["topic"] == ""
             assert 0 <= result["seed"] < 2**64
 
             # **전원이 배정된다.** 1인 선정이 아니다
@@ -246,8 +246,8 @@ class TestResult:
 
             assert [s["label"] for s in stats] == ["배정 인원", "역할 항목", "진행 속도"]
             assert stats[0]["value"] == "4명"
-            # 기본 항목은 조별과제 세트 6개다. **정규화 뒤 개수가 아니라 설정 원본이다**
-            assert stats[1]["value"] == "6개"
+            # 기본 항목은 한 칸이다. **정규화 뒤 개수가 아니라 설정 원본이다**
+            assert stats[1]["value"] == "1개"
             assert stats[2]["value"] == "보통"
 
     def test_전원이_같은_결과를_받는다(self, client, fast):
@@ -321,9 +321,9 @@ class TestPersistence:
                 " WHERE g.round_id = %s ORDER BY o.sort_order",
                 (started["data"]["roundId"],),
             )
-            assert len(rows) == 3  # 참가자 수에 맞춰 잘렸다
+            assert len(rows) == 3  # 참가자 수에 맞춰 X로 채워졌다
             assert [r["sort_order"] for r in rows] == [0, 1, 2]
-            assert [r["label"] for r in rows] == ["팀장", "자료 조사", "PPT 제작"]
+            assert [r["label"] for r in rows] == ["팀장", "X", "X"]
             assert all(r["participant_id"] is None for r in rows)
             assert all(r["option_id"].startswith("opt_") for r in rows)
 

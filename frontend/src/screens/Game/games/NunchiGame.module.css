@@ -665,30 +665,6 @@
   color: rgba(14, 13, 20, 0.45);
 }
 
-/* ── 전원 탈락 ── */
-
-.invalidPanel {
-  position: absolute;
-  left: 50%;
-  top: 180px;
-  transform: translateX(-50%);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--space-6);
-}
-
-.invalidText {
-  font-family: var(--font-title);
-  font-size: var(--font-size-btn);
-  color: var(--color-ink);
-}
-
-.invalidActions {
-  display: flex;
-  gap: var(--space-4);
-}
-
 /* 상태 밴드 뒤에 깔리는 붉은 긴장감 */
 .pressure {
   position: absolute;

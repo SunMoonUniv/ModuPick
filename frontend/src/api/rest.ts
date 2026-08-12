@@ -9,7 +9,9 @@ import type {
   CreateRoomRequest,
   CreateRoomResponse,
   Envelope,
-  GameMeta,
+  GameDetail,
+  GameId,
+  GameSummary,
   JoinRoomResponse,
   RoomLookupResponse,
 } from '../protocol/types'
@@ -79,5 +81,9 @@ export const api = {
   leaveRoom: (code: string, token: string) =>
     request<void>(`/rooms/${code}/members/me`, { method: 'DELETE', token }),
 
-  games: () => request<{ games: GameMeta[] }>('/games'),
+  // 게임 메타 6종. 인증이 필요 없고 최소인원·설정 규격의 정본이다
+  games: () => request<{ content: GameSummary[]; totalCount: number }>('/games'),
+
+  // 가이드 팝업의 규칙·단계는 목록에 없고 상세에만 있다
+  gameDetail: (gameId: GameId) => request<GameDetail>(`/games/${gameId}`),
 }

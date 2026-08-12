@@ -1,34 +1,42 @@
-// 소켓 연결 생성기. 프로필을 확정(active)한 뒤에만 호출한다 — pending 상태로는 서버가 인증을 거절한다.
+// 소켓 연결 생성기. 프로필을 확정(ACTIVE)한 뒤에만 호출한다 — PENDING 상태로는 서버가 인증을 거절한다.
 //
 // 전송은 raw WebSocket이다. 연결 직후 순서가 정해져 있다.
 //
 //     연결 → (3초 안) conn:auth → room:snapshot 1회 → 부분 갱신
 //
-// 서버가 보내는 프레임은 REST와 같은 공통 봉투라 실제 값은 항상 data 안에 있다.
-// 스토어가 Socket.IO 시절과 같은 방식으로 쓰도록 on/emit/disconnect 네 가지만 노출한다.
+// 서버가 보내는 프레임은 REST와 같은 공통 봉투라 실제 값은 항상 data 안에 있고,
+// 실패 프레임은 봉투 쪽 code·message에 이유가 담긴다.
 
 import { SERVER_URL } from '../api/endpoint'
-import type { ClientToServerEvents, ServerToClientEvents } from '../protocol/types'
+import { PROTOCOL_VERSION } from '../protocol/types'
+import type {
+  ClientToServerEvents,
+  ErrorCode,
+  ErrorData,
+  ServerToClientEvents,
+} from '../protocol/types'
 
-// 서버가 받아들이는 프로토콜 버전 — 맞지 않으면 서버가 4002로 닫는다
-const PROTOCOL_VERSION = 1
+// 소켓이 개인에게 돌려주는 실패 — 봉투의 code·message에 data를 합친 모양이다
+export interface SocketError extends ErrorData {
+  code: ErrorCode
+  message: string | null
+}
 
 // 연결 자체의 상태 변화. 서버 이벤트가 아니라 이 모듈이 만들어 낸다.
 interface LifecycleEvents {
-  connect: () => void
+  connect: void
   // 인증에 실패해 한 프레임도 받지 못하고 닫힌 경우 — 되돌아갈 경로가 없다
-  connect_error: () => void
-  disconnect: () => void
+  connect_error: number
+  // 정상 연결 뒤 끊김. 강퇴(4403)·방 폐기(4410)를 종료 코드로 가른다
+  disconnect: number
 }
 
-type AnyEvents = ServerToClientEvents & LifecycleEvents
+type AnyEvents = Omit<ServerToClientEvents, 'error'> &
+  LifecycleEvents & { error: SocketError }
 
 export interface GameSocket {
-  on<E extends keyof AnyEvents>(event: E, handler: AnyEvents[E]): void
-  emit<E extends keyof ClientToServerEvents>(
-    event: E,
-    payload: Parameters<ClientToServerEvents[E]>[0],
-  ): void
+  on<E extends keyof AnyEvents>(event: E, handler: (payload: AnyEvents[E]) => void): void
+  emit<E extends keyof ClientToServerEvents>(event: E, payload: ClientToServerEvents[E]): void
   removeAllListeners(): void
   disconnect(): void
 }
@@ -64,23 +72,34 @@ export function createSocket(code: string, token: string): GameSocket {
 
   ws.onmessage = (raw) => {
     received = true
-    let frame: { event?: string; success?: boolean; code?: string; message?: string; data?: unknown }
+    let frame: {
+      event?: string
+      success?: boolean
+      code?: string
+      message?: string | null
+      data?: unknown
+    }
     try {
       frame = JSON.parse(raw.data as string)
     } catch {
       return
     }
     if (typeof frame.event !== 'string') return
-    // 실패 프레임은 봉투 바깥에 code·message가 실려 오므로 스토어가 쓰던 모양으로 되돌려 준다
+    // 실패 프레임은 이유가 봉투 바깥에 있으므로 data와 합쳐 하나로 넘긴다
     if (frame.success === false) {
-      fire('error', { code: frame.code, message: frame.message })
+      fire('error', {
+        ...(frame.data as ErrorData | null),
+        code: frame.code as ErrorCode,
+        message: frame.message ?? null,
+      })
       return
     }
     fire(frame.event, frame.data)
   }
 
-  // 재접속 개념이 없는 프로토콜이라 자동 재연결을 하지 않는다 — 끊기면 그대로 퇴장 처리한다
-  ws.onclose = () => fire(received ? 'disconnect' : 'connect_error')
+  // 재접속 개념이 없는 프로토콜이라 자동 재연결을 하지 않는다 — 끊기면 그대로 퇴장 처리한다.
+  // 종료 코드를 그대로 넘겨 스토어가 강퇴·방 폐기·중복 접속을 가려 안내하게 한다.
+  ws.onclose = (e) => fire(received ? 'disconnect' : 'connect_error', e.code)
 
   return {
     on: (event, handler) => {

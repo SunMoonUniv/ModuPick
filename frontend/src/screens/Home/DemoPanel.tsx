@@ -349,6 +349,8 @@ function TimerStage({ t, done }: { t: number; done: boolean }) {
         {/* 목표를 넘긴 구간 — 빗금으로 위험을 표시한다 */}
         <span className={styles.tmHazard} style={{ left: `${targetPos}%`, right: 0 }} />
         <span className={styles.tmFill} style={{ width: `${pos}%` }} />
+        {/* 테두리는 채움 뒤에 그려야 게이지에 가리지 않는다 */}
+        <span className={styles.tmTrackOutline} />
         <span className={styles.tmTargetLine} style={{ left: `${targetPos}%` }} />
         <span className={styles.tmTargetTag} style={{ left: `${targetPos}%` }}>
           🎯 목표 {TIMER_TARGET.toFixed(2)}s
