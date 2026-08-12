@@ -181,7 +181,7 @@ CREATE TABLE game_results (
 | 킹메이커 | schemaVersion · topic · votesPerMember · revealAuthors | schemaVersion · tally[{optionId, label, voteCount}] · winnerOptionIds[] · ballotRounds · authors[{optionId, memberId}](revealAuthors일 때만) |
 | 시간초 잡기 | schemaVersion · topic · targetSeconds · criterion | schemaVersion · records[{memberId, elapsedMs, diffMs, absDiffMs, rank, status, source}] · winnerMemberIds[] · rematchRounds |
 | 익명 저격 | schemaVersion · question · voteSeconds · multiVote | schemaVersion · tally[{memberId, hitCount}] · winnerMemberIds[] · ballotRounds · abstainCount · decidedByRandom |
-| 눈치게임 | schemaVersion · topic · windowMs · roundSeconds | schemaVersion · rounds[{roundNo, presses[{memberId, offsetMs, verdict}], safeMemberIds[], remainingMemberIds[]}] · loserMemberIds[] · voidRound |
+| 눈치게임 | schemaVersion · topic · windowMs · roundSeconds | schemaVersion · rounds[{roundNo, presses[{memberId, offsetMs, verdict}], aloneMemberIds[], overlappedMemberIds[], eliminatedMemberIds[], survivingMemberIds[]}] · loserMemberIds[] · voidRound |
 
 **값 규약**
 
@@ -191,11 +191,11 @@ CREATE TABLE game_results (
 | judgeMode(시간초) | closest · farthest |
 | status(시간초 records) | recorded(정상 기록) · no_start(제한 안에 시작하지 않음) · no_stop(제한 안에 멈추지 않음). 뒤 둘은 최하위로 처리된다 |
 | judgeWindowMs(눈치 config) | 판정창 폭. **300 또는 500**이며 방장이 고른다. 창 폭과 그룹핑 규칙의 정본은 [../05_game_rules/07_nunchi.md](../05_game_rules/07_nunchi.md)이고 본 문서는 저장 형식만 고정한다 |
-| verdict(눈치 presses) | alone(혼자 눌러 안전 확정) · overlapped(판정창 안 동시 입력) · none(미입력) |
+| verdict(눈치 presses) | ALONE(혼자 눌러 안전 확정) · OVERLAP(판정창 안에 겹쳐 눌러 안전 확정) · NO_INPUT(누르지 않아 잔류) · LAST(최후 1인). **앞 둘은 결과가 같고 표시만 다르다**(D-38) |
 | offsetMs(눈치) | 그 라운드 시작 기준 **서버 도착 시각**의 오프셋. 클라이언트가 보낸 시각이 아니다 |
 | ballotRounds | 실제로 진행한 결선 차수. votes.ballot_no의 최댓값과 같다 |
 | decidedByRandom(저격) | 전원 기권으로 유효표가 0이라 난수로 정한 경우 true. **표가 없었음을 결과 화면이 표시한다** |
-| voidRound(눈치) | 생존자 전원이 같은 판정창에 눌러 아무도 안전 확정하지 못한 무효 라운드로 끝난 경우 true |
+| voidRound(눈치) | 아무도 누르지 않아 안전 확정자가 0인 라운드가 한 번이라도 있었으면 true |
 | authors · voters | **설정이 공개일 때만, 그것도 개표 후에만 실린다.** 비공개면 키 자체를 담지 않는다 |
 
 - **익명 게임의 식별 정보는 두 겹으로 막는다.** DB에는 voter_participant_id·participant_id를 저장하되, (1) 일반 응답·로그에서 제외하고 (2) 결과 JSON에는 공개 설정이 켜진 경우에만 개표 후 담는다. 저장을 없애면 중복 투표를 막을 수 없으므로 저장은 유지하고 노출 경로만 닫는다.
