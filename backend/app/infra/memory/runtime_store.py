@@ -155,6 +155,10 @@ class RoundState:
     survivors: tuple[str, ...] | None = None
     #: 지난 라운드 기록. 눈치게임만 쓴다 — 저장 형식이 전 라운드의 판정을 담는다.
     history: list = field(default_factory=list)
+    #: 마지막으로 내보낸 game:progress. (phaseSeq, payload) 꼴이며 되돌아가는
+    #: 집계를 막는 데만 쓴다(game_service.emit_progress). 단계가 바뀌면 무의미해지므로
+    #: phaseSeq를 함께 들고 비교한다.
+    progress: tuple[int, dict] | None = None
 
 
 @dataclass(slots=True)

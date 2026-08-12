@@ -7,6 +7,7 @@
     닉네임 경합   코드 검사를 나란히 통과하고 UNIQUE에서 갈린다
     아바타 경합   늦은 쪽이 member.avatar_taken으로 떨어진다
     라운드 경합   같은 방에 진행 중 라운드가 둘일 수 없다
+    집계 역전     거의 동시에 도착한 입력의 game:progress가 뒤로 가지 않는다
 """
 
 import asyncio
@@ -183,6 +184,79 @@ class TestRoundRace:
         ok = [r for r in results if not isinstance(r, Exception)]
         assert len(ok) == 1, _codes(results)
         assert run(portal, partial(round_service.active_round_count, room_pk)) == 1
+
+
+class TestProgressOrder:
+    """game:progress가 뒤로 가지 않는다.
+
+    호출부는 몇 번째 입력인지를 동기 구간에서 확정하지만 그 뒤 DB 왕복이 끼면
+    **먼저 센 쪽이 나중에 전송된다.** 셋이 같이 제출하면 3 → 1 → 2로 나가고,
+    game:progress는 버전 게이트를 적용받는 상태 이벤트라(07_api/03 §12) 클라이언트가
+    셋을 순서대로 반영해 2에서 멈춘다. 실제로 킹메이커에서 관측한 순서다.
+    """
+
+    @pytest.fixture
+    def sent(self, portal, monkeypatch):
+        """나간 progress payload를 모은다. 방·소켓 없이 뼈대만 본다."""
+        import json
+
+        from app.infra.memory.runtime_store import RoundState, store
+        from app.ws import connection
+
+        out: list[dict] = []
+
+        class _Spy:
+            async def broadcast(self, room_id, frame, **kw):
+                out.append(json.loads(frame)["data"]["payload"])
+                return 0
+
+        # 명부는 slots 데이터클래스라 메서드만 갈아끼울 수 없다. 통째로 바꾼다 —
+        # emit_progress가 호출 시점에 모듈에서 꺼내 쓰므로 이것으로 충분하다.
+        monkeypatch.setattr(connection, "registry", _Spy())
+        store.begin_round(1, RoundState(
+            round_id="rnd_progress", round_pk=1, game_id="kingmaker",
+            config={}, roster=[], seed=1, phase_seq=7,
+        ))
+        yield out
+        store.end_round(1)
+
+    def _emit(self, portal, payload):
+        from app.services import game_service
+
+        run(portal, partial(game_service.emit_progress, 1, payload))
+
+    def test_늦게_도착한_작은_집계는_버린다(self, portal, sent):
+        for count in (3, 1, 2):
+            self._emit(portal, {"submittedCount": count, "totalCount": 3})
+
+        assert [p["submittedCount"] for p in sent] == [3]
+
+    def test_늘어나는_집계는_그대로_나간다(self, portal, sent):
+        for count in (1, 2, 3):
+            self._emit(portal, {"submittedCount": count, "totalCount": 3})
+
+        assert [p["submittedCount"] for p in sent] == [1, 2, 3]
+
+    def test_단계가_바뀌면_다시_0부터_센다(self, portal, sent):
+        """킹메이커 제출 3건 뒤 투표 1건 — 키가 달라도 단계 경계를 본다."""
+        from app.infra.memory.runtime_store import store
+
+        self._emit(portal, {"votedCount": 3, "totalCount": 3})
+        store.round_of(1).phase_seq = 8
+        self._emit(portal, {"votedCount": 1, "totalCount": 3})
+
+        assert [p["votedCount"] for p in sent] == [3, 1]
+
+    def test_버린_프레임은_roomVersion을_쓰지_않는다(self, portal, sent):
+        """갭은 서버 결함의 신호다(07_api/03). 버리면서 번호를 태우면 안 된다."""
+        from app.infra.memory.runtime_store import store
+
+        self._emit(portal, {"submittedCount": 2, "totalCount": 3})
+        before = store.version(1)
+        self._emit(portal, {"submittedCount": 1, "totalCount": 3})
+
+        assert store.version(1) == before
+        del sent
 
 
 class TestIdempotency:

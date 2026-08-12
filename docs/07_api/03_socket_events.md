@@ -2,6 +2,8 @@
 
 > **대상**: 대기방 진입 이후의 전 실시간 통신 정본 — 연결 수명주기 · 인증·권한 · 하트비트와 이탈 판정 · 순서 보장 · 타이머 동기화 · 멱등 · C→S 12종 · S→C 19종 · game:action type 8종 · configSchema
 > **작성일**: 2026-08-02
+> **개정일**: 2026-08-11 — game:decide의 choice를 4종(PICK · RANDOM · RETRY · ABORT)에서 **RETRY · ABORT 2종**으로 좁히고 targetId를 없앤다. [../05_game_rules/01_common.md](../05_game_rules/01_common.md) 「교착 해소 선택」이 무작위 확정을 명시적으로 배제하고 방장 지목 선택지를 두지 않았는데 본 문서만 넷을 싣고 있었다. §16의 TIE_EXHAUSTED options와 [04_error_mapping.md](./04_error_mapping.md)의 vote.target_not_found 매핑을 함께 정정한다
+> **개정일**: 2026-08-11 — configSchema에 사다리 topic을 더해 15개 → **16개**가 된다. §17의 ASSIGN이 result에 topic을 요구하는데 사다리만 그 값을 만들 설정이 없었다([../05_game_rules/01_common.md](../05_game_rules/01_common.md) 개정에 정합)
 > **개정일**: 2026-08-02 — 하트비트를 애플리케이션 이벤트에서 **WebSocket 제어 프레임 ping**으로 바꾸고 이탈 유예를 참가자 30초·방장 60초로 정정한다([../04_architecture/02_realtime_websocket.md](../04_architecture/02_realtime_websocket.md)에 정합). conn:ping·conn:pong 2종을 폐기해 C→S 13→12 · S→C 20→19가 된다
 > **원천**: git ecceb11(docs/06_api/02_socket.md 376줄) · git 529e312(docs/api.md 「실시간 소켓 이벤트 명세」 · docs/db.md §10·§16) · docs_legacy/requirements.md §3(공통 기준·게임별 규칙) · §4.4 US-401~403 · §5 NFR-01~05 · [../04_architecture/02_realtime_websocket.md](../04_architecture/02_realtime_websocket.md)(하트비트·유예 정본) · frontend/src/lib/types.ts · frontend/src/games/Nunchi.tsx · backend/app/main.py
 
@@ -376,18 +378,17 @@ REST와 맞물려 있으므로 순서대로 정리한다.
 game:decision_required가 나간 뒤에만 받는다.
 
 ```json
-{ "roundId": "rnd_D6e7F8g9H0i1J2k3L4m5N6", "phaseSeq": 7, "requestId": "…", "choice": "PICK", "targetId": "mbr_w3X4y5Z6a7B8c9D0e1F2g3" }
+{ "roundId": "rnd_D6e7F8g9H0i1J2k3L4m5N6", "phaseSeq": 7, "requestId": "…", "choice": "RETRY" }
 ```
 
-| choice | 뜻 | targetId |
-|--------|-----|:--------:|
-| **PICK** | 방장이 후보 중 하나를 지목해 확정한다 | 필수 |
-| **RANDOM** | 서버가 후보 중에서 난수로 확정한다 | 없음 |
-| **RETRY** | 같은 설정으로 그 단계를 다시 진행한다 | 없음 |
-| **ABORT** | 결과 없이 라운드를 끝내고 대기방으로 돌아간다 | 없음 |
+| choice | 뜻 |
+|--------|-----|
+| **RETRY** | 같은 게임·같은 설정으로 다시 시작한다. 반복 횟수를 0으로 되돌리고 가이드는 띄우지 않는다 |
+| **ABORT** | 결과 없이 라운드를 끝내고 전원이 대기방으로 돌아간다 |
+
+**둘뿐이다.** [../05_game_rules/01_common.md](../05_game_rules/01_common.md) 「교착 해소 선택」이 다시 시작과 대기방으로 둘만 두고 무작위 확정을 명시적으로 배제한다 — 난수 확정을 붙이면 룰렛과 구분되지 않기 때문이다. 방장이 후보를 직접 지목하는 선택지도 두지 않는다. 킹메이커·저격은 팀의 뜻으로 정하겠다는 게임이라 방장 단독 결정을 넣을 자리가 아니고, **종료 증명이 "다시 시작은 사람이 매번 눌러야 진행된다"는 성질에 기댄다.**
 
 - **서버가 game:decision_required로 내려준 options 안의 값만** 받는다. 밖의 값이면 game.invalid_action.
-- targetId는 그 요구에 실린 candidateIds 안에 있어야 한다. 아니면 vote.target_not_found.
 - 요구되지 않은 시점에 오면 game.decision_not_required.
 - 방장이 마감까지 응답하지 않으면 서버가 **ABORT로 처리한다.** 판이 무한정 열려 있지 않게 한다.
 
@@ -584,6 +585,8 @@ game:decision_required가 나간 뒤에만 받는다.
 |------------|---------|
 | 룰렛 SPINNING | winnerIndex |
 | 사다리 DRAWING | assignments · ladderRungs |
+| 킹메이커 VOTE · RUNOFF | candidates[{ optionId, label }] |
+| 킹메이커 TALLY | rows[{ candidateId, text, votes }] · winnerCandidateId |
 
 값 이름은 [../06_database/04_options_votes_results.md](../06_database/04_options_votes_results.md)의 result_data 규약을 따른다. **전용 이벤트를 신설하지 않는다** — 게임마다 하나씩 늘어나고 S→C 전수가 바뀐다.
 
@@ -657,7 +660,7 @@ game:decision_required가 나간 뒤에만 받는다.
 ```json
 {
   "roundId": "rnd_D6e7F8g9H0i1J2k3L4m5N6", "phaseSeq": 8, "reason": "TIE_EXHAUSTED",
-  "options": ["PICK", "RANDOM", "ABORT"],
+  "options": ["RETRY", "ABORT"],
   "candidateKind": "OPTION", "candidateIds": ["opt_O7p8Q9r0S1t2U3v4W5x6Y7", "opt_Z8a9B0c1D2e3F4g5H6i7J8"],
   "deadlineAt": "2026-08-02T06:09:00.000Z", "roomVersion": 57
 }
@@ -665,7 +668,7 @@ game:decision_required가 나간 뒤에만 받는다.
 
 | reason | 상황 | options |
 |--------|------|---------|
-| **TIE_EXHAUSTED** | 결선을 3회 했는데도 단독 승자가 없다 | PICK · RANDOM · ABORT |
+| **TIE_EXHAUSTED** | 결선을 3회 했는데도 단독 승자가 없다 | RETRY · ABORT |
 | **VOID_ROUND** | 눈치게임에서 남은 사람 전원이 같은 판정창에 눌러 아무도 안전 확정하지 못했다 | RETRY · ABORT |
 | **NO_OPTION** | 킹메이커에서 제출된 안건이 하나도 없다 | RETRY · ABORT |
 
@@ -778,11 +781,12 @@ WINNER의 detail은 게임마다 다르다.
 
 ## configSchema
 
-GET /api/games · GET /api/games/{gameId}가 내려보내는 설정 규격이며 game:config가 이 규격을 따른다. 항목은 **15개**이고 근거는 docs_legacy/requirements.md §3.4다. 규칙의 의미 정본은 [../05_game_rules](../05_game_rules/README.md)다.
+GET /api/games · GET /api/games/{gameId}가 내려보내는 설정 규격이며 game:config가 이 규격을 따른다. 항목은 **16개**이고 근거는 docs_legacy/requirements.md §3.4다. 규칙의 의미 정본은 [../05_game_rules](../05_game_rules/README.md)다.
 
 | gameId | 필드 | 타입 | 범위·값 | 기본값 |
 |--------|------|------|---------|--------|
 | roulette | topic | string | 1~12자 | 팀장 |
+| ladder | topic | string | 1~12자 | 조별과제 |
 | ladder | resultItems | string[] | 1개 이상 · 각 1~12자 · **중복 허용** | 조별과제 세트 6항목 |
 | ladder | speed | enum | FAST · NORMAL · SLOW | NORMAL |
 | kingmaker | topic | string | 1~12자 | 팀명 |
@@ -799,7 +803,7 @@ GET /api/games · GET /api/games/{gameId}가 내려보내는 설정 규격이며
 | nunchi | roundSeconds | enum | 10 · 15 · 20 | 15 |
 
 - **사다리는 topic이 없다.** 항목 목록 자체가 주제 역할을 한다.
-- 사다리의 resultItems 개수는 참가자 수와 다를 수 있고, **서버가 게임 시작 시 참가자 수에 맞춘다** — 적으면 X로 채우고 많으면 뒤에서 잘라낸다. 그래서 개수 자체는 설정 검증에서 막지 않는다.
+- 사다리의 resultItems 개수는 참가자 수와 다를 수 있고, **서버가 게임 시작 시 참가자 수에 맞춘다** — 적으면 X로 채우고 많으면 뒤에서 잘라낸다. 그래서 **참가자 수와의 일치**는 설정 검증에서 막지 않는다. **빈 목록은 막는다** — 채울 원본이 없으면 전원이 X에 배정되어 판이 무의미해지고, 위 규격 표도 1개 이상을 요구한다.
 - **게임을 바꾸면 설정이 기본값으로 초기화된다.** 이전 게임의 값이 남아 엉뚱하게 적용되는 사고를 막는다.
 - 스키마가 바뀌면 configSchemaVersion을 올린다. game:selected가 그 값을 실어 클라이언트가 캐시한 스키마와 대조하게 한다.
 

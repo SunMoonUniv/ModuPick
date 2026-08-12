@@ -1,11 +1,14 @@
 # ═══════════════════════════════════════════════════════════════════════════
 # ModuPick — database + backend 한 묶음
 #
-# 컨테이너 둘이 한 프로젝트로 묶인다.
+# 컨테이너가 한 프로젝트로 묶인다.
 #   modupick-db        MySQL 8.4. 첫 기동에 db_migration/sql을 자동 적용한다
 #   modupick-backend   FastAPI + WebSocket. DB가 healthy가 된 뒤에 뜬다
+#   modupick-frontend  빌드한 화면을 내는 nginx. /api·/ws를 백엔드로 넘긴다
+#   modupick-tunnel    Cloudflare 터널. --profile tunnel을 줄 때만 뜬다
 #
-#   docker compose up -d              둘 다 기동
+#   docker compose up -d              DB·백엔드·프론트 기동 (http://localhost:8080)
+#   docker compose --profile tunnel up -d   위에 더해 터널까지 (밖에서 접속)
 #   docker compose up -d database     DB만 기동 (로컬에서 uvicorn --reload를 쓸 때)
 #   docker compose ps                 상태
 #   docker compose logs -f backend    백엔드 로그
@@ -13,7 +16,6 @@
 #   docker compose down -v            정지 + 데이터 삭제 (스키마를 바꿨을 때)
 #
 # 설정은 같은 폴더의 .env에서 읽는다. .env.example을 복사해 만든다.
-# EC2에서는 bootstrap.sh가 자동으로 만든다.
 # ═══════════════════════════════════════════════════════════════════════════
 
 # Compose는 프로젝트 이름에 대문자를 허용하지 않는다. ModuPick이라고 적어도
@@ -30,8 +32,20 @@ services:
     environment:
       # 기본값을 두지 않는다. .env가 없는 채로 뜨면 개발용 비밀번호가 그대로
       # 운영에 올라가고, 그 사실을 아무도 모르게 된다.
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?.env에 MYSQL_ROOT_PASSWORD가 필요하다. .env.example을 복사하거나 ./bootstrap.sh를 실행한다}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?.env에 MYSQL_ROOT_PASSWORD가 필요하다. .env.example을 복사해 .env를 만든다}
       MYSQL_DATABASE: modupick
+
+      # 앱 계정 비밀번호. 0095_app_password.sh가 이 값을 읽어 ALTER USER로 맞춘다.
+      #
+      # 기본값을 적지 않는다. 여기에 비밀번호처럼 보이는 리터럴을 두면 비밀 탐지기가
+      # 하드코딩으로 잡는다. 비워 두면 0095가 ALTER를 건너뛰고 0090_grants.sql이 만든
+      # 값이 그대로 남는다 — CI가 그 경로로 돈다(.env 없이 database만 띄운다).
+      #
+      # MYSQL_USER·MYSQL_PASSWORD를 쓰지 않는다. 그 경로는 엔트리포인트가 계정을 만들면서
+      # 대상 DB에 GRANT ALL까지 함께 주고, 그러면 0090_grants.sql이 설계한 최소 권한
+      # (SELECT·INSERT·UPDATE 전체 + DELETE는 5개 테이블만)이 덮여 앱 계정이 DROP까지
+      # 할 수 있게 된다.
+      MODUPICK_APP_PASSWORD: ${MODUPICK_APP_PASSWORD:-}
 
     # 세션 시간대 +00:00은 서버 전역으로 박는다. 저장은 UTC이고 판정 시각은
     # 정수 밀리초라, 시간대가 어긋나면 만료·감사 시각이 통째로 밀린다.
@@ -41,9 +55,8 @@ services:
       - --collation-server=utf8mb4_0900_ai_ci
 
     # 127.0.0.1에만 바인딩한다. 백엔드는 같은 도커 네트워크에서 database:3306으로
-    # 붙으므로 호스트 포트가 필요 없고, 0.0.0.0으로 열면 EC2 보안 그룹 설정
-    # 하나만 어긋나도 MySQL이 인터넷에 노출된다. 이 포트는 사람이 mysql 클라이언트로
-    # 들여다볼 때만 쓴다.
+    # 붙으므로 호스트 포트가 필요 없고, 0.0.0.0으로 열면 같은 공유기에 붙은 아무 기기나
+    # MySQL에 닿는다. 이 포트는 사람이 mysql 클라이언트로 들여다볼 때만 쓴다.
     ports:
       - "127.0.0.1:${DB_PORT:-3307}:3306"
 
@@ -89,8 +102,14 @@ services:
     environment:
       # 호스트는 서비스 이름 database다. 컨테이너 사이는 도커 내부 DNS로 찾으며
       # 포트는 컨테이너 안의 3306이다(호스트에 매핑한 3307이 아니다).
-      DATABASE_URL: mysql+aiomysql://modupick:${MODUPICK_APP_PASSWORD:-modupick}@database:3306/modupick
-      # 프론트엔드 주소다. 쉼표로 여러 개를 줄 수 있다.
+      #
+      # 비밀번호에 기본값을 적지 않는다(위 database의 같은 변수 주석 참조). 여기서 :? 로
+      # 필수를 걸 수는 없다 — compose는 database만 띄울 때도 파일 전체를 해석하므로
+      # .env 없이 도는 CI가 그 자리에서 멈춘다. .env에 값이 없으면 백엔드가 접속 거부로
+      # 죽는다. 조용히 잘못 도는 것이 아니라 로그에 access denied로 남는다.
+      DATABASE_URL: mysql+aiomysql://modupick:${MODUPICK_APP_PASSWORD:-}@database:3306/modupick
+      # 배포에서는 프론트와 백엔드가 nginx 뒤 같은 오리진이라 CORS가 걸릴 일이 없다.
+      # 이 값은 vite dev 서버(5173)에서 붙을 때만 쓴다.
       CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
       # 검증 콘솔은 배포에서 끈다. 임의 소켓 프레임을 보낼 수 있는 화면이다.
@@ -99,8 +118,11 @@ services:
       # 위조해 조회 상한을 우회할 수 있다.
       TRUST_PROXY: ${TRUST_PROXY:-false}
 
+    # 127.0.0.1에만 낸다. 브라우저는 frontend(nginx)를 거쳐 들어오므로 이 포트가 필요 없고,
+    # 0.0.0.0으로 열면 같은 공유기에 붙은 아무 기기나 백엔드를 직접 때릴 수 있다.
+    # 이 포트는 /docs를 열어 보거나 vite dev 서버가 프록시할 때만 쓴다.
     ports:
-      - "${BACKEND_PORT:-8000}:8000"
+      - "127.0.0.1:${BACKEND_PORT:-8000}:8000"
 
     # 이미지에 curl·wget이 없다. 파이썬은 있으므로 그걸로 확인한다.
     healthcheck:
@@ -113,6 +135,57 @@ services:
       timeout: 5s
       retries: 6
       start_period: 20s
+
+  # ── 프론트엔드 + 리버스 프록시 ───────────────────────────────────────────
+  # 빌드한 정적 파일을 내면서 /api·/ws를 백엔드로 넘긴다. 브라우저가 보는 유일한
+  # 오리진이라 CORS도 혼합 콘텐츠 차단도 생기지 않는다. 설정은 frontend/nginx.conf.
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: modupick-frontend:local
+    container_name: modupick-frontend
+    restart: unless-stopped
+
+    depends_on:
+      backend:
+        condition: service_healthy
+
+    # 터널을 쓰면 이 포트를 공개할 필요가 없다 — cloudflared가 도커 네트워크 안에서
+    # frontend:80으로 붙는다. 같은 집 안에서만 쓰거나 터널 없이 확인할 때를 위해 남겨 둔다.
+    ports:
+      - "${WEB_PORT:-8080}:80"
+
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # ── Cloudflare 터널 ──────────────────────────────────────────────────────
+  # 공유기 포트를 하나도 열지 않고 밖에서 접속할 수 있게 한다. TLS는 터널이 끝낸다.
+  #
+  # 기본으로는 뜨지 않는다. 밖에 낼 때만 켠다.
+  #   docker compose --profile tunnel up -d
+  #
+  # Cloudflare 대시보드에서 이 터널의 public hostname을 http://frontend:80 으로 건다.
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: modupick-tunnel
+    restart: unless-stopped
+    profiles: ["tunnel"]
+
+    depends_on:
+      - frontend
+
+    # 토큰은 명령행이 아니라 환경변수로 준다. --token으로 주면 호스트의 프로세스 목록에
+    # 그대로 보이고, ${VAR:?}로 필수 표시를 하면 프로필 밖에서도 평가돼 터널을 쓰지 않는
+    # `docker compose up -d`까지 막힌다. 비어 있으면 이 컨테이너만 인증 실패로 죽는다.
+    environment:
+      TUNNEL_TOKEN: ${CF_TUNNEL_TOKEN:-}
+
+    command: tunnel --no-autoupdate run
 
 volumes:
   db-data:      # 실제 이름은 프로젝트 접두어가 붙어 modupick_db-data 가 된다
@@ -135,7 +208,9 @@ volumes:
 #
 # 코드를 바꿨을 때
 #
-#   docker compose up -d --build backend
+#   docker compose up -d --build backend      백엔드
+#   docker compose up -d --build frontend     화면
 #
-# requirements.txt가 그대로면 의존성 레이어가 캐시에서 나와 몇 초로 끝난다.
+# requirements.txt·package-lock.json이 그대로면 의존성 레이어가 캐시에서 나와
+# 몇 초로 끝난다.
 # ═══════════════════════════════════════════════════════════════════════════
