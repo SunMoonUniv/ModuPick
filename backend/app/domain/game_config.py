@@ -57,6 +57,14 @@ def _bool(name: str, default: bool) -> FieldSpec:
 SCHEMA: dict[GameId, tuple[FieldSpec, ...]] = {
     GameId.ROULETTE: (_s("topic", "팀장", 12),),
     GameId.LADDER: (
+        # 사다리에도 주제를 둔다. 05_game_rules/01_common.md 「게임별 설정」 표는
+        # 사다리 주제를 "항목 목록"으로 적어 별도 필드를 두지 않았지만, 같은 문서의
+        # 「주제 템플릿 4계열」은 B 계열 기본값을 조별과제로 정하고 08_screen/06과
+        # 07_api/03 §17의 ASSIGN은 result에 topic을 요구한다. **결과만 보고 무슨
+        # 판이었는지 알 수 없으면 저장해 공유할 이유가 없다**(F-RESULT-02)는 쪽을
+        # 따랐다. 세트를 고르면 항목이 함께 채워지는 것은 설정 화면이 하며 서버는
+        # 두 항목을 독립으로 받는다 — 강제하면 직접 입력 주제로 항목을 못 바꾼다.
+        _s("topic", "조별과제", 12),
         FieldSpec(
             name="resultItems",
             kind="string_list",

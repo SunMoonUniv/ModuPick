@@ -37,11 +37,14 @@ def _room_of(client, size: int):
 
 
 class TestSchema:
-    def test_항목은_15개다(self):
+    def test_항목은_16개다(self):
         # 저격의 revealVoters(지목자 공개)를 없애 16 -> 15가 됐다. 원 기획에 없던
         # 항목이고 익명이 핵심인 게임에 공개 선택지를 붙이는 것이 의도와 어긋난다.
+        # 사다리 주제를 더해 15 -> 16이 됐다(2026-08-11) — 결과 화면과 ASSIGN이
+        # topic을 요구하는데 사다리만 그 자리가 비어 있었다.
         total = sum(len(fields) for fields in game_config.SCHEMA.values())
-        assert total == 15
+        assert total == 16
+        assert [len(game_config.SCHEMA[g]) for g in GameId] == [1, 3, 3, 3, 3, 3]
 
     def test_저격에_지목자_공개_설정이_없다(self):
         assert "revealVoters" not in {f.name for f in game_config.SCHEMA[GameId.SNIPE]}
@@ -58,14 +61,24 @@ class TestSchema:
             "topic": "팀장", "windowMs": 300, "roundSeconds": 15,
         }
         ladder = game_config.defaults(GameId.LADDER)
+        assert ladder["topic"] == "조별과제"
         assert ladder["speed"] == "NORMAL"
         assert ladder["resultItems"] == [
             "팀장", "자료 조사", "PPT 제작", "발표", "디자인", "최종 정리",
         ]
 
-    def test_사다리에는_topic이_없다(self):
-        """항목 목록 자체가 주제 역할을 한다."""
-        assert "topic" not in game_config.defaults(GameId.LADDER)
+    def test_사다리도_주제를_갖는다(self):
+        """**6종 전부 주제가 있다.**
+
+        사다리는 항목 목록이 주제 역할을 한다고 보아 한동안 이 필드가 없었다. 그러나
+        결과 화면(08_screen/06 배정형)과 07_api/03 §17의 ASSIGN이 topic을 요구하고,
+        결과 이미지를 공유하는 것이 이 제품의 마지막 사용 흐름이라(F-RESULT-02)
+        주제 자리를 비워 둘 수 없다. 기본값은 「주제 템플릿 4계열」의 B 계열이다.
+        """
+        assert game_config.defaults(GameId.LADDER)["topic"] == "조별과제"
+        assert all("topic" in game_config.defaults(g) for g in GameId if g != GameId.SNIPE)
+        # 저격만 주제를 question으로 부른다 — D 계열은 질문형이라 30자까지 받는다
+        assert "question" in game_config.defaults(GameId.SNIPE)
 
     def test_기본값을_바꿔도_원본이_안_변한다(self):
         first = game_config.defaults(GameId.LADDER)
