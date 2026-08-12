@@ -40,7 +40,7 @@ export function NunchiGame() {
   const roundLog = (progress ?? null) as NunchiRoundProgress | null
   const [outIds, setOutIds] = useState<MemberId[]>([])
 
-  // 판이 새로 열리면 누적한 탈락자를 비운다
+  // 판이 새로 열리면 누적한 빠져나간 사람 목록을 비운다
   useEffect(() => {
     if (round.phase === 'GUIDE') setOutIds([])
   }, [round.phase])
@@ -126,11 +126,11 @@ export function NunchiGame() {
           <span className={styles.stepArrow}>→</span>
           <span className={styles.step}>
             <span className={`${styles.stepBadge} ${styles.stepTwo}`}>2</span>
-            {windowSec}초 안에 겹쳐 누르면 둘 다 탈락
+            {windowSec}초 안에 겹쳐 눌러도 둘 다 빠진다
           </span>
           <span className={styles.stepArrow}>→</span>
           <span className={styles.step}>
-            <span className={`${styles.stepBadge} ${styles.stepThree}`}>3</span>제한시간 까지 계속 눈치만 봐도 탈락
+            <span className={`${styles.stepBadge} ${styles.stepThree}`}>3</span>끝까지 못 누른 한 사람이 뽑힌다
           </span>
         </div>
       </div>
@@ -156,13 +156,17 @@ export function NunchiGame() {
                 {member.memberId === me ? ' (나)' : ''}
               </span>
               <span className={styles.cardState}>
+                {/* 혼자 누름과 겹쳐 누름은 결과가 같지만(둘 다 빠진다) 눈치를 이겨서 빠진 것과 */}
+                {/* 남과 부딪혀 빠진 것은 판이 다르므로 문구를 가른다 — 서버가 판정값으로 알려준다 */}
                 {verdictOf.get(member.memberId) === 'OVERLAP'
                   ? '≡ 겹쳐 눌러 빠짐'
-                  : out
-                    ? '✓ 눌러서 빠짐'
-                    : order
-                      ? `${order}번째로 누름`
-                      : '◌ 아직 눈치 보는 중'}
+                  : verdictOf.get(member.memberId) === 'ALONE'
+                    ? '★ 혼자 눌러 통과'
+                    : out
+                      ? '✓ 눌러서 빠짐'
+                      : order
+                        ? `${order}번째로 누름`
+                        : '◌ 아직 눈치 보는 중'}
               </span>
             </div>
           )

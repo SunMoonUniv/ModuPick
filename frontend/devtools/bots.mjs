@@ -117,10 +117,13 @@ function handle(bot, event, data, send) {
       break
     }
 
-    // 대기방으로 돌아오면 서버가 준비 상태를 전부 내린다 — 다시 올려야 연달아 검증할 수 있다
+    // 대기방으로 돌아오면 서버가 준비 상태를 전부 내린다 — 다시 올려야 연달아 검증할 수 있다.
+    // **곧바로 보내지 않는다.** 서버는 round:closed를 먼저 발행하고 해제 통지
+    // (member:ready_changed false)를 그 뒤에 각각 보내므로, 그 사이에 올린 준비는
+    // 뒤늦게 도착한 해제 통지에 덮여 화면에서 준비 중으로 남는다.
     case 'round:closed':
       bot.round = null
-      send('member:ready', { ready: true })
+      setTimeout(() => send('member:ready', { ready: true }), 700)
       break
 
     default:

@@ -6,6 +6,7 @@ import { GameConfigForm } from '../../components/game/GameConfigForm/GameConfigF
 import { api } from '../../api/rest'
 import { controllerIcon, crownIcon, diceIcon, hourglassIcon, playIcon } from '../../assets/icons'
 import { GAME_ACCENTS, GAME_ICONS } from '../../constants/gameVisuals'
+import { presentError } from '../../constants/errorMessages'
 import { useLeaveWarning } from '../../hooks/useLeaveWarning'
 import { selectIsHost, selectableGameIds, useRoomStore } from '../../store/roomStore'
 import { clearSession, loadSession } from '../../store/session'
@@ -260,7 +261,8 @@ export function WaitingRoomScreen() {
           </div>
         </footer>
 
-        {lastError && <div className={styles.toast}>{lastError.message}</div>}
+        {/* 서버 message가 아니라 code로 문구를 고른다 — F-CMN-04 매핑(src/constants/errorMessages.ts) */}
+        {lastError && <div className={styles.toast}>{presentError(lastError.code).message}</div>}
       </div>
 
       <Modal

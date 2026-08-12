@@ -6,6 +6,7 @@ import { api, normalizeCode, toDisplayCode } from '../../api/rest'
 import { iconKingmaker, iconNunchi, iconRouletteA, iconRouletteB } from '../../assets/home'
 import { useRoomStore } from '../../store/roomStore'
 import { clearSession, saveSession } from '../../store/session'
+import { presentError } from '../../constants/errorMessages'
 import { ApiError } from '../../protocol/types'
 import type { GameId } from '../../protocol/types'
 import { DemoPanel } from './DemoPanel'
@@ -218,7 +219,8 @@ export function HomeScreen() {
       })
       navigate('/profile')
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '입장하지 못했습니다.')
+      // 서버 message가 아니라 code로 문구를 고른다 — F-CMN-04 매핑(src/constants/errorMessages.ts)
+      setError(e instanceof ApiError ? presentError(e.code).message : '입장하지 못했습니다.')
       setJoining(false)
     }
   }

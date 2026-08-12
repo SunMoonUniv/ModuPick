@@ -34,7 +34,9 @@ export function SnipeResultView({ view, stats }: SnipeResultViewProps) {
 
       {/* ── 최다 피격자 카드 ── */}
       <section className={styles.card}>
-        <div className={styles.banner}>🎯&nbsp;&nbsp;Q. {view.topic}</div>
+        {/* 질문은 방장이 비워 둘 수 있다(서버 기본값이 빈 문자열이다). 밴드 전체가 질문 자리라 */}
+        {/* 비면 라벨만 뜬 빈 띠가 남으므로 아예 그리지 않는다 */}
+        {view.topic && <div className={styles.banner}>🎯&nbsp;&nbsp;Q. {view.topic}</div>}
 
         {CARD_CONFETTI.map((piece) => (
           <ConfettiPiece key={`card-${piece[0]}-${piece[1]}`} piece={piece} />

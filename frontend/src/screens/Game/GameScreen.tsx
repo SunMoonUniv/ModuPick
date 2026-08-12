@@ -4,6 +4,7 @@ import { Button, Modal, ScreenFrame } from '../../components/common'
 import { TieOverlay } from '../../components/game/TieOverlay/TieOverlay'
 import { api } from '../../api/rest'
 import { GAME_META_LINES, GAME_SUBTITLES } from '../../constants/gameVisuals'
+import { presentError } from '../../constants/errorMessages'
 import { useRemainMs } from '../../hooks/useServerClock'
 import { useLeaveWarning } from '../../hooks/useLeaveWarning'
 import { useRoomStore } from '../../store/roomStore'
@@ -118,7 +119,8 @@ export function GameScreen() {
         {round.gameId === 'snipe' && <SnipeGame />}
         {round.gameId === 'nunchi' && <NunchiGame />}
 
-        {lastError && <div className={styles.toast}>{lastError.message}</div>}
+        {/* 서버 message가 아니라 code로 문구를 고른다 — F-CMN-04 매핑(src/constants/errorMessages.ts) */}
+        {lastError && <div className={styles.toast}>{presentError(lastError.code).message}</div>}
       </div>
 
       {/* 동점 통지(3초)와 교착 시 방장 선택은 6종이 같은 상태를 쓰므로 여기서 한 번만 그린다 */}
