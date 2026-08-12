@@ -23,6 +23,7 @@
 | [09_nonfunctional.md](./09_nonfunctional.md) | 성능·판정 정확도·용량·개인정보·브라우저·반응형·접근성 | REQ-NFR |
 | [10_acceptance_criteria.md](./10_acceptance_criteria.md) | **AC-NN 채번 정본** — 입력 → 기대 출력 120항 | AC-01~120 |
 | [11_traceability.md](./11_traceability.md) | REQ ↔ 기능 ↔ 화면 ↔ 테이블 추적·구 스펙 ID 대응·커버리지 | 전 접두사(파생) |
+| [12_verification_status.md](./12_verification_status.md) | AC-01~120의 항목별 확인 상태·근거 테스트·기준 갱신 대기 목록 | AC-01~120(파생) |
 
 게임 6종은 도메인 6개이지만 파일은 06_games.md 하나다 — 여섯 파일로 나누면 같은 형태의 표가 여섯 번 반복되고 게임 사이의 대칭이 보이지 않는다. **접두사는 도메인마다 독립이며 파일 통합이 채번을 합치지 않는다.**
 
