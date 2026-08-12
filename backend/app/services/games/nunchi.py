@@ -1,12 +1,15 @@
 """눈치게임 진행 — 가이드 · 라운드 반복 · 최후 1인.
 
-    GUIDE(3초) → ROUND(설정) → 판정 → ROUND_RESULT(3초) ┬ safe 0        → 방장이 고른다
-                                   ↑                    ├ remain 2 이상 → 다음 ROUND
+    GUIDE(3초) → ROUND(설정) → 판정 → ROUND_RESULT(3초) ┬ 탈락자 0·생존자 0 → 방장이 고른다
+                                   ↑                    ├ 생존자 2 이상    → 다음 ROUND
                                    └────────────────────┤
-                                                        └ remain 1 이하 → REVEAL(3초) → RESULT
+                                                        └ 생존자 1        → REVEAL(3초) → RESULT
 
 **라운드가 여러 번 도는 유일한 게임이다.** 그래서 판정이 지난 라운드 기록을 받고,
 생존자 집합이 라운드마다 줄어든다.
+
+**누르면 빠지고 못 누른 사람만 남는다.** 그래서 라운드를 끊는 것이 겹침이다 — 겹치는
+순간 마감해야 아직 누르지 못한 사람들이 기회를 잃고 다음 라운드로 밀린다.
 
 **진행 중에는 집계를 내보내지 않는다.** 다른 게임에서 "몇 명이 냈다"는 기다림을
 가늠하게 할 뿐이지만, 이 게임에서는 **누가 이미 눌렀다는 사실 자체가 정답**이다.
@@ -88,8 +91,8 @@ async def on_action(
 ) -> None:
     """UP 1건을 받는다.
 
-    **안전 확정자는 이번 라운드의 대상이 아니다.** 이미 후보에서 빠졌으므로
-    game.not_eligible이며, 「잘못 눌렀다」는 뜻의 invalid_action이 아니다.
+    **이미 빠진 사람은 이번 라운드의 대상이 아니다.** 지난 라운드에 눌러 후보에서
+    빠졌으므로 game.not_eligible이며, 「잘못 눌렀다」는 뜻의 invalid_action이 아니다.
     """
     del participant_pk, payload  # UP에는 페이로드가 없다
 
@@ -100,13 +103,21 @@ async def on_action(
         raise errors.DomainError(errors.GAME_ALREADY_SUBMITTED)
 
     game_service.record_input(state, member_id=member_id, kind=action_type)
-    pressed = sum(1 for i in state.inputs if i.kind == rules.UP_KIND)
+    ups = [i for i in state.inputs if i.kind == rules.UP_KIND]
 
     # **진행 집계를 보내지 않는다.** 남은 사람이 몇 명 눌렀는지가 곧 정답이다.
     #
-    # 생존자 전원이 눌렀으면 마감을 기다리지 않는다. 더 누를 사람이 없으므로
-    # 마지막 입력의 뒤 간격은 무한대로 확정되고 판정이 흔들리지 않는다.
-    if pressed >= len(survivors):
+    # **겹치면 그 자리에서 라운드가 끝난다.** 직전에 받은 입력과의 간격이 판정창
+    # 이하이면 겹침이며, 아직 누르지 못한 사람들은 기회를 잃고 다음 라운드로 밀린다.
+    window_ms = int(state.config.get("windowMs", 300))
+    overlapped = len(ups) >= 2 and ups[-1].arrived_ms - ups[-2].arrived_ms <= window_ms
+
+    # **한 명만 남는 순간에도 끝난다.** 그 한 명에게 누를 기회를 주면, 안 누르면
+    # 뽑히는 처지라 눌러서 전원 탈락(생존자 0)으로 판을 무르는 것이 언제나 이득이
+    # 된다. 기회를 주지 않는 것으로 그 탈출구를 막는다.
+    last_one = len(ups) >= len(survivors) - 1
+
+    if overlapped or last_one:
         round_service.stop_timers(state)
         await _judge(room_pk)
 
@@ -161,9 +172,10 @@ async def _judge(room_pk: int) -> None:
 async def _emit_round(room_pk: int, record: dict) -> None:
     """그 라운드의 판정을 알린다. **라운드가 마감된 뒤에만 나간다.**
 
-    07_api/03 §14가 눈치게임 payload를 round · verdicts · safeMemberIds ·
-    remainingMemberIds · nextRoundStartsAt으로 고정한다. elapsedMs는 라운드 시작을
-    0으로 한 **서버 도착 시각**이며, 누르지 않은 사람은 null이다.
+    명단을 4종으로 나눠 보낸다 — 혼자 누름·겹쳐 누름은 결과가 같지만(둘 다 탈락)
+    화면이 다르게 그려야 하고, 탈락자 전원은 그 둘의 합집합이라 프론트가 다시 계산하지
+    않게 함께 싣는다. elapsedMs는 라운드 시작을 0으로 한 **서버 도착 시각**이며,
+    누르지 못한 사람은 null이다.
     """
     state = store.round_of(room_pk)
     if state is None:
@@ -180,18 +192,21 @@ async def _emit_round(room_pk: int, record: dict) -> None:
                 }
                 for row in record.get("presses", ())
             ],
-            "safeMemberIds": list(record.get("safeMemberIds", ())),
-            "remainingMemberIds": list(record.get("remainingMemberIds", ())),
+            "aloneMemberIds": list(record.get("aloneMemberIds", ())),
+            "overlappedMemberIds": list(record.get("overlappedMemberIds", ())),
+            "eliminatedMemberIds": list(record.get("eliminatedMemberIds", ())),
+            "survivingMemberIds": list(record.get("survivingMemberIds", ())),
             "nextRoundStartsAt": iso_z(state.deadline_at) if state.deadline_at else None,
         },
     )
 
 
 async def _require_decision(room_pk: int) -> None:
-    """무효 라운드. 생존자 수가 줄지 않았으므로 방장이 끊는다(D-35).
+    """무효 라운드. 뽑을 수 있는 상태가 아니므로 방장이 끊는다(D-35).
 
-    자동으로 다음 라운드를 열면 같은 상태가 반복될 수 있다 — 전원 겹침·전원
-    미입력·혼재 셋을 구분하지 않는다. 처리가 같기 때문이다.
+    두 경우가 여기로 온다 — **아무도 누르지 않아** 생존자가 그대로이거나, **전원이
+    눌러** 남은 사람이 없거나다. 자동으로 다음 라운드를 열면 같은 상태가 반복될 수
+    있다는 점에서 같으므로 둘을 구분하지 않는다.
     """
     state = store.round_of(room_pk)
     if state is None:
@@ -232,9 +247,10 @@ def wire_result(state: RoundState) -> tuple[str, dict]:
     """result_data를 game:result의 (variant, result)로 옮긴다.
 
     RECORD의 result는 topic · pickedMemberId · rounds · stats다(07_api/03 §17).
-    저장은 roundNo·offsetMs를 쓰고 와이어는 round·elapsedMs를 쓴다. 저장이 함께
-    담는 safeMemberIds·remainingMemberIds는 판정 재현용이라 나가지 않는다 —
-    화면은 판정 라벨로 같은 것을 읽는다.
+    저장은 roundNo·offsetMs를 쓰고 와이어는 round·elapsedMs를 쓴다.
+
+    **라운드마다 명단 4종을 함께 싣는다.** 진행 중 판정 페이로드와 같은 모양이라
+    결과 화면이 진행 화면과 같은 코드로 라운드를 그릴 수 있다.
     """
     data = state.result_data or {}
     losers = data.get("loserMemberIds") or []
@@ -252,6 +268,10 @@ def wire_result(state: RoundState) -> tuple[str, dict]:
                     }
                     for p in row.get("presses", ())
                 ],
+                "aloneMemberIds": list(row.get("aloneMemberIds", ())),
+                "overlappedMemberIds": list(row.get("overlappedMemberIds", ())),
+                "eliminatedMemberIds": list(row.get("eliminatedMemberIds", ())),
+                "survivingMemberIds": list(row.get("survivingMemberIds", ())),
             }
             for row in data.get("rounds", ())
         ],
