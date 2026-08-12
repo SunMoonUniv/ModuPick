@@ -190,13 +190,11 @@ function TextField({ value, maxLength, placeholder, presets, onChange }: TextFie
     }
   }, [value])
 
-  // 빈 값은 올리지 않는다 — 서버 검증(minLength 1)에 걸려 "허용되지 않는 입력값"이 된다
+  // 빈 값도 그대로 올린다 — 서버 기본값이 빈 칸이라 지워서 비우는 것도 방장의 선택이다
   const push = (next: string) => {
     setDraft(next)
-    if (next.trim()) {
-      sent.current = next
-      onChange(next)
-    }
+    sent.current = next
+    onChange(next)
   }
 
   return (

@@ -74,16 +74,35 @@ export function WaitingRoomScreen() {
     return null
   }, [game, selectedMeta, members.length, readyCount, guests.length])
 
-  // 설정 변경은 디바운스해서 보낸다
-  const [pendingPatch, setPendingPatch] = useState<Record<string, unknown> | null>(null)
+  // 방장이 방금 바꾼 값. **서버 방송이 같은 값으로 되돌아올 때까지 화면에 얹어 둔다** —
+  // 올리자마자 지우면 방송이 오기 전 한 박자 동안 옛 값이 보여 칩과 글자가 튄다.
+  const [draft, setDraft] = useState<Record<string, unknown>>({})
+
+  // 설정 변경은 디바운스해서 보낸다. 서버가 부분 갱신이라 draft를 통째로 다시 보내도 안전하다
   useEffect(() => {
-    if (!pendingPatch || !game) return
-    const id = setTimeout(() => {
-      updateConfig(game.gameId, pendingPatch as never)
-      setPendingPatch(null)
-    }, CONFIG_DEBOUNCE_MS)
+    if (!game || Object.keys(draft).length === 0) return
+    const id = setTimeout(() => updateConfig(game.gameId, draft as never), CONFIG_DEBOUNCE_MS)
     return () => clearTimeout(id)
-  }, [pendingPatch, game, updateConfig])
+  }, [draft, game, updateConfig])
+
+  // 내가 올린 값이 그대로 돌아오면 그 키는 화면에서 내린다 (남의 변경은 그대로 따라간다)
+  useEffect(() => {
+    if (!game) return
+    const applied = game.config as unknown as Record<string, unknown>
+    setDraft((prev) => {
+      const rest = Object.fromEntries(
+        Object.entries(prev).filter(
+          ([key, value]) => JSON.stringify(applied[key]) !== JSON.stringify(value),
+        ),
+      )
+      return Object.keys(rest).length === Object.keys(prev).length ? prev : rest
+    })
+  }, [game])
+
+  // 게임을 바꾸면 설정이 서버 기본값으로 되돌아가므로 얹어 둔 값도 버린다
+  useEffect(() => {
+    setDraft({})
+  }, [game?.gameId])
 
   const leave = async () => {
     const session = loadSession()
@@ -95,8 +114,8 @@ export function WaitingRoomScreen() {
 
   if (!room) return null
 
-  // 설정 폼에는 아직 서버에 보내지 않은 입력도 즉시 반영해 입력이 튀지 않게 한다
-  const shownConfig = pendingPatch ? { ...game!.config, ...pendingPatch } : game?.config
+  // 설정 폼에는 아직 서버가 확인해 주지 않은 내 입력도 얹어 보여줘 값이 튀지 않게 한다
+  const shownConfig = game ? { ...game.config, ...draft } : undefined
   const emptySeats = Math.max(0, room.maxMembers - members.length)
 
   return (
@@ -202,7 +221,7 @@ export function WaitingRoomScreen() {
                 config={shownConfig}
                 memberCount={members.length}
                 editable={isHost}
-                onChange={(patch) => setPendingPatch((prev) => ({ ...prev, ...patch }))}
+                onChange={(patch) => setDraft((prev) => ({ ...prev, ...patch }))}
               />
             </div>
           )}
