@@ -8,7 +8,7 @@
 
 import pytest
 
-from app.domain import game_config
+from app.domain import errors, game_config
 from app.domain.enums import MIN_MEMBERS, GameId
 from tests.conftest import confirm, connected, create_room, join, member_room
 
@@ -140,12 +140,23 @@ class TestValidation:
         )
         assert merged["resultItems"] == ["청소", "청소", "청소"]
 
-    def test_항목_개수는_막지_않는다(self):
+    def test_항목이_참가자_수와_달라도_된다(self):
         """참가자 수에 맞추는 일은 게임 시작 시점에 서버가 한다."""
         merged = game_config.merge(
             GameId.LADDER, game_config.defaults(GameId.LADDER), {"resultItems": ["하나"]},
         )
         assert merged["resultItems"] == ["하나"]
+
+    def test_항목이_비면_거절한다(self):
+        """**채울 원본이 없으면 전원이 X에 배정된다** — 판이 무의미해진다.
+
+        참가자 수와의 불일치를 허용하는 것과 빈 목록을 허용하는 것은 다르다.
+        """
+        with pytest.raises(errors.DomainError) as caught:
+            game_config.merge(
+                GameId.LADDER, game_config.defaults(GameId.LADDER), {"resultItems": []},
+            )
+        assert caught.value.spec.code == "game.invalid_config"
 
 
 # ── game:select ────────────────────────────────────────────────────────────

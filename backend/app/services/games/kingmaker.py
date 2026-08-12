@@ -416,13 +416,31 @@ async def _tally(room_pk: int) -> None:
     if not await game_service.settle(room_pk, verdict):
         return
 
+    phase = verdict.next_phase or rules.Phase.TALLY
     seq = await round_service.emit_phase(
         room_pk,
-        phase=verdict.next_phase or rules.Phase.TALLY,
+        phase=phase,
         duration_ms=verdict.next_deadline,
+        # 개표 연출은 TALLY가 시작되는 순간 득표를 알아야 한다. game:result는 이
+        # 단계가 끝난 뒤에 오므로 그때는 늦다(07_api/03 §12). **투표가 이미 마감된
+        # 뒤라 중간 집계 비공개(REQ-GLB-14)에 걸리지 않는다** — 그 규칙이 막는 것은
+        # 표를 더 받는 동안 집계를 보여주는 것이다.
+        payload=_tally_payload(room_pk) if phase == rules.Phase.TALLY else None,
     )
     if verdict.next_deadline:
         game_service.arm(room_pk, seq, verdict.next_deadline, _enter_result)
+
+
+def _tally_payload(room_pk: int) -> dict | None:
+    """TALLY 전이에 싣는 개표 값. 결과 이벤트의 rows와 같은 값을 쓴다."""
+    state = store.round_of(room_pk)
+    if state is None or state.result_data is None:
+        return None
+    winners = state.result_data.get("winnerOptionIds") or []
+    return {
+        "rows": _rows(state),
+        "winnerCandidateId": winners[0] if winners else None,
+    }
 
 
 async def on_retry(room_pk: int) -> None:
@@ -471,6 +489,23 @@ def wire_result(state: RoundState) -> tuple[str, dict]:
     """
     data = state.result_data or {}
     winners = data.get("winnerOptionIds") or []
+
+    return "TALLY", {
+        "topic": state.config.get("topic"),
+        "winnerCandidateId": winners[0] if winners else None,
+        "rows": _rows(state),
+        "reveal": {"authors": "authors" in data},
+        "stats": _stats(state),
+    }
+
+
+def _rows(state: RoundState) -> list[dict]:
+    """득표 순 개표 행. **TALLY 단계 전이와 결과 이벤트가 같은 값을 쓴다.**
+
+    두 곳에서 각자 만들면 개표 연출이 그린 수치와 결과 화면의 수치가 갈라질 수
+    있다. 갈라진 것을 사람이 알아채기는 어렵고 그때는 이미 결과가 나간 뒤다.
+    """
+    data = state.result_data or {}
     authors = {a["optionId"]: a["memberId"] for a in data.get("authors", ())}
     reveal = "authors" in data
 
@@ -484,14 +519,7 @@ def wire_result(state: RoundState) -> tuple[str, dict]:
         if reveal:
             item["authorMemberId"] = authors.get(row["optionId"])
         rows.append(item)
-
-    return "TALLY", {
-        "topic": state.config.get("topic"),
-        "winnerCandidateId": winners[0] if winners else None,
-        "rows": rows,
-        "reveal": {"authors": reveal},
-        "stats": _stats(state),
-    }
+    return rows
 
 
 def _stats(state: RoundState) -> list[dict]:

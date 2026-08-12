@@ -586,6 +586,7 @@ game:decision_required가 나간 뒤에만 받는다.
 | 룰렛 SPINNING | winnerIndex |
 | 사다리 DRAWING | assignments · ladderRungs |
 | 킹메이커 VOTE · RUNOFF | candidates[{ optionId, label }] |
+| 킹메이커 TALLY | rows[{ candidateId, text, votes }] · winnerCandidateId |
 
 값 이름은 [../06_database/04_options_votes_results.md](../06_database/04_options_votes_results.md)의 result_data 규약을 따른다. **전용 이벤트를 신설하지 않는다** — 게임마다 하나씩 늘어나고 S→C 전수가 바뀐다.
 
@@ -802,7 +803,7 @@ GET /api/games · GET /api/games/{gameId}가 내려보내는 설정 규격이며
 | nunchi | roundSeconds | enum | 10 · 15 · 20 | 15 |
 
 - **사다리는 topic이 없다.** 항목 목록 자체가 주제 역할을 한다.
-- 사다리의 resultItems 개수는 참가자 수와 다를 수 있고, **서버가 게임 시작 시 참가자 수에 맞춘다** — 적으면 X로 채우고 많으면 뒤에서 잘라낸다. 그래서 개수 자체는 설정 검증에서 막지 않는다.
+- 사다리의 resultItems 개수는 참가자 수와 다를 수 있고, **서버가 게임 시작 시 참가자 수에 맞춘다** — 적으면 X로 채우고 많으면 뒤에서 잘라낸다. 그래서 **참가자 수와의 일치**는 설정 검증에서 막지 않는다. **빈 목록은 막는다** — 채울 원본이 없으면 전원이 X에 배정되어 판이 무의미해지고, 위 규격 표도 1개 이상을 요구한다.
 - **게임을 바꾸면 설정이 기본값으로 초기화된다.** 이전 게임의 값이 남아 엉뚱하게 적용되는 사고를 막는다.
 - 스키마가 바뀌면 configSchemaVersion을 올린다. game:selected가 그 값을 실어 클라이언트가 캐시한 스키마와 대조하게 한다.
 

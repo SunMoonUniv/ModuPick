@@ -135,7 +135,11 @@ def _check(spec: FieldSpec, value: Any) -> Any:
         return text
 
     if spec.kind == "string_list":
-        # 개수는 막지 않는다 — 참가자 수에 맞추는 일은 게임 시작 시점에 서버가 한다.
+        # **참가자 수와의 일치는 강제하지 않는다** — 모자라면 X로 채우고 넘치면
+        # 잘라내는 일을 게임 시작 시점에 서버가 한다(07_api/03 §18).
+        #
+        # 다만 **빈 목록은 거절한다.** 채울 원본이 없으면 전원이 X에 배정되어
+        # 판 자체가 무의미해진다. 07_api/03 §18의 규격 표도 1개 이상을 요구한다.
         if not isinstance(value, list) or not value:
             raise _invalid()
         items = []
