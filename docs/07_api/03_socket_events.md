@@ -615,7 +615,7 @@ game:decision_required가 나간 뒤에만 받는다.
 | 킹메이커 투표 · 익명 저격 | votedCount · totalCount | 입력이 도착할 때마다 |
 | 시간초 잡기 | startedCount · stoppedCount · totalCount | 입력이 도착할 때마다 |
 | 룰렛 · 사다리 | 보내지 않는다 | — |
-| **눈치게임** | round · verdicts · safeMemberIds · remainingMemberIds · nextRoundStartsAt | **라운드가 마감된 뒤에만** |
+| **눈치게임** | round · verdicts · aloneMemberIds · overlappedMemberIds · eliminatedMemberIds · survivingMemberIds · nextRoundStartsAt | **라운드가 끝난 뒤에만** |
 
 **눈치게임만 진행 중 집계를 보내지 않는 이유**는 이 게임에서 "누가 이미 눌렀다"는 사실 자체가 결정적 정보이기 때문이다. 다른 게임의 완료/대기 표시는 기다림을 가늠하게 할 뿐이지만, 눈치게임에서는 그것이 곧 정답을 알려준다.
 
@@ -624,19 +624,23 @@ game:decision_required가 나간 뒤에만 받는다.
 {
   "round": 1,
   "verdicts": [
-    { "memberId": "mbr_a1B2c3D4e5F6g7H8i9J0k1", "verdict": "SAFE",     "elapsedMs": 2100 },
+    { "memberId": "mbr_a1B2c3D4e5F6g7H8i9J0k1", "verdict": "ALONE",    "elapsedMs": 2100 },
     { "memberId": "mbr_w3X4y5Z6a7B8c9D0e1F2g3", "verdict": "OVERLAP",  "elapsedMs": 7000 },
     { "memberId": "mbr_H4i5J6k7L8m9N0o1P2q3R4", "verdict": "OVERLAP",  "elapsedMs": 7120 },
     { "memberId": "mbr_S5t6U7v8W9x0Y1z2A3b4C5", "verdict": "NO_INPUT", "elapsedMs": null }
   ],
-  "safeMemberIds": ["mbr_a1B2c3D4e5F6g7H8i9J0k1"],
-  "remainingMemberIds": ["mbr_w3X4y5Z6a7B8c9D0e1F2g3", "mbr_H4i5J6k7L8m9N0o1P2q3R4", "mbr_S5t6U7v8W9x0Y1z2A3b4C5"],
+  "aloneMemberIds": ["mbr_a1B2c3D4e5F6g7H8i9J0k1"],
+  "overlappedMemberIds": ["mbr_w3X4y5Z6a7B8c9D0e1F2g3", "mbr_H4i5J6k7L8m9N0o1P2q3R4"],
+  "eliminatedMemberIds": ["mbr_a1B2c3D4e5F6g7H8i9J0k1", "mbr_w3X4y5Z6a7B8c9D0e1F2g3", "mbr_H4i5J6k7L8m9N0o1P2q3R4"],
+  "survivingMemberIds": ["mbr_S5t6U7v8W9x0Y1z2A3b4C5"],
   "nextRoundStartsAt": "2026-08-02T06:05:10.000Z"
 }
 ```
 
-- verdict는 **SAFE**(혼자 눌러 안전 확정 · 후보에서 빠진다) · **OVERLAP**(판정창 안에 둘 이상이 눌러 남는다) · **NO_INPUT**(누르지 않아 남는다) · **LAST**(최후 1인으로 뽑힌다) 4값이다.
-- **혼자 누른 사람이 안전하고 겹친 사람이 남는다.** frontend/src/games/Nunchi.tsx는 겹친 사람을 탈락시키는 정반대로 구현되어 있으며 이는 구현 결함이다. 겹치는 것이 이득인 구조는 일부러 겹치는 담합을 부르고 게임이 성립하지 않는다.
+- verdict는 **ALONE**(혼자 눌러 안전 확정) · **OVERLAP**(판정창 안에 겹쳐 눌러 안전 확정) · **NO_INPUT**(누르지 않아 잔류) · **LAST**(최후 1인으로 뽑힌다) 4값이다. **ALONE과 OVERLAP은 결과가 같고 표시만 다르다.**
+- **누르면 빠진다**(D-38 개정 2026-08-12). 그 라운드에 누른 사람은 혼자였든 겹쳤든 후보에서 빠지고, 끝까지 누르지 못한 사람만 다음 라운드로 간다.
+- **eliminatedMemberIds가 안전 확정자 전체**이며 aloneMemberIds와 overlappedMemberIds의 합집합이다. survivingMemberIds가 잔류자다. **이름이 직관과 반대로 읽히니 주의한다** — 이 게임에서 빠지는 것이 유리하다.
+- 라운드는 **겹침 · 잔류자 한 명 남음 · 제한 시간 마감** 셋 중 먼저 오는 것에서 끝난다. 어느 경로로 끝나든 이 payload의 모양은 같다.
 - elapsedMs는 라운드 시작을 0으로 한 **서버 도착 시각**의 경과 밀리초다.
 - nextRoundStartsAt은 라운드 사이 3초 카운트다운의 종료 시각이다.
 
@@ -689,7 +693,7 @@ variant 4종은 frontend/src/lib/types.ts의 GameResult 유니언과 대응한�
 | **WINNER** | 룰렛 · 시간초 · 저격 | topic · winnerMemberId · detail · stats |
 | **ASSIGN** | 사다리 | topic · pairs[{ memberId, itemLabel }] · seed · stats |
 | **TALLY** | 킹메이커 | topic · winnerCandidateId · rows[{ candidateId, text, votes, authorMemberId?, voterMemberIds? }] · reveal · stats |
-| **RECORD** | 눈치게임 | topic · pickedMemberId · rounds[{ round, rows[{ memberId, verdict, elapsedMs }] }] · stats |
+| **RECORD** | 눈치게임 | topic · pickedMemberId · rounds[{ round, rows[{ memberId, verdict, elapsedMs }], aloneMemberIds, overlappedMemberIds, eliminatedMemberIds, survivingMemberIds }] · stats |
 
 WINNER의 detail은 게임마다 다르다.
 

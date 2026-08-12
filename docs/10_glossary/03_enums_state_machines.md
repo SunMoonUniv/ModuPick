@@ -140,7 +140,7 @@
 | 18 | 교착 선택 — game:decide의 choice | 4 | PICK · RANDOM · RETRY · ABORT | [../07_api/03_socket_events.md](../07_api/03_socket_events.md) |
 | 19 | 결정 요구 사유 — game:decision_required의 reason | 3 | TIE_EXHAUSTED · VOID_ROUND · NO_OPTION | [../07_api/03_socket_events.md](../07_api/03_socket_events.md) |
 | 20 | 결선 후보 종류 — game:tie의 candidateKind | 2 | MEMBER · OPTION | [../07_api/03_socket_events.md](../07_api/03_socket_events.md) |
-| 21 | 눈치 라운드 판정 — verdict | 4 | SAFE · OVERLAP · NO_INPUT · LAST | [../05_game_rules/07_nunchi.md](../05_game_rules/07_nunchi.md) |
+| 21 | 눈치 라운드 판정 — verdict | 4 | ALONE · OVERLAP · NO_INPUT · LAST | [../05_game_rules/07_nunchi.md](../05_game_rules/07_nunchi.md) |
 | 22 | 시간초 기록 상태 — records의 status | 3 | recorded · no_start · no_stop | [../06_database/04_options_votes_results.md](../06_database/04_options_votes_results.md) |
 | 23 | 시간초 판정값 출처 — records의 source | 2 | CLIENT_MEASURED · SERVER_OBSERVED | [../07_api/03_socket_events.md](../07_api/03_socket_events.md) |
 | 24 | 결과 화면 형태 — variant | 4 | WINNER · ASSIGN · TALLY · RECORD | [../02_features/06_result.md](../02_features/06_result.md) |
@@ -149,8 +149,8 @@
 
 - **입력 종류는 게임이 늘어도 소켓 표면을 늘리지 않는 장치다.** 게임별로 이벤트를 나누지 않고 game:action 하나에 type을 분기시킨다. 폐기된 값은 ladder.pick · ladder.reveal · king.vote의 targetMemberId 셋이다.
 - **교착 선택 4값이 전부 모든 사유에 열리지는 않는다.** TIE_EXHAUSTED는 PICK·RANDOM·ABORT를, VOID_ROUND와 NO_OPTION은 RETRY·ABORT를 연다. 서버가 내려준 options 안의 값만 받는다.
-- **눈치게임의 verdict는 '탈락'을 담지 않는다.** SAFE가 혼자 눌러 후보에서 빠진 **안전 확정**, OVERLAP이 판정창 안에 겹쳐 **잔류**, NO_INPUT이 누르지 않아 잔류, LAST가 최후 1인이다. 용어 정의는 [01_domain_terms.md](./01_domain_terms.md)가 소유한다.
-- **저장 표기와 와이어 표기가 다른 자리가 둘 있다.** 눈치 verdict는 result_data에 alone · overlapped · none으로, 사다리 speed는 fast · normal · slow로 소문자로 저장된다([../06_database/04_options_votes_results.md](../06_database/04_options_votes_results.md)). 시간초 판정 기준도 저장은 judgeMode의 closest · farthest이고 설정은 CLOSEST · FARTHEST다. 같은 축이므로 종수는 한 번만 센다.
+- **눈치게임의 verdict는 '탈락'을 담지 않는다.** ALONE이 혼자 눌러 후보에서 빠진 **안전 확정**, OVERLAP이 판정창 안에 겹쳐 누른 **안전 확정**, NO_INPUT이 누르지 않아 **잔류**, LAST가 최후 1인이다. **ALONE과 OVERLAP은 결과가 같고 표시만 다르다**(D-38 개정 2026-08-12 — 누르면 빠진다). 용어 정의는 [01_domain_terms.md](./01_domain_terms.md)가 소유한다.
+- **저장 표기와 와이어 표기가 다른 자리가 있다.** 사다리 speed는 fast · normal · slow로 소문자로 저장되고([../06_database/04_options_votes_results.md](../06_database/04_options_votes_results.md)), 시간초 판정 기준도 저장은 judgeMode의 closest · farthest이며 설정은 CLOSEST · FARTHEST다. 같은 축이므로 종수는 한 번만 센다. **눈치 verdict는 저장과 와이어가 같은 대문자 4값이다**(D-38 개정 2026-08-12).
 - **결과 화면 형태의 한국어 이름과 영문 값이 1:1이다** — 승자형 WINNER · 배정형 ASSIGN · 개표형 TALLY · 기록형 RECORD. 게임 6종과의 대응은 위 「게임 ID와 접두사 대응」 표에 있다.
 
 ## 투표 (1종 · 라벨 4)
