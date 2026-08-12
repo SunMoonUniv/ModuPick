@@ -640,21 +640,29 @@ export type ProgressPayload =
   | { startedCount: number; stoppedCount: number; totalCount: number }
   | NunchiRoundProgress
 
-// 눈치 한 라운드의 판정 결과 — 라운드가 끝난 뒤에만 온다
+// 눈치 한 라운드의 판정 결과 — 라운드가 끝난 뒤에만 온다.
+// 명단이 4종인 이유는 혼자 누름·겹쳐 누름이 결과가 같으면서(둘 다 빠진다) 화면 표시는 달라서다.
 export interface NunchiRoundProgress {
   round: number
   verdicts: { memberId: MemberId; verdict: NunchiVerdict; elapsedMs: number | null }[]
-  // 이 라운드에 혼자 눌러 빠져나간 사람들
-  safeMemberIds: MemberId[]
+  // 혼자 눌러 빠진 사람
+  aloneMemberIds: MemberId[]
+  // 판정창 안에 겹쳐 눌러 빠진 사람. 이들이 그 자리에서 라운드를 끊었다
+  overlappedMemberIds: MemberId[]
+  // 빠진 사람 전원 — 위 둘의 합집합이라 클라가 다시 계산하지 않아도 된다
+  eliminatedMemberIds: MemberId[]
+  // 못 눌러 다음 라운드로 넘어가는 사람
+  survivingMemberIds: MemberId[]
+  nextRoundStartsAt: string | null
 }
 
-// 눈치 라운드 판정 4값. **「탈락」이 없다** — 안전 확정으로 빠지거나 후보로 남거나 둘 중 하나다
+// 눈치 라운드 판정 4값. **누르면 빠지고 못 누른 사람만 남는다** — 끝까지 못 누른 한 명이 뽑힌다
 export type NunchiVerdict =
-  // 혼자 눌러 안전 확정. 후보에서 빠진다
-  | 'SAFE'
-  // 판정창 안에 겹쳐 눌러 남는다
+  // 혼자 눌러 빠진다
+  | 'ALONE'
+  // 판정창 안에 겹쳐 눌러 빠진다. 겹치는 순간 그 라운드가 끝난다
   | 'OVERLAP'
-  // 누르지 않아 남는다
+  // 누르지 못해 다음 라운드로 남는다
   | 'NO_INPUT'
   // 최후 1인으로 뽑힌다
   | 'LAST'
@@ -803,9 +811,15 @@ export interface RecordResult {
   stats: ResultStat[]
 }
 
+// 라운드마다 진행 중 판정(NunchiRoundProgress)과 같은 명단 4종을 함께 싣는다 —
+// 결과 화면이 진행 화면과 같은 코드로 한 라운드를 그릴 수 있게 하려는 것이다
 export interface RecordRound {
   round: number
   rows: { memberId: MemberId; verdict: NunchiVerdict; elapsedMs: number | null }[]
+  aloneMemberIds: MemberId[]
+  overlappedMemberIds: MemberId[]
+  eliminatedMemberIds: MemberId[]
+  survivingMemberIds: MemberId[]
 }
 
 export type GameResult = WinnerResult | AssignResult | TallyResult | RecordResult

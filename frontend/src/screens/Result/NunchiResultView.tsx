@@ -17,18 +17,23 @@ function tileColor(avatarId: string | null | undefined) {
   return AVATAR_TILE_COLORS[(avatarId ?? '').toUpperCase()] ?? 'var(--color-lavender)'
 }
 
-// 판정 4값의 화면 문구. **이 게임에는 탈락이 없다** — 빠져나가거나 후보로 남거나 둘 중 하나다.
+// 판정 4값의 화면 문구. **누른 사람은 빠지고 못 누른 사람만 남는다.**
 function verdictLabel(verdict: NunchiVerdict) {
   switch (verdict) {
-    case 'SAFE':
-      return '✅ 혼자 눌러 안전'
+    case 'ALONE':
+      return '✅ 혼자 눌러 빠짐'
     case 'OVERLAP':
-      return '⚡ 겹쳐 누름 · 남음'
+      return '⚡ 겹쳐 눌러 빠짐'
     case 'NO_INPUT':
-      return '⏱ 안 누름 · 남음'
+      return '⏱ 못 누름 · 남음'
     case 'LAST':
       return '🎯 최후 1인'
   }
+}
+
+// 그 판정이 「빠짐」인가. 혼자든 겹쳤든 누른 사람은 전부 후보에서 빠진다
+function isOut(verdict: NunchiVerdict) {
+  return verdict === 'ALONE' || verdict === 'OVERLAP'
 }
 
 // 초 표기 — 안 누른 사람은 기록이 없다
@@ -41,13 +46,13 @@ function pressLabel(elapsedMs: number | null) {
 // 계산이 아니라 같은 payload를 세는 것뿐이라 서버 판정과 어긋날 여지는 없다.
 function verdictTiles(rounds: NunchiView['rounds']) {
   const rows = rounds.flatMap((r) => r.rows)
-  const uniqueSafe = new Set(rows.filter((r) => r.verdict === 'SAFE').map((r) => r.member.memberId))
+  const uniqueOut = new Set(rows.filter((r) => isOut(r.verdict)).map((r) => r.member.memberId))
   const count = (verdict: NunchiVerdict) => rows.filter((r) => r.verdict === verdict).length
   return [
     { label: '참가자', value: `${rounds[0]?.rows.length ?? 0}명` },
-    { label: '✅ 빠져나감', value: `${uniqueSafe.size}명` },
+    { label: '✅ 빠져나감', value: `${uniqueOut.size}명` },
     { label: '⚡ 겹쳐 누름', value: `${count('OVERLAP')}회` },
-    { label: '⏱ 안 누름', value: `${count('NO_INPUT')}회` },
+    { label: '⏱ 못 누름', value: `${count('NO_INPUT')}회` },
   ]
 }
 
@@ -67,7 +72,7 @@ export function NunchiResultView({ view, stats }: NunchiResultViewProps) {
       <section className={styles.summary}>
         <h2 className={styles.summaryTitle}>🎬 게임 종료 · {rounds.length}라운드 진행</h2>
         <span className={styles.summarySub}>
-          혼자 누르면 빠져나가고 · 겹치거나 안 누르면 그대로 남는다 · 끝까지 남은 한 명이 뽑힌다
+          혼자 누르면 통과 · 겹치면 동시 탈락 · 시간 초과 시 탈락
         </span>
         {/* 라운드 수·판정창·최종 선정은 서버가 문구까지 확정해 내려주므로 그대로 이어 붙인다 */}
         <span className={styles.summaryChip}>
@@ -91,17 +96,17 @@ export function NunchiResultView({ view, stats }: NunchiResultViewProps) {
         <h2 className={styles.roundsTitle}>◆ 라운드별 판정 기록</h2>
         <div className={styles.legend}>
           <span className={`${styles.legendPill} ${styles.legendPass}`}>✅ 혼자 눌러서 빠져나감</span>
-          <span className={`${styles.legendPill} ${styles.legendSim}`}>⚡ 겹쳐 눌러 그대로 남음</span>
-          <span className={`${styles.legendPill} ${styles.legendTimeout}`}>⏱ 안 눌러 그대로 남음</span>
+          <span className={`${styles.legendPill} ${styles.legendSim}`}>⚡ 겹쳐 눌러서 빠져나감</span>
+          <span className={`${styles.legendPill} ${styles.legendTimeout}`}>⏱ 못 눌러 그대로 남음</span>
         </div>
 
         {/* 라운드가 3개를 넘으면 이 안에서만 세로로 스크롤된다 */}
         <div className={`${styles.roundList} scroll-thin`}>
           {rounds.map((r) => {
-            const safe = r.rows.filter((row) => row.verdict === 'SAFE')
-            const stayed = r.rows.filter((row) => row.verdict !== 'SAFE')
-            // 겹쳐 누른 사람이 하나라도 있으면 그 라운드는 동시 입력으로 갈린 판이다
-            const overlapped = stayed.some((row) => row.verdict === 'OVERLAP')
+            const out = r.rows.filter((row) => isOut(row.verdict))
+            const stayed = r.rows.filter((row) => !isOut(row.verdict))
+            // 겹쳐 누른 사람이 하나라도 있으면 그 라운드는 겹침이 끊은 판이다
+            const overlapped = out.some((row) => row.verdict === 'OVERLAP')
             return (
               <div key={r.round} className={styles.round}>
                 <div className={styles.rail}>
@@ -113,12 +118,18 @@ export function NunchiResultView({ view, stats }: NunchiResultViewProps) {
                 <div className={styles.roundBody}>
                   <div className={`${styles.line} scroll-thin`}>
                     <span className={`${styles.countPill} ${styles.countPass}`}>
-                      ✅ 빠져나감 {safe.length}명
+                      ✅ 빠져나감 {out.length}명
                     </span>
-                    {safe.map((row) => (
+                    {/* 겹침이 있었던 라운드는 제한 시간을 다 쓰지 않고 그 자리에서 끝났다 */}
+                    {overlapped && (
+                      <span className={`${styles.reason} ${styles.reasonSim}`}>
+                        ⚡ 판정창 안에 겹쳐 라운드 종료
+                      </span>
+                    )}
+                    {out.map((row) => (
                       <span
                         key={row.member.memberId}
-                        className={`${styles.chip} ${styles.chipPass}`}
+                        className={`${styles.chip} ${row.verdict === 'OVERLAP' ? styles.chipSim : styles.chipPass}`}
                       >
                         <span
                           className={styles.chipAvatar}
@@ -139,15 +150,11 @@ export function NunchiResultView({ view, stats }: NunchiResultViewProps) {
                     <span className={`${styles.countPill} ${styles.countFail}`}>
                       ↩ 남음 {stayed.length}명
                     </span>
-                    <span
-                      className={`${styles.reason} ${overlapped ? styles.reasonSim : styles.reasonTimeout}`}
-                    >
-                      {overlapped ? '⚡ 판정창 안에 겹침' : '⏱ 입력 없음'}
-                    </span>
+                    <span className={`${styles.reason} ${styles.reasonTimeout}`}>⏱ 입력 없음</span>
                     {stayed.map((row) => (
                       <span
                         key={row.member.memberId}
-                        className={`${styles.chip} ${row.verdict === 'OVERLAP' ? styles.chipSim : styles.chipTimeout}`}
+                        className={`${styles.chip} ${styles.chipTimeout}`}
                       >
                         <span
                           className={styles.chipAvatar}
@@ -170,7 +177,21 @@ export function NunchiResultView({ view, stats }: NunchiResultViewProps) {
         </div>
       </section>
 
-      <ResultActions wide compact />
+      {/* 아래 밴드 왼쪽의 빈 자리 — 끝까지 못 누른 최후 1인을 세운다 */}
+      <ResultActions wide compact>
+        <span className={styles.picked}>
+          <span
+            className={styles.pickedAvatar}
+            style={{ background: tileColor(view.picked.avatarId) }}
+          >
+            <img className={styles.pickedFace} src={avatarSrc(view.picked.avatarId)} alt="" />
+          </span>
+          <span className={styles.pickedText}>
+            <span className={styles.pickedLabel}>🎯 가장 눈치 없는 사람</span>
+            <span className={styles.pickedName}>{view.picked.nickname}</span>
+          </span>
+        </span>
+      </ResultActions>
     </>
   )
 }

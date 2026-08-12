@@ -24,7 +24,7 @@ function tileColor(avatarId: string | null | undefined) {
   return AVATAR_TILE_COLORS[(avatarId ?? '').toUpperCase()] ?? 'var(--color-lavender)'
 }
 
-// 눈치게임. 판정 시간 안에 두 명 이상이 겹치면 그 인원이 통째로 탈락하고, 마지막에 남은 한 명이 최종 결과가 된다.
+// 눈치게임. UP을 누른 사람은 후보에서 빠지고, 끝까지 못 누른 한 명이 최종 결과가 된다.
 export function NunchiGame() {
   const round = useRoomStore((s) => s.round)!
   const me = useRoomStore((s) => s.me?.memberId ?? null)
@@ -35,22 +35,21 @@ export function NunchiGame() {
   const config = round.config as NunchiConfig
   const [pressed, setPressed] = useState(false)
 
-  // **이 게임에는 탈락이 없다.** 혼자 누른 사람은 안전 확정으로 후보에서 빠지고,
-  // 겹쳐 누르거나 안 누른 사람이 후보로 남아 마지막 한 명이 뽑힌다.
+  // **누른 사람은 혼자든 겹쳤든 후보에서 빠진다.** 못 누른 사람만 다음 라운드로 남는다.
   // 라운드 판정은 라운드가 끝난 뒤에만 온다 — 진행 중에 보이면 그것이 곧 정답이기 때문이다.
   const roundLog = (progress ?? null) as NunchiRoundProgress | null
-  const [safeIds, setSafeIds] = useState<MemberId[]>([])
+  const [outIds, setOutIds] = useState<MemberId[]>([])
 
-  // 판이 새로 열리면 누적한 안전 확정자를 비운다
+  // 판이 새로 열리면 누적한 탈락자를 비운다
   useEffect(() => {
-    if (round.phase === 'GUIDE') setSafeIds([])
+    if (round.phase === 'GUIDE') setOutIds([])
   }, [round.phase])
 
-  // 라운드 판정이 오면 그 회차의 안전 확정자를 누적한다
+  // 라운드 판정이 오면 그 회차에 빠진 사람을 누적한다
   useEffect(() => {
-    const safe = roundLog?.safeMemberIds
-    if (!safe || safe.length === 0) return
-    setSafeIds((prev) => [...new Set([...prev, ...safe])])
+    const out = roundLog?.eliminatedMemberIds
+    if (!out || out.length === 0) return
+    setOutIds((prev) => [...new Set([...prev, ...out])])
   }, [roundLog])
 
   // 새 라운드가 열리면 다시 누를 수 있어야 한다
@@ -59,8 +58,8 @@ export function NunchiGame() {
   }, [round.phase, round.phaseSeq])
 
   const members = round.roster
-  // 아직 뽑힐 수 있는 사람들 — 안전 확정으로 빠진 사람을 뺀 나머지다
-  const candidateIds = members.map((m) => m.memberId).filter((id) => !safeIds.includes(id))
+  // 아직 뽑힐 수 있는 사람들 — 눌러서 빠진 사람을 뺀 나머지다
+  const candidateIds = members.map((m) => m.memberId).filter((id) => !outIds.includes(id))
   const amCandidate = me !== null && candidateIds.includes(me)
   const remainMs = useRemainMs(round.deadlineAt)
 
@@ -85,7 +84,7 @@ export function NunchiGame() {
   const dotCount = candidateIds.length
   const dotGap = Math.max(4, (DOT_SPAN - dotCount * DOT_SIZE) / Math.max(1, dotCount - 1))
 
-  // 남은 전원이 같은 판정 구간에 몰리면 그 회차가 무효가 되고 방장의 결정을 기다린다
+  // 아무도 못 눌렀거나 남은 전원이 눌러버리면 그 회차로는 가릴 수 없어 방장의 결정을 기다린다
   // (전용 프레임 542:3525은 아직 미적용)
   if (round.phase === 'VOID_ROUND') {
     return (
@@ -99,7 +98,7 @@ export function NunchiGame() {
         <span className={styles.pressure} />
         <GameHud
           title="💥 무효 라운드!"
-          note="같은 판정 구간에 남은 전원이 몰려서 이 회차로는 가릴 수 없어요"
+          note="아무도 못 눌렀거나 남은 전원이 눌러버려서 이 회차로는 가릴 수 없어요"
           largeNote
           right={<HudPill>방장이 다시 할지 고르는 중</HudPill>}
         />
@@ -112,7 +111,7 @@ export function NunchiGame() {
       {/* ── 오른쪽 위 상태 알약 ── */}
       <div className={styles.hudChips}>
         <span className={styles.chipAlive}>
-          👥 남은 후보 {candidateIds.length} / {members.length} · 안전 {safeIds.length}
+          👥 남은 후보 {candidateIds.length} / {members.length} · 빠져나감 {outIds.length}
         </span>
         <span className={styles.chipTopic}>🎯 {config.topic} 뽑기</span>
       </div>
@@ -122,18 +121,16 @@ export function NunchiGame() {
         <span className={styles.howtoLabel}>◆ 이렇게 이긴다</span>
         <div className={styles.steps}>
           <span className={styles.step}>
-            <span className={`${styles.stepBadge} ${styles.stepOne}`}>1</span>아무 때나 혼자 UP! 을
-            누른다
+            <span className={`${styles.stepBadge} ${styles.stepOne}`}>1</span>아무 때나 혼자 UP! 을 누른다
           </span>
           <span className={styles.stepArrow}>→</span>
           <span className={styles.step}>
             <span className={`${styles.stepBadge} ${styles.stepTwo}`}>2</span>
-            {windowSec}초 안에 겹쳐 누르면 둘 다 그대로 남는다
+            {windowSec}초 안에 겹쳐 누르면 둘 다 탈락
           </span>
           <span className={styles.stepArrow}>→</span>
           <span className={styles.step}>
-            <span className={`${styles.stepBadge} ${styles.stepThree}`}>3</span>끝까지 남은 한 명이
-            뽑힌다
+            <span className={`${styles.stepBadge} ${styles.stepThree}`}>3</span>제한시간 까지 계속 눈치만 봐도 탈락
           </span>
         </div>
       </div>
@@ -141,8 +138,8 @@ export function NunchiGame() {
       {/* ── 참가자 카드 줄 ── */}
       <div className={styles.board}>
         {members.map((member, i) => {
-          // out은 「빠져나갔다」는 뜻이다 — 안전 확정이라 더 이상 뽑힐 일이 없다
-          const out = safeIds.includes(member.memberId)
+          // out은 「빠져나갔다」는 뜻이다 — 눌러서 후보에서 빠졌으니 더 이상 뽑힐 일이 없다
+          const out = outIds.includes(member.memberId)
           const order = orderOf.get(member.memberId)
           const state = out ? 'out' : order ? 'done' : 'wait'
           return (
@@ -159,10 +156,10 @@ export function NunchiGame() {
                 {member.memberId === me ? ' (나)' : ''}
               </span>
               <span className={styles.cardState}>
-                {out
-                  ? '✓ 안전 확정'
-                  : verdictOf.get(member.memberId) === 'OVERLAP'
-                    ? '≡ 겹쳐 누름 · 그대로 남음'
+                {verdictOf.get(member.memberId) === 'OVERLAP'
+                  ? '≡ 겹쳐 눌러 빠짐'
+                  : out
+                    ? '✓ 눌러서 빠짐'
                     : order
                       ? `${order}번째로 누름`
                       : '◌ 아직 눈치 보는 중'}
@@ -226,10 +223,10 @@ export function NunchiGame() {
             </span>
             <span className={styles.upNote}>
               {!amCandidate
-                ? '혼자 눌러 빠져나왔어요'
+                ? '눌러서 빠져나왔어요'
                 : pressed
-                  ? '눌렀어요 · 판정은 라운드가 끝난 뒤에'
-                  : '혼자 누르면 빠져나갈 수 있어요'}
+                  ? '눌렀어요'
+                  : '누르면 빠져나갈 수 있어요'}
             </span>
           </button>
         )}
@@ -293,7 +290,7 @@ export function NunchiGame() {
         }
         note={
           round.phase === 'ROUND_RESULT'
-            ? '안전 확정자를 빼고 곧 다음 라운드를 엽니다'
+            ? '누른 사람을 빼고 곧 다음 라운드를 엽니다'
             : waitingCount > 0
               ? `남은 ${waitingCount}명이 언제 누를지 아무도 몰라요`
               : '이번 라운드 판정을 기다리는 중이에요'

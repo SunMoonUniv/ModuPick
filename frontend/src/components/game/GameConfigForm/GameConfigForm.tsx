@@ -28,6 +28,12 @@ const FIELD_LABELS: Record<string, string> = {
   roundSeconds: '라운드 제한시간',
 }
 
+// 빈 칸에 띄우는 예시. 서버 기본값이 빈 문자열이라 무엇을 적는 자리인지는 이 문구가 알린다.
+const FIELD_PLACEHOLDERS: Record<string, string> = {
+  topic: '예) 팀장',
+  question: '예) 발표를 제일 잘할 것 같은 사람은?',
+}
+
 // enum 항목의 허용값별 표기. 서버는 저장값만 내려주므로 사람이 읽을 문구를 여기서 잇는다.
 const CHOICE_LABELS: Record<string, Record<string, string>> = {
   speed: { FAST: '빠르게', NORMAL: '보통', SLOW: '느리게' },
@@ -89,6 +95,7 @@ export function GameConfigForm({
               <TextField
                 value={String(values[key] ?? '')}
                 maxLength={field.maxLength ?? 12}
+                placeholder={FIELD_PLACEHOLDERS[key] ?? `예) ${labelOf(field)}`}
                 presets={TEXT_PRESETS[gameId]?.[key] ?? []}
                 onChange={(next) => onChange({ [key]: next })}
               />
@@ -159,13 +166,15 @@ export function GameConfigForm({
 interface TextFieldProps {
   value: string
   maxLength: number
+  // 빈 칸일 때 띄우는 예시 문구 — 서버 기본값이 빈 문자열이라 이 자리의 안내가 곧 기본값 역할을 한다
+  placeholder: string
   // 눌러서 값을 통째로 바꾸는 자주 쓰는 값. 비어 있으면 칩 줄을 그리지 않는다
   presets: string[]
   onChange: (next: string) => void
 }
 
 // 자주 쓰는 값 칩 + 자유 입력 칸. "직접 입력"을 고른 동안에만 입력 칸이 열리고, 프리셋을 고르면 잠긴다.
-function TextField({ value, maxLength, presets, onChange }: TextFieldProps) {
+function TextField({ value, maxLength, placeholder, presets, onChange }: TextFieldProps) {
   // 프리셋이 없는 필드는 항상 자유 입력. 처음 들어온 값이 프리셋에 없으면 직접 입력 상태로 시작한다.
   const [isCustom, setIsCustom] = useState(presets.length === 0 || !presets.includes(value))
   // 지우는 도중의 빈 칸을 담아둔다 — 서버는 빈 값을 거절하므로 화면 값과 올릴 값을 나눠야 한다
@@ -228,7 +237,7 @@ function TextField({ value, maxLength, presets, onChange }: TextFieldProps) {
           className={styles.textInput}
           value={isCustom ? draft : value}
           maxLength={maxLength}
-          placeholder="예) 오늘 청소 당번은?"
+          placeholder={placeholder}
           readOnly={!isCustom}
           tabIndex={isCustom ? undefined : -1}
           onChange={(e) => push(e.target.value)}
