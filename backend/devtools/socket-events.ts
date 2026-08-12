@@ -189,6 +189,46 @@ export interface GameActionRequest {
   payload?: Record<string, unknown> | null;
 }
 
+/** S->C game:progress — 입력이 몇 건 도착했는가. */
+export interface GameProgressData {
+  roomVersion: number;
+  roundId: string;
+  phaseSeq: number;
+  payload: Record<string, unknown>;
+}
+
+/** S->C game:tie — 동점이라 다음 회차가 열린다. */
+export interface GameTieData {
+  roomVersion: number;
+  roundId: string;
+  phaseSeq: number;
+  tieRound: number;
+  tieRoundMax: number;
+  candidateKind: string;
+  candidateIds: string[];
+  deadlineAt: string | null;
+}
+
+/** S->C game:decision_required — 자동 진행을 멈추고 방장이 고른다. */
+export interface GameDecisionRequiredData {
+  roomVersion: number;
+  roundId: string;
+  phaseSeq: number;
+  reason: string;
+  options: string[];
+  candidateKind: string;
+  candidateIds: string[];
+  deadlineAt: string;
+}
+
+/** C->S game:decide — 방장의 교착 해소 선택. */
+export interface GameDecideRequest {
+  roundId: string;
+  phaseSeq: number;
+  choice: string;
+  requestId?: string | null;
+}
+
 /** S->C game:result — 확정된 결과. */
 export interface GameResultData {
   roomVersion: number;
@@ -245,6 +285,7 @@ export interface ClientEvents {
   "game:random": Record<string, never>;
   "game:start": Record<string, never>;
   "game:action": GameActionRequest;
+  "game:decide": GameDecideRequest;
   "round:close": RoundCloseRequest;
 }
 
@@ -262,6 +303,9 @@ export interface ServerEvents {
   "game:started": GameStartedData;
   "game:phase": GamePhaseData;
   "game:tick": GameTickData;
+  "game:progress": GameProgressData;
+  "game:tie": GameTieData;
+  "game:decision_required": GameDecisionRequiredData;
   "game:result": GameResultData;
   "round:closed": RoundClosedData;
   "error": ErrorData;
