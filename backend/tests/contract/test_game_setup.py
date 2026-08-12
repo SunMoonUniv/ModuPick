@@ -53,29 +53,32 @@ class TestSchema:
         assert set(game_config.SCHEMA) == set(GameId)
 
     def test_기본값이_정본과_같다(self):
-        assert game_config.defaults(GameId.ROULETTE) == {"topic": "팀장"}
+        """**자유 입력 계열은 빈 칸으로 시작한다.** 설정 화면이 예시를 띄우므로 값을 미리
+        채워 둘 이유가 없고, 안 지우면 남의 판 문구가 그대로 나간다."""
+        assert game_config.defaults(GameId.ROULETTE) == {"topic": ""}
         assert game_config.defaults(GameId.TIMER) == {
-            "topic": "팀장", "targetSeconds": 5, "criterion": "CLOSEST",
+            "topic": "", "targetSeconds": 5, "criterion": "CLOSEST",
         }
         assert game_config.defaults(GameId.NUNCHI) == {
-            "topic": "팀장", "windowMs": 300, "roundSeconds": 15,
+            "topic": "", "windowMs": 300, "roundSeconds": 15,
         }
+        assert game_config.defaults(GameId.SNIPE)["question"] == ""
         ladder = game_config.defaults(GameId.LADDER)
-        assert ladder["topic"] == "조별과제"
+        assert ladder["topic"] == ""
         assert ladder["speed"] == "NORMAL"
-        assert ladder["resultItems"] == [
-            "팀장", "자료 조사", "PPT 제작", "발표", "디자인", "최종 정리",
-        ]
+        # 도착 항목만 값을 남긴다 — 빈 목록은 전원이 X에 배정되어 판이 무의미해진다
+        assert ladder["resultItems"] == ["팀장"]
 
     def test_사다리도_주제를_갖는다(self):
-        """**6종 전부 주제가 있다.**
+        """**6종 전부 주제 자리가 있다.**
 
         사다리는 항목 목록이 주제 역할을 한다고 보아 한동안 이 필드가 없었다. 그러나
         결과 화면(08_screen/06 배정형)과 07_api/03 §17의 ASSIGN이 topic을 요구하고,
         결과 이미지를 공유하는 것이 이 제품의 마지막 사용 흐름이라(F-RESULT-02)
-        주제 자리를 비워 둘 수 없다. 기본값은 「주제 템플릿 4계열」의 B 계열이다.
+        주제 자리를 비워 둘 수 없다. **자리가 있다는 것이지 값이 미리 차 있다는 뜻은
+        아니다** — 무엇을 적을지는 방장이 정한다.
         """
-        assert game_config.defaults(GameId.LADDER)["topic"] == "조별과제"
+        assert "topic" in game_config.defaults(GameId.LADDER)
         assert all("topic" in game_config.defaults(g) for g in GameId if g != GameId.SNIPE)
         # 저격만 주제를 question으로 부른다 — D 계열은 질문형이라 30자까지 받는다
         assert "question" in game_config.defaults(GameId.SNIPE)
@@ -83,14 +86,13 @@ class TestSchema:
     def test_기본값을_바꿔도_원본이_안_변한다(self):
         first = game_config.defaults(GameId.LADDER)
         first["resultItems"].append("오염")
-        assert len(game_config.defaults(GameId.LADDER)["resultItems"]) == 6
+        assert game_config.defaults(GameId.LADDER)["resultItems"] == ["팀장"]
 
 
 class TestValidation:
     @pytest.mark.parametrize(
         "game,patch",
         [
-            (GameId.ROULETTE, {"topic": ""}),
             (GameId.ROULETTE, {"topic": "가" * 13}),
             (GameId.ROULETTE, {"topic": 42}),
             (GameId.ROULETTE, {"없는필드": "값"}),
@@ -114,6 +116,16 @@ class TestValidation:
         with pytest.raises(errors.DomainError) as exc:
             game_config.merge(game, game_config.defaults(game), patch)
         assert exc.value.spec.code == "game.invalid_config"
+
+    def test_주제를_비워도_받는다(self):
+        """기본값이 빈 칸이고 게임 시작 직전에 저장된 설정을 그대로 다시 검증하므로
+        (round_service의 validate), 빈 문자열을 거절하면 주제를 한 번도 적지 않은 방이
+        시작되지 못한다. 목록은 여전히 비울 수 없다 — 전원이 X에 배정된다."""
+        merged = game_config.merge(
+            GameId.ROULETTE, game_config.defaults(GameId.ROULETTE), {"topic": ""}
+        )
+        assert merged == {"topic": ""}
+        assert game_config.validate(GameId.SNIPE, game_config.defaults(GameId.SNIPE))
 
     def test_불리언을_정수_열거에_넣을_수_없다(self):
         """파이썬에서 True는 1이다. 검사 순서가 틀리면 통과한다."""
@@ -172,7 +184,7 @@ class TestSelect:
                 theirs = _drain(guest_ws, "game:selected")
 
         assert mine["data"]["gameId"] == "roulette"
-        assert mine["data"]["config"] == {"topic": "팀장"}
+        assert mine["data"]["config"] == {"topic": ""}
         assert mine["data"]["configSchemaVersion"] == 1
         assert theirs["data"] == mine["data"]
 
@@ -321,9 +333,10 @@ class TestConfig:
                 "data": {"gameId": "roulette", "config": {"topic": "발표자"}},
             })
             _drain(ws, "game:config_changed")
+            # 빈 문자열은 이제 합법이라 거절 사례로 쓸 수 없다 — 길이 초과로 바꾼다
             ws.send_json({
                 "event": "game:config",
-                "data": {"gameId": "roulette", "config": {"topic": ""}},
+                "data": {"gameId": "roulette", "config": {"topic": "가" * 13}},
             })
             _drain(ws, "error")
             ws.send_json({

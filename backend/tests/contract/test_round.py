@@ -187,7 +187,7 @@ class TestStart:
             d = started["data"]
             assert d["roundId"].startswith("rnd_")
             assert d["gameId"] == "roulette"
-            assert d["config"] == {"topic": "팀장"}
+            assert d["config"] == {"topic": ""}
             assert [m["joinOrder"] for m in d["roster"]] == [1, 2, 3]
             assert _room_status(room["code"]) == "playing"
 

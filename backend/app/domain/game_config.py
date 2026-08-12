@@ -20,9 +20,10 @@ from app.domain.enums import GameId
 #: 규격이 바뀌면 올린다. game:selected가 이 값을 실어 클라이언트가 캐시한 스키마와 대조한다.
 CONFIG_SCHEMA_VERSION = 1
 
-#: 사다리 기본 항목. 05_game_rules/01_common.md의 조별과제 세트다.
-#: 프로토타입의 마지막 항목(총무)은 설계와 다르며 정본은 최종 정리다.
-LADDER_DEFAULT_ITEMS = ("팀장", "자료 조사", "PPT 제작", "발표", "디자인", "최종 정리")
+#: 사다리 기본 항목. **한 칸만 둔다** — 여섯 칸을 기본으로 채우면 방 인원보다 많아져
+#: 방장이 지우기 전까지 설정 화면이 인원과 어긋난 목록을 보여준다. 빈 목록은 전원이 X에
+#: 배정되어 판이 무의미해지므로(아래 string_list 검증) 자유 입력 계열 중 이 항목만 값을 남긴다.
+LADDER_DEFAULT_ITEMS = ("팀장",)
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,8 +55,12 @@ def _bool(name: str, default: bool) -> FieldSpec:
 
 
 #: gameId -> 항목 목록. 합계 16개다.
+#:
+#: **자유 입력 계열(string)의 기본값은 빈 문자열이다.** 값을 미리 채워 두면 방장이 지우고
+#: 쓰는 품이 들고, 안 지우면 남의 판에 쓰던 문구가 그대로 나간다. 설정 화면이 빈 칸에
+#: 예시(placeholder)를 띄우므로 무엇을 적는 자리인지는 값 없이도 전달된다.
 SCHEMA: dict[GameId, tuple[FieldSpec, ...]] = {
-    GameId.ROULETTE: (_s("topic", "팀장", 12),),
+    GameId.ROULETTE: (_s("topic", "", 12),),
     GameId.LADDER: (
         # 사다리에도 주제를 둔다. 05_game_rules/01_common.md 「게임별 설정」 표는
         # 사다리 주제를 "항목 목록"으로 적어 별도 필드를 두지 않았지만, 같은 문서의
@@ -64,7 +69,7 @@ SCHEMA: dict[GameId, tuple[FieldSpec, ...]] = {
         # 판이었는지 알 수 없으면 저장해 공유할 이유가 없다**(F-RESULT-02)는 쪽을
         # 따랐다. 세트를 고르면 항목이 함께 채워지는 것은 설정 화면이 하며 서버는
         # 두 항목을 독립으로 받는다 — 강제하면 직접 입력 주제로 항목을 못 바꾼다.
-        _s("topic", "조별과제", 12),
+        _s("topic", "", 12),
         FieldSpec(
             name="resultItems",
             kind="string_list",
@@ -74,17 +79,17 @@ SCHEMA: dict[GameId, tuple[FieldSpec, ...]] = {
         _enum("speed", "NORMAL", ("FAST", "NORMAL", "SLOW")),
     ),
     GameId.KINGMAKER: (
-        _s("topic", "팀명", 12),
+        _s("topic", "", 12),
         _enum("votesPerMember", 1, (1, 2, 3)),
         _bool("revealAuthors", False),
     ),
     GameId.TIMER: (
-        _s("topic", "팀장", 12),
+        _s("topic", "", 12),
         _enum("targetSeconds", 5, (5, 7, 10)),
         _enum("criterion", "CLOSEST", ("CLOSEST", "FARTHEST")),
     ),
     GameId.SNIPE: (
-        _s("question", "발표를 제일 잘할 것 같은 사람은?", 30),
+        _s("question", "", 30),
         FieldSpec(name="voteSeconds", kind="int", default=10, minimum=5, maximum=60),
         _bool("multiVote", False),
         # revealVoters(지목자 공개)는 두지 않는다. 원 기획에 없던 항목이며
@@ -94,7 +99,7 @@ SCHEMA: dict[GameId, tuple[FieldSpec, ...]] = {
         # 안건 제출자 공개와 사람 지목 공개는 성격이 다르고 그쪽은 원 기획에 있었다.
     ),
     GameId.NUNCHI: (
-        _s("topic", "팀장", 12),
+        _s("topic", "", 12),
         _enum("windowMs", 300, (300, 500)),
         _enum("roundSeconds", 15, (10, 15, 20)),
     ),
@@ -127,10 +132,13 @@ def _check(spec: FieldSpec, value: Any) -> Any:
         return value
 
     if spec.kind == "string":
+        # **빈 문자열을 받는다.** 기본값이 빈 칸이고 게임 시작 직전에 저장된 설정을 그대로
+        # 다시 검증하므로(round_service의 validate), 여기서 거절하면 주제를 한 번도 적지
+        # 않은 방이 시작되지 못한다. 지워서 비워 두는 것도 방장의 선택이다.
         if not isinstance(value, str):
             raise _invalid()
         text = value.strip()
-        if not text or len(text) > (spec.max_len or 0):
+        if len(text) > (spec.max_len or 0):
             raise _invalid()
         return text
 

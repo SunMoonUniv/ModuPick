@@ -366,7 +366,7 @@ class TestResult:
             result = self._decided(host_ws, guests, started)["result"]
 
             assert set(result) == {"topic", "winnerMemberId", "detail", "stats"}
-            assert result["topic"] == "발표를 제일 잘할 것 같은 사람은?"
+            assert result["topic"] == ""
             assert set(result["detail"]) == {"tally", "abstainCount", "randomFallback"}
             # 저장은 hitCount, 와이어는 hits다
             assert all(set(r) == {"memberId", "hits"} for r in result["detail"]["tally"])

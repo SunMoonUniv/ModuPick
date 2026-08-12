@@ -299,7 +299,7 @@ class TestResult:
             assert frame["variant"] == "RECORD"
             result = frame["result"]
             assert set(result) == {"topic", "pickedMemberId", "rounds", "stats"}
-            assert result["topic"] == "팀장"
+            assert result["topic"] == ""
             # 끝까지 누르지 못한 사람이 뽑힌다
             assert result["pickedMemberId"] == _members(started)[-1]
             assert all(
