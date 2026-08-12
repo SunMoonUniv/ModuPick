@@ -3,7 +3,6 @@ import { useEffect, useRef, useState } from 'react'
 import { GameHud, HudPill } from '../../../components/common'
 import {
   ballotIcon,
-  crownIcon,
   lightbulbIcon,
   starIcon,
   starPinkIcon,
@@ -122,7 +121,7 @@ interface VoteStageProps {
   onSubmit: () => void
 }
 
-// 투표 단계 (S-07 · Figma 878:684). 왼쪽은 실시간 득표 현황, 오른쪽은 내 투표용지.
+// 투표 단계 (S-07 · Figma 878:684). 왼쪽은 투표 참여 현황, 오른쪽은 내 투표용지.
 function VoteStage({
   options,
   myText,
@@ -145,6 +144,8 @@ function VoteStage({
   const counts = (progress ?? null) as { votedCount?: number; totalCount?: number } | null
   const doneCount = counts?.votedCount ?? 0
   const totalCount = counts?.totalCount ?? round.roster.length
+  const leftCount = Math.max(0, totalCount - doneCount)
+  const percent = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0
 
   return (
     <>
@@ -168,52 +169,48 @@ function VoteStage({
         ◷ 집계 중 · {doneCount}/{totalCount} 투표
       </span>
 
-      {/* ── 진행 현황 ── 서버가 중간 득표를 감추므로 순위 대신 참여 현황만 그린다 */}
-      <section className={styles.spotlight}>
-        <div className={styles.spotlightMain}>
-          <span className={styles.chipRow}>
-            <span className={styles.chipTop}>
-              <img src={crownIcon} alt="" />
-              개표는 마감 뒤에
+      {/* ── 왼쪽 세로단 ── 서버가 항목별 득표를 감추므로 순위 대신 참여 현황만 그린다 */}
+      <div className={styles.voteLeft}>
+        <section className={styles.voteBoard}>
+          <span className={styles.voteBadgeSlot}>
+            <span className={styles.voteBadge}>
+              <img src={ballotIcon} alt="" />
+              VOTE!
             </span>
-            <span className={styles.chipRule}>1인 {voteLimit}표 · 익명</span>
           </span>
-          <h2 className={styles.topText}>후보 {options.length}개</h2>
-          <span className={styles.topBar}>
-            <i style={{ width: `${totalCount > 0 ? (doneCount / totalCount) * 100 : 0}%` }} />
-          </span>
-          <p className={styles.topNote}>
-            {doneCount === 0
-              ? '🔥 아직 아무도 안 눌렀어요'
-              : `🔥 아직 ${Math.max(0, totalCount - doneCount)}명이 안 눌렀어요`}
+
+          <div className={styles.boardHead}>
+            <h2>◆ 투표 진행 현황</h2>
+            <p>누가 무엇에 투표했는지는 비공개예요 · 결과는 모두 투표한 뒤 한 번에 공개돼요</p>
+          </div>
+
+          <div className={styles.countRow}>
+            <b>{doneCount}</b>
+            <em>/ {totalCount}명 투표 완료</em>
+          </div>
+
+          <div className={styles.progressRow}>
+            <span className={styles.progressGroove}>
+              <i style={{ width: `${percent}%` }} />
+            </span>
+            <b>{percent}%</b>
+          </div>
+
+          <p className={styles.boardFoot}>
+            {leftCount > 0
+              ? `★ ${leftCount}명만 더 투표하면 결과가 공개돼요`
+              : '★ 모두 투표했어요 · 곧 결과가 공개돼요'}
           </p>
+        </section>
+
+        {/* ── 남은 시간 바 ── */}
+        <div className={styles.timerBar}>
+          <h3>◷ 남은 시간</h3>
+          <span className={styles.timerGroove}>
+            <i style={{ width: `${fullMs.current > 0 ? (remain / fullMs.current) * 100 : 100}%` }} />
+          </span>
+          <b>{mmss(remain)}</b>
         </div>
-        <span className={styles.topCount}>
-          {doneCount}/{totalCount}
-        </span>
-      </section>
-
-      <span className={styles.voteBadge}>
-        <img src={ballotIcon} alt="" />
-        VOTE!
-      </span>
-
-      {/* ── 후보 목록 ── 득표를 감추므로 등수 없이 서버가 섞어 준 순서 그대로 세운다 */}
-      <div className={`${styles.ranks} scroll-thin`}>
-        <div className={styles.rankGroup}>
-          {options.map((o, i) => (
-            <CandidateRow key={o.optionId} index={i + 1} text={o.text} />
-          ))}
-        </div>
-      </div>
-
-      {/* ── 남은 시간 바 ── */}
-      <div className={styles.timerBar}>
-        <h3>◷ 남은 시간</h3>
-        <span className={styles.timerGroove}>
-          <i style={{ width: `${fullMs.current > 0 ? (remain / fullMs.current) * 100 : 100}%` }} />
-        </span>
-        <b>{mmss(remain)}</b>
       </div>
 
       {/* ── 오른쪽 내 투표용지 ── */}
@@ -274,19 +271,6 @@ function VoteStage({
         right={<HudPill raised>★ 누가 뭘 골랐는지 아무도 몰라요</HudPill>}
       />
     </>
-  )
-}
-
-// 후보 한 줄 — 번호 배지와 안건 이름. 득표는 마감 전까지 서버가 내려주지 않아 자리를 비운다
-function CandidateRow({ index, text }: { index: number; text: string }) {
-  return (
-    <div className={styles.rankRow}>
-      <span className={styles.rankBadge}>{index}</span>
-      <span className={styles.rankText}>{text}</span>
-      <span className={styles.rankBar}>
-        <em>개표 전</em>
-      </span>
-    </div>
   )
 }
 
