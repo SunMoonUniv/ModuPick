@@ -7,7 +7,7 @@
 
 교착 탈출(game:decision_required · game:decide)은 test_game_snipe.py가 이미 본다.
 여기서는 **눈치에만 있는 것**을 본다 — 누르면 빠진다 · 겹침이 라운드를 끊는다 ·
-한 명 남으면 끊는다 · 진행 중 집계 비노출 · 빠진 사람의 재입력 차단.
+한 명 남으면 끊는다 · 누를 때마다 통과자가 나간다 · 빠진 사람의 재입력 차단.
 
 **라운드를 끊는 트리거가 셋이다.** 겹침 · 생존자 한 명 남음 · 제한 시간 마감.
 그래서 테스트는 누를 사람 수를 세어 가며 눌러야 한다 — 생존자 n명 방에서 n-1명이
@@ -97,6 +97,19 @@ def _verdicts(payload) -> dict[str, str]:
     return {v["memberId"]: v["verdict"] for v in payload["verdicts"]}
 
 
+def _closed(ws, tries: int = 24) -> dict:
+    """라운드가 마감된 집계 프레임까지 흘려 읽는다.
+
+    **누를 때마다 도중 집계가 먼저 나가므로 첫 game:progress는 마감 프레임이 아니다.**
+    두 프레임은 모양이 같고 다음 라운드 시작 시각이 실린 쪽만 마감 프레임이다.
+    """
+    for _ in range(tries):
+        payload = _drain(ws, "game:progress", tries=tries)["data"]["payload"]
+        if payload["nextRoundStartsAt"] is not None:
+            return payload
+    pytest.fail("마감 집계가 오지 않았다")
+
+
 # ── 자동 전이 ──────────────────────────────────────────────────────────────
 
 
@@ -111,20 +124,26 @@ class TestAutoPhases:
 
 
 class TestInput:
-    def test_진행_중에는_집계가_나가지_않는다(self, client, fast):
-        """**누가 이미 눌렀다는 사실 자체가 정답이다**(07_api/03 §14).
+    def test_누를_때마다_통과한_사람이_나간다(self, client, fast):
+        """**누른 사람은 그 자리에서 통과가 확정이다.** 라운드가 끝나기를 기다리지 않는다.
 
-        다른 게임은 입력이 도착할 때마다 집계를 보내지만 이 게임만 보내지 않는다.
+        누구인지까지 싣는다 — 누르면 무조건 빠지는 구조라(D-38) 남이 이미 눌렀다는
+        것을 알아도 얻을 것이 없다. 모양은 마감 프레임과 같고 화면이 골라 쓴다.
         """
         with playing(client, 4, "nunchi", {"roundSeconds": 20}) as (
             _r, _m, host_ws, _g, started,
         ):
             seq = _to_round(host_ws)["data"]["phaseSeq"]
+            host = _members(started)[0]
             _up(host_ws, started, seq)
 
-            # 라운드가 아직 살아 있는 동안에는 어떤 프레임도 오지 않는다
-            host_ws.send_json({"event": "chat:send", "data": {"text": "누가 눌렀나요"}})
-            assert host_ws.receive_json()["event"] == "chat:message"
+            payload = _drain(host_ws, "game:progress", tries=12)["data"]["payload"]
+            assert payload["pressedCount"] == 1
+            assert payload["eliminatedMemberIds"] == [host]
+            assert host not in payload["survivingMemberIds"]
+            # 라운드가 아직 살아 있으므로 다음 라운드 시작 시각은 아직 없다
+            assert payload["nextRoundStartsAt"] is None
+            assert _verdicts(payload)[host] == "ALONE"
 
     def test_같은_라운드에_두_번_누르면_거절한다(self, client, fast):
         with playing(client, 4, "nunchi", {"roundSeconds": 20}) as (
@@ -150,13 +169,14 @@ class TestRounds:
             members = _members(started)
             _spread([host_ws, guests[0]], started, seq)
 
-            progress = _drain(host_ws, "game:progress", tries=12)["data"]
-            payload = progress["payload"]
+            payload = _closed(host_ws)
             assert set(payload) == {
-                "round", "verdicts", "aloneMemberIds", "overlappedMemberIds",
-                "eliminatedMemberIds", "survivingMemberIds", "nextRoundStartsAt",
+                "round", "pressedCount", "verdicts", "aloneMemberIds",
+                "overlappedMemberIds", "eliminatedMemberIds", "survivingMemberIds",
+                "nextRoundStartsAt",
             }
             assert payload["round"] == 1
+            assert payload["pressedCount"] == 2
             # 둘 다 혼자 눌러 빠졌고 겹친 사람은 없다
             assert payload["aloneMemberIds"] == members[:2]
             assert payload["overlappedMemberIds"] == []
@@ -178,7 +198,7 @@ class TestRounds:
             _up(host_ws, started, seq)
             _up(guests[0], started, seq)
 
-            payload = _drain(host_ws, "game:progress", tries=12)["data"]["payload"]
+            payload = _closed(host_ws)
             assert sorted(payload["overlappedMemberIds"]) == sorted(members[:2])
             assert payload["aloneMemberIds"] == []
             assert sorted(payload["survivingMemberIds"]) == sorted(members[2:])
@@ -201,11 +221,12 @@ class TestRounds:
             members = _members(started)
             _spread([host_ws, guests[0]], started, seq)
 
-            _drain(host_ws, "game:progress", tries=12)
+            _closed(host_ws)
 
             # 라운드가 이미 끝나 단계가 넘어갔으므로 마지막 사람의 UP은 받지 않는다
+            # (도중 집계까지 쌓여 있어 error 앞의 프레임이 여럿이다)
             _up(guests[1], started, seq)
-            assert _drain(guests[1], "error", tries=8)["code"] == "game.stale_phase"
+            assert _drain(guests[1], "error", tries=20)["code"] == "game.stale_phase"
             assert _drain(host_ws, "game:result", tries=16)["data"][
                 "result"
             ]["pickedMemberId"] == members[2]
@@ -220,7 +241,7 @@ class TestRounds:
             members = _members(started)
             _up(host_ws, started, seq)  # 방장만 누르고 마감을 기다린다
 
-            payload = _drain(host_ws, "game:progress", tries=14)["data"]["payload"]
+            payload = _closed(host_ws)
             assert payload["eliminatedMemberIds"] == [members[0]]
             verdicts = _verdicts(payload)
             assert verdicts[members[1]] == "NO_INPUT"
@@ -275,7 +296,7 @@ class TestVoidRound:
 
             # 생존자가 그대로라 전원이 다시 누를 수 있고, 라운드 번호는 1 오른다
             _spread([host_ws, guests[0]], started, frame["data"]["phaseSeq"])
-            payload = _drain(host_ws, "game:progress", tries=12)["data"]["payload"]
+            payload = _closed(host_ws)
             assert payload["round"] == 2
 
 
