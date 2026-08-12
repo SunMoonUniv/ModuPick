@@ -150,6 +150,20 @@
 - 제출자 이름은 `revealAuthors`가 참일 때만 `authorMemberId`로 붙고, 거짓이면 **필드 자체가 없다.** 2번·3번 모두 같다
 - 투표자는 어느 설정에서도, 세 이벤트 어디에도 나가지 않는다
 
+### ⑤ 사다리 항목 0개 — **서버가 이미 막고 있다**
+
+빈 목록으로 `game:config`를 보내면 `game.invalid_config`로 거절된다(`domain/game_config.py`). 채울 원본이 없으면 참가자 전원이 X에 배정되어 판이 무의미해지기 때문이다.
+
+```
+{"resultItems": []}       → game.invalid_config
+{"resultItems": ["  "]}   → game.invalid_config   (공백만인 항목도)
+{"resultItems": ["하나"]} → 통과                   (참가자 수와 달라도 된다)
+```
+
+**참가자 수와의 불일치는 막지 않는다** — 모자라면 X로 채우고 넘치면 뒤에서 자르는 일을 게임 시작 시점에 서버가 한다. 항목 3개로 6인 판을 시작하는 것은 정상 경로다.
+
+임시 서버가 이 검증을 하지 않았을 수 있다. 실제 백엔드에 붙이면 거절되므로 **화면은 그 에러 코드를 문구로 매핑해 두면 된다.** `GameConfigForm`의 `minItems`가 이미 마지막 항목의 삭제 버튼을 감추고 있어(`GameConfigForm.tsx:149`) 정상 조작으로는 도달하지 않는다.
+
 ### ④ `game:result.roundElapsedMs` — **없다. 넣을 수 있다**
 
 현재 `game:result`는 `roomVersion · roundId · gameId · variant · result · finishedAt`이다. 한 판에 걸린 시간은 라운드 시작 시각을 서버가 들고 있으므로 추가에 부담이 없다. **필요하다고 확정해 주면 넣는다** — `07_api/03` 갱신이 함께 간다.
