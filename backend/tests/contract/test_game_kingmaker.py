@@ -263,6 +263,74 @@ class TestResult:
         del config_reveal
         return _drain(host_ws, "game:result", tries=16)["data"]
 
+    def test_개표_값이_TALLY_전이에_실린다(self, client, fast):
+        """**결과 이벤트는 이 단계가 끝난 뒤에 온다** — 그때 받으면 개표 연출을
+        시작할 자리가 없다. 룰렛 SPINNING·사다리 DRAWING과 같은 자리다(07_api/03 §12).
+
+        투표가 이미 마감된 뒤라 중간 집계 비공개(REQ-GLB-14)에 걸리지 않는다.
+        """
+        with playing(client, 3, "kingmaker") as (_r, _m, host_ws, guests, started):
+            seq = _to_submit(host_ws)["data"]["phaseSeq"]
+            _catch_up(guests)
+            vote = _submit_all(host_ws, guests, started, seq, ["가", "나", "다"])
+            cards = {c["label"]: c["optionId"] for c in vote["data"]["payload"]["candidates"]}
+            vseq = vote["data"]["phaseSeq"]
+            _vote(host_ws, started, vseq, [cards["나"]])
+            _vote(guests[0], started, vseq, [cards["다"]])
+            _vote(guests[1], started, vseq, [cards["나"]])
+
+            frame = _drain(host_ws, "game:phase", tries=16)
+            assert frame["data"]["phase"] == "TALLY"
+
+            payload = frame["data"]["payload"]
+            assert set(payload) == {"rows", "winnerCandidateId"}
+            assert payload["winnerCandidateId"] == cards["나"]
+            assert payload["rows"][0]["text"] == "나"
+            assert payload["rows"][0]["votes"] == 2
+            # 익명 기본값이므로 제출자 자리가 없고, 투표자는 어느 설정에서도 없다
+            assert all(set(r) == {"candidateId", "text", "votes"} for r in payload["rows"])
+            assert "voter" not in str(payload)
+
+    def test_TALLY_값이_결과와_같다(self, client, fast):
+        """두 곳에서 각자 만들면 연출이 그린 수치와 결과 화면이 갈라진다."""
+        with playing(client, 3, "kingmaker") as (_r, _m, host_ws, guests, started):
+            seq = _to_submit(host_ws)["data"]["phaseSeq"]
+            _catch_up(guests)
+            vote = _submit_all(host_ws, guests, started, seq, ["가", "나", "다"])
+            cards = {c["label"]: c["optionId"] for c in vote["data"]["payload"]["candidates"]}
+            vseq = vote["data"]["phaseSeq"]
+            _vote(host_ws, started, vseq, [cards["나"]])
+            _vote(guests[0], started, vseq, [cards["다"]])
+            _vote(guests[1], started, vseq, [cards["나"]])
+
+            tally = _drain(host_ws, "game:phase", tries=16)["data"]["payload"]
+            result = _drain(host_ws, "game:result", tries=16)["data"]["result"]
+
+            assert tally["rows"] == result["rows"]
+            assert tally["winnerCandidateId"] == result["winnerCandidateId"]
+
+    def test_결선_전이에는_개표_값이_실리지_않는다(self, client, fast):
+        """RUNOFF는 표를 다시 받는 단계다. 여기 득표를 실으면 중간 집계가 샌다."""
+        with playing(client, 3, "kingmaker") as (_r, _m, host_ws, guests, started):
+            seq = _to_submit(host_ws)["data"]["phaseSeq"]
+            _catch_up(guests)
+            vote = _submit_all(host_ws, guests, started, seq, ["가", "나", "다"])
+            cards = {c["label"]: c["optionId"] for c in vote["data"]["payload"]["candidates"]}
+            vseq = vote["data"]["phaseSeq"]
+            # 순환 투표로 셋 다 1표 — 3중 동점이라 결선으로 간다.
+            # 제출 순서가 방장 가 · 참가1 나 · 참가2 다이고 자기 안건은 고를 수 없다
+            _vote(host_ws, started, vseq, [cards["나"]])
+            _vote(guests[0], started, vseq, [cards["다"]])
+            _vote(guests[1], started, vseq, [cards["가"]])
+
+            frame = _drain(host_ws, "game:phase", tries=16)
+            if frame["data"]["phase"] == "TIE_NOTICE":
+                frame = _drain(host_ws, "game:phase", tries=16)
+            assert frame["data"]["phase"] == "RUNOFF"
+            payload = frame["data"]["payload"] or {}
+            assert "rows" not in payload
+            assert "votes" not in str(payload)
+
     def test_와이어_모양이_정본과_같다(self, client, fast):
         with playing(client, 3, "kingmaker") as (_r, _m, host_ws, guests, started):
             frame = self._decided(host_ws, guests, started)
