@@ -53,7 +53,7 @@ async function spawn(index) {
   })
 
   const ws = new WebSocket(`${wsBase}/ws/rooms/${code}`)
-  const bot = { nickname, ws, memberId: null, round: null }
+  const bot = { nickname, index, ws, memberId: null, round: null }
 
   const send = (event, data) => {
     if (ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify({ event, data }))
@@ -93,6 +93,11 @@ function act(bot, send, type, payload) {
     payload: payload ?? {},
   })
 }
+
+// 교착 검증 모드. 동점·무효 라운드는 우연히 기다리면 좀처럼 나지 않으므로 일부러 만든다 —
+// 저격·킹메이커는 순환 지목·순환 투표로 전원 1표씩, 시간초는 같은 기록으로, 눈치는
+// 아무도 누르지 않아 안전 확정자 0인 무효 라운드를 만든다. TIE=1로 켠다.
+const TIE = process.env.TIE === '1'
 
 // 사람이 누르는 시늉 — 전원이 같은 순간에 누르면 눈치게임이 매번 겹침 판정이 된다
 const soon = (fn, min, max) => setTimeout(fn, min + Math.random() * (max - min))
@@ -142,7 +147,10 @@ function play(bot, phase, payload, send) {
       const candidates = payload?.candidates ?? []
       // 자기 안건에는 투표할 수 없다(vote.self_not_allowed) — 본문으로 걸러 낸다
       const votable = candidates.filter((c) => c.label !== `${bot.nickname}의 의견`)
-      const pick = votable[Math.floor(Math.random() * votable.length)]
+      // 교착 모드에서는 자기 다음 순번에 몰아 준다 — 전원이 1표씩 받아 동점이 된다
+      const pick = TIE
+        ? votable[bot.index % votable.length]
+        : votable[Math.floor(Math.random() * votable.length)]
       if (pick) soon(() => act(bot, send, 'king.vote', { candidateIds: [pick.optionId] }), 500, 2000)
     }
   }
@@ -156,7 +164,7 @@ function play(bot, phase, payload, send) {
       // **elapsedMs를 같이 보낸다** — 빼면 서버가 자기 관측값을 쓰면서 game.elapsed_rejected를 통지한다
       setTimeout(
         () => act(bot, send, 'timer.stop', { elapsedMs: Date.now() - startedAt }),
-        targetMs + (Math.random() * 800 - 400),
+        TIE ? targetMs : targetMs + (Math.random() * 800 - 400),
       )
     }, 200, 900)
   }
@@ -164,13 +172,17 @@ function play(bot, phase, payload, send) {
   if (gameId === 'snipe' && (phase === 'VOTE' || phase === 'RUNOFF')) {
     // **빈 배열은 기권이 아니라 거절이다**(vote.limit_exceeded). 기권은 아예 보내지 않는 것이다.
     const targets = (bot.roster ?? []).filter((id) => id !== bot.memberId)
-    const target = targets[Math.floor(Math.random() * targets.length)]
+    // 교착 모드에서는 명단 순서로 다음 사람을 지목한다 — 표가 흩어져 동점이 난다
+    const target = TIE
+      ? targets[bot.index % targets.length]
+      : targets[Math.floor(Math.random() * targets.length)]
     if (target) soon(() => act(bot, send, 'snipe.vote', { targetMemberIds: [target] }), 600, 2500)
   }
 
   if (gameId === 'nunchi' && phase === 'ROUND') {
-    // 흩어진 시각에 눌러야 혼자 누른 사람이 생기고 게임이 진행된다
-    soon(() => act(bot, send, 'nunchi.up'), 800, 6000)
+    // 흩어진 시각에 눌러야 판이 굴러간다. 교착 모드에서는 아무도 누르지 않아
+    // 안전 확정자 0인 무효 라운드를 만든다(방장도 누르지 않아야 한다)
+    if (!TIE) soon(() => act(bot, send, 'nunchi.up'), 800, 6000)
   }
 }
 
