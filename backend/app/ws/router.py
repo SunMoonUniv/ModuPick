@@ -19,11 +19,14 @@ from fastapi import WebSocket, WebSocketDisconnect
 from pydantic import ValidationError
 from sqlalchemy import select
 
+from app.config import settings
 from app.domain import errors, state_machine
 from app.domain.enums import RoomStatus
+from app.infra.clock import clock
 from app.infra.db.session import readonly
 from app.infra.db.tables import participants, rooms
 from app.infra.memory.runtime_store import store
+from app.infra.metrics import dispatch_latency
 from app.schemas.events import (
     AuthRequest,
     ChatSendRequest,
@@ -288,7 +291,11 @@ async def _handle_game_decide(conn: SocketConn, data: dict) -> None:
     )
 
 
-#: 인증 이후에 받는 이벤트.
+#: 인증 이후에 받는 이벤트. **C→S 12종과 정확히 일치해야 한다**
+#: (tests/domain/test_type_generator.py가 devtools/gen_socket_types.py의
+#: CLIENT_EVENTS와 이 dict의 키 집합이 같은지 대조한다). devtools 전용 진단
+#: 이벤트(아래 DEVTOOLS_METRICS_EVENT)를 여기 넣지 않는 이유가 그것이다 — 정식
+#: 프로토콜 표면이 아니므로 그 대조에 끼면 안 된다.
 _HANDLERS = {
     "chat:send": _handle_chat_send,
     "chat:typing": _handle_chat_typing,
@@ -302,6 +309,39 @@ _HANDLERS = {
     "game:decide": _handle_game_decide,
     "round:close": _handle_round_close,
 }
+
+#: devtools 전용 진단 이벤트명. C→S 12종에 속하지 않으므로 `_HANDLERS`·`_ACTIONS`에
+#: 넣지 않고 serve()의 수신 루프에서 직접 가로챈다(아래 _maybe_serve_devtools_query).
+#: devtools/console.html이 OpenAPI 스키마 밖에 있는 것(main.py의
+#: include_in_schema=False)과 같은 이유다 — 문서화된 프로토콜이 아니라 검증
+#: 도구 전용 조회 경로다.
+DEVTOOLS_METRICS_EVENT = "devtools:metrics"
+
+
+async def _maybe_serve_devtools_query(conn: SocketConn, event: str) -> bool:
+    """devtools 전용 조회를 상태 게이트·`_dispatch` 바깥에서 처리한다.
+
+    **`_dispatch`를 거치지 않는 이유는 셋이다.**
+    1. `_HANDLERS`에 넣으면 위 대조 테스트가 깨진다(정식 12종이 아니다).
+    2. 상태 전표(`_ACTIONS`)에 없는 이벤트라 어차피 게이트를 타지 않지만, 그렇다고
+       `_dispatch`의 처리 지연 표본에 이 조회 자체가 섞이면 계측이 스스로를 재는
+       잡음이 낀다.
+    3. 처리할 값이 이미 계산돼 있는 조회라 실패 분기(DomainError 등)를 태울 이유가
+       없다.
+
+    devtools_enabled가 꺼져 있으면 **이 이벤트를 아예 모르는 척한다** — 다른
+    미등록 이벤트와 똑같이 game.invalid_action을 돌려준다. 그래야 꺼진 배포
+    환경에서 devtools 전용 채널이 존재한다는 사실 자체가 새지 않는다.
+    """
+    if event != DEVTOOLS_METRICS_EVENT:
+        return False
+    if settings.devtools_enabled:
+        await conn.ws.send_text(
+            outgoing("devtools:dispatch_metrics", {"samples": dispatch_latency.snapshot()})
+        )
+    else:
+        await _send_error(conn, errors.GAME_INVALID_ACTION, event)
+    return True
 
 
 #: 소켓 이벤트를 전표의 이벤트로 옮긴다. 여기 없는 것은 상태 게이트를 타지 않는다.
@@ -356,12 +396,19 @@ async def _dispatch(conn: SocketConn, event: str, data: dict) -> None:
 
     상태 전표를 **먼저** 본다. 빠른 실패용이며, 최종 판정은 서비스가 잠근 뒤에
     다시 한다 — 정원·준비 상태는 검사와 커밋 사이에 바뀔 수 있다.
+
+    **이 함수의 진입~반환 구간이 REQ-NFR-01 서버 내부 처리 축의 측정 구간이다**
+    (프레임 도착 → 처리완료). 성공이든 실패든 클라이언트 입장에서는 "보내고 나서
+    뭔가 돌아오기까지"가 같은 기다림이므로 에러 분기도 포함해서 잰다. 미등록
+    이벤트(handler is None)는 상태 게이트조차 타지 않는 규약 위반에 가까운 경로라
+    빼고 잰다 — 그건 서버가 "처리"한 것이 아니라 즉시 거절한 것이다.
     """
     handler = _HANDLERS.get(event)
     if handler is None:
         await _send_error(conn, errors.GAME_INVALID_ACTION, event)
         return
 
+    started_ms = clock.monotonic_ms()
     try:
         phase = _phase_of(conn.room_id)
         action = _action_of(event, phase)
@@ -378,6 +425,11 @@ async def _dispatch(conn: SocketConn, event: str, data: dict) -> None:
         # 유예를 거쳐 이탈 확정된다.
         log.exception("이벤트 처리 실패 — event=%s room=%s", event, conn.room_code)
         await _send_error(conn, errors.COMMON_INTERNAL, event)
+    finally:
+        # 단조 시계 읽기 1회 + list append 1회뿐이다(devtools_enabled가 꺼져 있으면
+        # 그마저도 dispatch_latency.record 안에서 즉시 반환한다). 처리 경로에
+        # 새 지연을 더하지 않는다.
+        dispatch_latency.record(event, clock.monotonic_ms() - started_ms)
 
 
 async def _send_error(
@@ -419,6 +471,8 @@ async def serve(ws: WebSocket, code: str) -> None:
             except ProtocolError as exc:
                 await _reject(ws, exc.spec, exc.close_code)
                 return
+            if await _maybe_serve_devtools_query(conn, event):
+                continue
             await _dispatch(conn, event, data)
 
     except WebSocketDisconnect as exc:

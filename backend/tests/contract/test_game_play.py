@@ -157,6 +157,35 @@ class TestPick:
             _pick(host_ws, started, armed["data"]["phaseSeq"] - 1)
             assert _drain(host_ws, "error")["code"] == "game.stale_phase"
 
+    def test_지난_phaseSeq_입력은_판정에_반영되지_않는다(self, client, fast, monkeypatch):
+        """AC-25. 단계 마감 1ms 뒤에 도착한 입력은 그사이 서버가 다음 phaseSeq로
+        넘어가 있어 지난 phaseSeq를 실은 셈이 된다. **game.round_already_ended가
+        아니라 game.stale_phase다** — 라운드는 그대로이고 단계만 지났다
+        (02_error_codes.md:111). 거절로 끝나는지뿐 아니라 판정 함수가 받는 입력
+        배열에 실제로 섞이지 않는지까지 본다.
+        """
+        seen: list = []
+        original = roulette.judge
+
+        def spy(ctx, inputs=()):
+            seen.extend(inputs)
+            return original(ctx, inputs)
+
+        monkeypatch.setattr(roulette, "judge", spy)
+
+        with playing(client, 2) as (_room, _members, host_ws, _guests, started):
+            armed = _to_armed(host_ws)
+            seq = armed["data"]["phaseSeq"]
+
+            _pick(host_ws, started, seq - 1)  # 지난 단계의 입력
+            assert _drain(host_ws, "error")["code"] == "game.stale_phase"
+
+            _pick(host_ws, started, seq)  # 정상 phaseSeq로 다시 보낸다
+            _drain(host_ws, "game:phase")  # SPINNING
+
+        picks = [i for i in seen if i.kind == "roulette.pick"]
+        assert len(picks) == 1
+
     def test_다른_판의_입력은_round_not_found다(self, client, fast):
         with playing(client, 2) as (_room, _members, host_ws, _guests, _started):
             armed = _to_armed(host_ws)

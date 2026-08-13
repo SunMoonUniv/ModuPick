@@ -67,6 +67,12 @@ class TestCreateRoom:
         r = client.post("/api/rooms", json={"maxMembers": capacity})
         assert r.status_code == expected, r.text
 
+    def test_연속_20회_발급에_중복이_없다(self, client):
+        """AC-03. 코드는 재추첨을 거쳐서라도 살아 있는 방끼리 절대 겹치지 않는다."""
+        codes = [create_room(client)["code"] for _ in range(20)]
+        assert all(len(c) == 6 and c.isdigit() for c in codes)
+        assert len(set(codes)) == len(codes)
+
 
 # ── 멱등 ───────────────────────────────────────────────────────────────────
 
