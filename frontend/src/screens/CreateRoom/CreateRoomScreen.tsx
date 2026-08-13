@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { ScreenFrame } from '../../components/common'
 import { api } from '../../api/rest'
 import { saveSession } from '../../store/session'
+import { presentError } from '../../constants/errorMessages'
 import { ApiError } from '../../protocol/types'
 import styles from './CreateRoomScreen.module.css'
 
@@ -54,7 +55,8 @@ export function CreateRoomScreen() {
       })
       navigate('/profile')
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '방을 만들지 못했습니다.')
+      // 서버 message가 아니라 code로 문구를 고른다 — F-CMN-04 매핑(src/constants/errorMessages.ts)
+      setError(e instanceof ApiError ? presentError(e.code).message : '방을 만들지 못했습니다.')
       setSubmitting(false)
     }
   }

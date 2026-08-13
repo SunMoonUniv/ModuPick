@@ -8,6 +8,7 @@ import { arrowIcon, sparkleIcon } from '../../assets/icons'
 import { api } from '../../api/rest'
 import { useRoomStore } from '../../store/roomStore'
 import { loadSession, saveSession } from '../../store/session'
+import { presentError } from '../../constants/errorMessages'
 import { ApiError } from '../../protocol/types'
 import type { AvatarSlot } from '../../protocol/types'
 import styles from './ProfileScreen.module.css'
@@ -124,7 +125,8 @@ export function ProfileScreen() {
         // 선점 경쟁에서 밀린 경우 — 선택을 풀고 다시 고르게 한다
         setAvatarId(null)
       }
-      setError(e instanceof ApiError ? e.message : '입장하지 못했습니다.')
+      // 서버 message가 아니라 code로 문구를 고른다 — F-CMN-04 매핑(src/constants/errorMessages.ts)
+      setError(e instanceof ApiError ? presentError(e.code).message : '입장하지 못했습니다.')
       setSubmitting(false)
     }
   }

@@ -72,7 +72,7 @@ export function NunchiResultView({ view, stats }: NunchiResultViewProps) {
       <section className={styles.summary}>
         <h2 className={styles.summaryTitle}>🎬 게임 종료 · {rounds.length}라운드 진행</h2>
         <span className={styles.summarySub}>
-          혼자 누르면 통과 · 겹치면 동시 탈락 · 시간 초과 시 탈락
+          누르면 빠진다 · 혼자든 겹쳤든 같다 · 끝까지 못 누른 한 사람이 뽑힌다
         </span>
         {/* 라운드 수·판정창·최종 선정은 서버가 문구까지 확정해 내려주므로 그대로 이어 붙인다 */}
         <span className={styles.summaryChip}>

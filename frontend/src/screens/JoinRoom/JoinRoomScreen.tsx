@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom'
 import { Button, Card, Input, ScreenFrame } from '../../components/common'
 import { api, normalizeCode, toDisplayCode } from '../../api/rest'
 import { saveSession } from '../../store/session'
+import { presentError } from '../../constants/errorMessages'
 import { ApiError } from '../../protocol/types'
 import type { RoomLookupResponse } from '../../protocol/types'
 import styles from './JoinRoomScreen.module.css'
@@ -28,7 +29,8 @@ export function JoinRoomScreen() {
         if (!cancelled) setPreview(res)
       })
       .catch((e) => {
-        if (!cancelled) setError(e instanceof ApiError ? e.message : '방을 찾을 수 없습니다.')
+        // 서버 message가 아니라 code로 문구를 고른다 — F-CMN-04 매핑(src/constants/errorMessages.ts)
+        if (!cancelled) setError(e instanceof ApiError ? presentError(e.code).message : '방을 찾을 수 없습니다.')
       })
     return () => {
       cancelled = true
@@ -50,7 +52,8 @@ export function JoinRoomScreen() {
       })
       navigate('/profile')
     } catch (e) {
-      setError(e instanceof ApiError ? e.message : '입장하지 못했습니다.')
+      // 서버 message가 아니라 code로 문구를 고른다 — F-CMN-04 매핑(src/constants/errorMessages.ts)
+      setError(e instanceof ApiError ? presentError(e.code).message : '입장하지 못했습니다.')
       setSubmitting(false)
     }
   }
